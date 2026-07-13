@@ -1,6 +1,6 @@
 # Symulator fabryki KLAB — instrukcje dla Claude Code
 
-Pracujesz nad **`Symulator fabryki v0.2.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
+Pracujesz nad **`Symulator fabryki v0.3.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
 
 ## Zanim zaczniesz — przeczytaj (w tej kolejności)
 
@@ -23,11 +23,13 @@ Pracujesz nad **`Symulator fabryki v0.2.html`** (starsze wersje zostają w repo 
 
 Tło `#F2F1EF` · karty białe radius 14–16 px cień `0 2px 12px rgba(0,0,0,.07)` · akcent `#FF4D00` (pomarańcz 21 zmysłów) · linia B na kafelkach `#7C3AED` · etykiety małe szare uppercase · liczby duże cienkie · media: energia `#F97316`, woda `#3B82F6`, N₂ `#9CA3AF`, kwas `#8B5CF6` · czarne przyciski-pigułki · ŻADNEGO dark mode na razie.
 
-## Stan obecny (v0.2)
+## Stan obecny (v0.3)
 
-Działa: layout drag&drop (siatka 0,5 m, obrót R, kolizje, pan/zoom), KPI live (moc, media, personel, powierzchnia, CAPEX), linie mediów do szyn, strefy serwisowe, kafelki kart urządzeń wg referencji Movara (przepływ we→wy, pasek obciążenia, schematyczne grafiki SVG w obiekcie `GFX`), widok M2 (bilans per moduł funkcjonalny), eksport/import JSON, localStorage.
+Działa: layout drag&drop (siatka 0,25/0,5/1 m/wył., obrót R, kolizje, pan/zoom, undo/redo Ctrl+Z/Y, duplikowanie), KPI live (urządzenia, moc, media, personel, powierzchnia, CAPEX), magistrale mediów wewnątrz hali (chipy E/W/N/KW + punkty przyłączy), strefy serwisowe ze znacznikiem „S", widok M2 (bilans per moduł funkcjonalny), widok M4 Personel (model zmianowy 1/2/3 per urządzenie — założenie robocze, domyślnie 3 zmiany), widok M6 Koszty (OPEX z suwakami, stacked bar struktury), eksport/import JSON, localStorage (klucz `klab_sym_v02`, czyta też `klab_sym_v01`).
 
-Nowe w v0.2: **widok M4 Personel** (obłożenie per zmianę i moduł funkcjonalny; model zmianowy 1/2/3 per urządzenie — założenie robocze, domyślnie 3 zmiany, docelowo z pola `praca` po review schematu) i **widok M6 Koszty** (OPEX roczny z suwakami założeń: cena energii, woda+ścieki, N₂, koszt osobowy, UR % CAPEX, dni robocze; stacked bar struktury kosztów). Założenia M4/M6 żyją w obiekcie `zalozenia` — trafiają do eksportu JSON i localStorage (klucz `klab_sym_v02`, czyta też stary `klab_sym_v01`).
+Layout v0.3 (wg makiety Krzyśka z 13.07): lewy pionowy pasek ikon = przełączanie widoków (zsynchronizowany z zakładkami u góry), pełnoekranowa kanwa hali z linijkami wymiarowymi i obrysem architektonicznym, **katalog urządzeń = pływający panel po lewej** (zwijany na X), **karta wybranego urządzenia = pływający panel po prawej** (podpis „Wybrana karta urządzenia"; akcje Obróć/Duplikuj/Usuń dla urządzeń z planu), pionowy pasek narzędzi kanwy przy prawej krawędzi (undo/redo, siatka, zoom, dopasuj, media, strefy), na dole pasek modułów funkcjonalnych z planu (bez strzałek przepływu — topologii procesu nie ma w danych; klik filtruje katalog) + legenda mediów, w top-barze „Zapisz projekt (JSON)" + menu ⋮ (import, otwieranie starszych wersji). Grafiki urządzeń renderują się też w kartach na planie (zagnieżdżone SVG — uwaga: selektor `#svg` w CSS musi zostać zawężony, globalne `svg{width:100%}` psuje zagnieżdżone grafiki).
+
+Czego celowo NIE przeniesiono z makiety (wymagałoby wymyślenia danych): strzałki przepływu między urządzeniami i numeracja etapów (brak topologii procesu w schemacie), pola wys./ciepło odpadowe/tagi ATEX (schemat czeka na review Marcina), „Edytuj parametry" (dane W-draft zablokowane do review).
 
 ## Backlog (kolejność wg roadmapy — iteracja 3)
 
