@@ -43,6 +43,7 @@ Nowe w v0.2: **widok M4 Personel** (obłożenie per zmianę i moduł funkcjonaln
 ## Po sesji
 
 - Dopisz iterację do sekcji „Dziennik decyzji" w `../START — nowy projekt Cowork/Fabryka akumulatorów.md` (jedna linia: co się zmieniło).
-- **Po każdym wgraniu (push) zaktualizuj podgląd online i ZAWSZE podaj link na końcu odpowiedzi:**
-  `https://claude.ai/code/artifact/1e0579ce-3855-409d-a7d8-aae3b4d6fd21`
-  Jak: z aktualnego pliku `Symulator fabryki v0.X.html` usuń tagi `<!DOCTYPE>`, `<html>`, `<head>`, `<body>` i `<meta>` (zostaje `<title>` + `<style>` + treść body ze skryptem), po czym opublikuj narzędziem Artifact — w tej samej rozmowie wystarczy ta sama ścieżka pliku, z innej rozmowy podaj dodatkowo parametr `url` z linkiem powyżej, żeby nie powstał nowy adres.
+- **Po każdym wgraniu (push) ZAWSZE podaj na końcu odpowiedzi link do podglądu:**
+  `https://twentyonelab.github.io/klab/`
+  GitHub Pages jest skonfigurowane w trybie „Deploy from a branch" (gałąź `claude/new-session-07diir`, root) — po pushu odświeża się samo w ~1 min. `index.html` w korzeniu przekierowuje do najnowszej wersji symulatora — **przy tworzeniu nowej wersji v0.X zaktualizuj URL w przekierowaniu.**
+- Zapasowy podgląd na claude.ai (artefakt, prywatny): `https://claude.ai/code/artifact/1e0579ce-3855-409d-a7d8-aae3b4d6fd21` — aktualizacja: z pliku v0.X usuń tagi `<!DOCTYPE>`, `<html>`, `<head>`, `<body>` i `<meta>` (zostaje `<title>` + `<style>` + treść body ze skryptem) i opublikuj narzędziem Artifact z parametrem `url` jak wyżej, żeby nie powstał nowy adres.
