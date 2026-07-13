@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLAB · Symulator fabryki v0.2</title>
+<style>
+:root{
+  --bg:#F2F1EF; --card:#FFFFFF; --ink:#1A1A1A; --mut:#8A8A85; --line:#E5E3DF;
+  --acc:#FF4D00; --ok:#16A34A; --warn:#F59E0B; --bad:#DC2626; --info:#2563EB;
+  --c-energia:#F97316; --c-woda:#3B82F6; --c-n2:#9CA3AF; --c-kwas:#8B5CF6;
+  --r:14px; --sh:0 2px 12px rgba(0,0,0,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.mono{font-family:"Consolas","JetBrains Mono",monospace}
+.lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+
+/* ── TOP BAR ── */
+header{display:flex;align-items:center;gap:16px;padding:10px 18px;background:var(--card);border-bottom:1px solid var(--line);z-index:20}
+.logo{display:flex;align-items:baseline;gap:8px}
+.logo b{font-size:15px}.logo .dot{color:var(--acc)}
+.logo span{font-size:11px;color:var(--mut)}
+nav{display:flex;gap:4px;margin:0 auto;background:var(--bg);padding:4px;border-radius:999px}
+nav button{border:0;background:transparent;padding:7px 16px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--mut);cursor:pointer;white-space:nowrap}
+nav button.act{background:var(--ink);color:#fff}
+nav button:hover:not(.act){color:var(--ink)}
+.tools{display:flex;gap:8px;align-items:center}
+.pill{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer}
+.pill:hover{border-color:var(--ink)}
+.pill.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pill.on{border-color:var(--acc);color:var(--acc)}
+
+/* ── KPI STRIP ── */
+#kpis{display:flex;gap:10px;padding:10px 18px;overflow-x:auto;flex-shrink:0}
+.kpi{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:10px 16px;min-width:128px}
+.kpi .v{font-size:21px;font-weight:300;letter-spacing:-.02em}
+.kpi .v small{font-size:11px;color:var(--mut);font-weight:600;margin-left:2px}
+.kpi.alert .v{color:var(--bad)}
+.kpi .sub{font-size:10.5px;color:var(--mut);margin-top:1px}
+
+/* ── MAIN ── */
+main{flex:1;position:relative;overflow:hidden}
+#canvasWrap{position:absolute;inset:0;cursor:grab}
+#canvasWrap.drag{cursor:grabbing}
+svg{display:block;width:100%;height:100%}
+.zoomers{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:6px;z-index:10}
+.zoomers button{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--card);box-shadow:var(--sh);font-size:17px;cursor:pointer}
+.hint{position:absolute;left:16px;top:16px;background:var(--card);border-radius:999px;box-shadow:var(--sh);padding:7px 14px;font-size:11.5px;color:var(--mut);z-index:10}
+.hint b{color:var(--ink)}
+
+/* devices on canvas */
+.dev rect.body{fill:#fff;stroke:#C9C6C0;stroke-width:.15;filter:drop-shadow(0 .3px .6px rgba(0,0,0,.18))}
+.dev.sel rect.body{stroke:var(--acc);stroke-width:.3}
+.dev.coll rect.body{stroke:var(--bad);stroke-width:.3}
+.dev text{user-select:none;pointer-events:none}
+.dev .serw{fill:none;stroke:#B9B6B0;stroke-width:.08;stroke-dasharray:.5 .35}
+.dev.sel .serw{stroke:var(--acc)}
+.dev{cursor:move}
+.mline{fill:none;stroke-width:.14;opacity:.75}
+.mline.energia{stroke:var(--c-energia)} .mline.woda{stroke:var(--c-woda)}
+.mline.n2{stroke:var(--c-n2)} .mline.kwas{stroke:var(--c-kwas)}
+
+/* floating card */
+#fcard{position:absolute;width:262px;background:var(--card);border-radius:var(--r);box-shadow:0 8px 30px rgba(0,0,0,.14);padding:14px;z-index:15;display:none}
+#fcard h3{font-size:13.5px;margin:2px 0 1px}
+#fcard .id{font-size:11px;color:var(--mut)}
+#fcard .row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--line)}
+#fcard .row:last-of-type{border:0}
+#fcard .row span:first-child{color:var(--mut)}
+#fcard .acts{display:flex;gap:6px;margin-top:10px}
+#fcard .acts button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 0;font-size:11.5px;font-weight:600;cursor:pointer}
+#fcard .acts button:hover{border-color:var(--ink)}
+#fcard .acts button.del{color:var(--bad)}
+.badge{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:999px}
+.badge.custom{background:#FFF1EA;color:var(--acc)}
+.badge.a{background:#EEF6EE;color:var(--ok)} .badge.b{background:#EDF2FD;color:var(--info)}
+
+/* ── BOTTOM DOCK ── */
+#dock{flex-shrink:0;background:var(--bg);border-top:1px solid var(--line);padding:10px 18px 14px}
+#dock .head{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+#dock .head input{border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12px;width:200px;outline:none}
+#dock .head .f{font-size:11.5px;font-weight:600;color:var(--mut);cursor:pointer;padding:5px 10px;border-radius:999px}
+#dock .head .f.act{background:var(--ink);color:#fff}
+#tiles{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.tile{flex:0 0 240px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px 10px;cursor:grab;user-select:none;transition:box-shadow .15s}
+.tile:hover{box-shadow:var(--sh)}
+.thead{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
+.tid{font-size:13px;font-weight:700}
+.tnm{font-size:10.5px;color:var(--mut);margin-top:2px;line-height:1.3;max-width:112px;height:27px;overflow:hidden}
+.timg{width:94px;height:52px;flex:0 0 auto;position:relative}
+.timg svg{width:100%;height:100%}
+.timg .cb{position:absolute;top:-5px;right:-5px}
+.frow{display:flex;justify-content:space-between;font-size:12px;font-weight:700;gap:8px}
+.frow span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.frow2{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.04em;color:var(--mut);margin-top:4px;text-transform:uppercase}
+.bar{position:relative;height:10px;margin-top:7px}
+.bar .trk{position:absolute;left:0;right:0;top:4px;border-top:2px dotted #DDD9D3}
+.bar .fill{position:absolute;left:0;top:4px;height:2px;border-radius:2px}
+.bar .dotL{position:absolute;left:0;top:2.5px;width:5px;height:5px;border-radius:50%}
+.bar .dotR{position:absolute;right:0;top:1.5px;width:6px;height:6px;border-radius:50%;border:1.5px solid #DDD9D3;background:#fff}
+.bar .hnd{position:absolute;top:0;width:22px;height:9px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.stats{display:flex;border-top:1px solid var(--line);margin-top:10px;padding-top:8px;font-size:10.5px}
+.stats span{flex:1;display:flex;align-items:center;gap:4px;justify-content:center;white-space:nowrap}
+.stats span+span{border-left:1px solid var(--line)}
+#ghost{position:fixed;pointer-events:none;z-index:100;opacity:.85;display:none;background:var(--card);border:2px solid var(--acc);border-radius:10px;padding:6px 12px;font-size:11.5px;font-weight:700;box-shadow:var(--sh)}
+
+/* views other than layout */
+#viewPane{position:absolute;inset:0;overflow:auto;padding:20px;display:none;z-index:12;background:var(--bg)}
+.vcard{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:18px 20px;max-width:860px;margin:0 auto 14px}
+.vcard h2{font-size:15px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid var(--line)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.note{font-size:11px;color:var(--mut);margin-top:10px}
+.soon{max-width:520px;margin:60px auto;text-align:center;color:var(--mut)}
+.soon .big{font-size:40px;margin-bottom:10px}
+
+/* ── M4: model zmianowy ── */
+.chips{display:inline-flex;gap:4px}
+.chips button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--mut);cursor:pointer}
+.chips button:hover{border-color:var(--ink);color:var(--ink)}
+.chips button.act{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tiles3{display:flex;gap:10px;margin-bottom:14px}
+.t3{flex:1;background:var(--bg);border-radius:10px;padding:10px 14px}
+.t3 .v{font-size:22px;font-weight:300;letter-spacing:-.02em}
+.t3 .v small{font-size:11px;color:var(--mut);font-weight:600;margin-left:2px}
+.t3.hl{background:#FFF1EA}.t3.hl .v{color:var(--acc)}
+
+/* ── M6: suwaki + struktura OPEX ── */
+.slrow{display:grid;grid-template-columns:200px 1fr 110px;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.slrow:last-of-type{border:0}
+.slrow .lbl{font-size:11px}
+.slrow input[type=range]{width:100%;accent-color:var(--acc);cursor:pointer}
+.slrow .val{font-weight:700;text-align:right;font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.opexV{font-size:28px;font-weight:300;letter-spacing:-.02em}
+.opexV small{font-size:12px;color:var(--mut);font-weight:600;margin-left:4px}
+.stack{display:flex;gap:2px;height:14px;border-radius:7px;overflow:hidden;margin:12px 0 6px}
+.stack div{height:100%;min-width:3px}
+.leg{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)}
+.leg:last-of-type{border:0}
+.leg .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:8px}
+.leg b{font-variant-numeric:tabular-nums}
+#tip{position:fixed;z-index:99;background:var(--ink);color:#fff;font-size:11px;padding:5px 10px;border-radius:7px;pointer-events:none;display:none;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><b>KLAB<span class="dot">.</span></b><span>symulator fabryki · v0.2 · dane robocze</span></div>
+  <nav id="nav">
+    <button data-v="layout" class="act">Layout</button>
+    <button data-v="m2">Bilans M2</button>
+    <button data-v="m3">Energia M3</button>
+    <button data-v="m4">Personel M4</button>
+    <button data-v="m6">Koszty M6</button>
+  </nav>
+  <div class="tools">
+    <button class="pill on" id="tglMedia">Media</button>
+    <button class="pill on" id="tglSerw">Strefy</button>
+    <button class="pill" id="btnImport">Import</button>
+    <button class="pill dark" id="btnExport">Eksport JSON</button>
+  </div>
+</header>
+
+<div id="kpis"></div>
+
+<main>
+  <div id="canvasWrap">
+    <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="hint">Przeciągnij kafelek z dołu na halę · <b>klik</b> = szczegóły · <b>R</b> = obrót</div>
+    <div class="zoomers">
+      <button id="zin">+</button><button id="zout">−</button><button id="zfit" title="dopasuj">⤢</button>
+    </div>
+    <div id="fcard"></div>
+  </div>
+  <div id="viewPane"></div>
+</main>
+
+<div id="dock">
+  <div class="head">
+    <span class="lbl">Katalog urządzeń</span>
+    <input id="q" placeholder="Szukaj…">
+    <span class="f act" data-f="all">Wszystkie</span>
+    <span class="f" data-f="A">Linia A</span>
+    <span class="f" data-f="B">Linia B</span>
+    <span class="lbl" style="margin-left:auto" id="dockInfo"></span>
+  </div>
+  <div id="tiles"></div>
+</div>
+
+<div id="ghost"></div>
+<div id="tip"></div>
+<input type="file" id="fileIn" accept=".json" style="display:none">
+
+<script>
+/* ═══ DANE — placeholder do podmiany po review Marcina (typ źródła: W-draft) ═══ */
+const HALA={dl:96,szer:48,siatka:.5};
+const MEDIA_KOL={energia:"#F97316",woda:"#3B82F6",n2:"#9CA3AF",kwas:"#8B5CF6"};
+const DEVICES=[
+{id:"A-02",nazwa:"Breaker + separacja sink-float",linia:"A",modul:"Recykling mech.",dl:10,szer:4,serw:1,kW:160,kWsr:120,n2:0,woda:6,os:2,capex:1350000,media:["energia","woda"],we:"Złom LAB",wy:"Frakcje Pb·PP",gfx:"kruszarka"},
+{id:"A-06",nazwa:"Piec topielny nisko-T",linia:"A",modul:"Obróbka termiczna",dl:8,szer:4,serw:1.5,kW:400,kWsr:300,n2:0,woda:2,os:1,capex:1200000,media:["energia","woda"],we:"Wsad Pb",wy:"Pb rafinowany",gfx:"piec"},
+{id:"A-10",nazwa:"Hydrometalurgia pasty + kalcynacja",linia:"A",modul:"Hydrometalurgia",dl:14,szer:6,serw:1.5,kW:500,kWsr:380,n2:0,woda:10,os:2,capex:3120000,media:["energia","woda","kwas"],we:"Pasta PbSO₄",wy:"PbO · Na₂SO₄",gfx:"reaktor"},
+{id:"A-12",nazwa:"Regranulacja PP",linia:"A",modul:"Tworzywa",dl:10,szer:4,serw:1,kW:250,kWsr:180,n2:0,woda:8,os:1,capex:900000,media:["energia","woda"],we:"PP z breakera",wy:"Regranulat",gfx:"ekstruder"},
+{id:"B-03",nazwa:"Linia impregnacji pianki",linia:"B",modul:"Elektroda",dl:15,szer:3,serw:1,kW:120,kWsr:90,n2:0,woda:1,os:1,capex:2000000,media:["energia"],custom:true,we:"Pianka PU",wy:"Preforma",gfx:"rollline"},
+{id:"B-04",nazwa:"Piec pirolityczny LT+HT",linia:"B",modul:"Obróbka termiczna",dl:12,szer:3,serw:1.5,kW:850,kWsr:600,n2:40,woda:0,os:1,capex:3500000,media:["energia","n2"],we:"Preforma",wy:"Szkielet C",gfx:"piec"},
+{id:"B-05",nazwa:"Galwanika Pb",linia:"B",modul:"Elektroda",dl:10,szer:5,serw:1,kW:300,kWsr:220,n2:0,woda:6,os:2,capex:1800000,media:["energia","woda","kwas"],we:"Szkielet C",wy:"Elektroda Pb",gfx:"wanna"},
+{id:"B-08",nazwa:"Pastownica dwustronna",linia:"B",modul:"Montaż płyt",dl:8,szer:3,serw:1,kW:90,kWsr:70,n2:0,woda:1,os:1,capex:1500000,media:["energia","woda"],custom:true,we:"Elektroda",wy:"Płyta z pastą",gfx:"pastownica"},
+{id:"B-12",nazwa:"Formacja + testy EoL",linia:"B",modul:"Formacja",dl:14,szer:8,serw:1,kW:600,kWsr:450,n2:0,woda:4,os:2,capex:1800000,media:["energia","woda"],we:"Ogniwa",wy:"Test EoL OK",gfx:"formacja"},
+{id:"B-14",nazwa:"Jar assembly + pakowanie",linia:"B",modul:"Montaż ogniw",dl:12,szer:5,serw:1,kW:110,kWsr:80,n2:0,woda:0,os:3,capex:1400000,media:["energia"],we:"Płyty + sep.",wy:"Ogniwo",gfx:"montaz"},
+];
+
+/* ═══ GRAFIKI URZĄDZEŃ — schematy side-view (placeholder do podmiany na docelowe ilustracje) ═══ */
+const S='stroke="#B9B6B0" stroke-width="1.4" stroke-linecap="round"', F='fill="#EFEDEA"', W='fill="#FFFFFF"';
+const GFX={
+kruszarka:`<svg viewBox="0 0 94 52"><path d="M32 6h30l-7 14H39z" ${F} ${S}/><rect x="30" y="20" width="34" height="18" rx="3" ${W} ${S}/><circle cx="41" cy="29" r="4.2" ${F} ${S}/><circle cx="53" cy="29" r="4.2" ${F} ${S}/><rect x="24" y="40" width="46" height="5" rx="2" ${F} ${S}/></svg>`,
+piec:`<svg viewBox="0 0 94 52"><rect x="20" y="14" width="50" height="26" rx="4" ${W} ${S}/><rect x="58" y="4" width="7" height="12" rx="1.5" ${F} ${S}/><rect x="27" y="21" width="20" height="12" rx="2" ${F} ${S}/><path d="M54 22c1.5 2 1.5 4 0 6M60 22c1.5 2 1.5 4 0 6" fill="none" ${S}/><rect x="18" y="42" width="8" height="4" ${F} ${S}/><rect x="64" y="42" width="8" height="4" ${F} ${S}/></svg>`,
+reaktor:`<svg viewBox="0 0 94 52"><rect x="24" y="10" width="17" height="28" rx="8" ${W} ${S}/><rect x="52" y="10" width="17" height="28" rx="8" ${W} ${S}/><path d="M41 20h11" fill="none" ${S}/><path d="M32 38v8M60 38v8" fill="none" ${S}/><circle cx="32" cy="16" r="2" ${F} ${S}/><circle cx="60" cy="16" r="2" ${F} ${S}/></svg>`,
+ekstruder:`<svg viewBox="0 0 94 52"><path d="M28 8h14l-3 10h-8z" ${F} ${S}/><rect x="18" y="18" width="52" height="13" rx="4" ${W} ${S}/><path d="M25 24h38" stroke="#DDD9D3" stroke-width="2" stroke-dasharray="3 3" fill="none"/><rect x="70" y="21" width="8" height="7" rx="1.5" ${F} ${S}/><rect x="22" y="34" width="8" height="10" ${F} ${S}/><rect x="58" y="34" width="8" height="10" ${F} ${S}/></svg>`,
+rollline:`<svg viewBox="0 0 94 52"><circle cx="20" cy="20" r="9" ${W} ${S}/><circle cx="20" cy="20" r="3" ${F} ${S}/><rect x="32" y="24" width="46" height="11" rx="3" ${W} ${S}/><path d="M29 20h49" fill="none" ${S}/><rect x="36" y="38" width="6" height="8" ${F} ${S}/><rect x="68" y="38" width="6" height="8" ${F} ${S}/></svg>`,
+wanna:`<svg viewBox="0 0 94 52"><path d="M22 18v18a4 4 0 004 4h42a4 4 0 004-4V18" ${W} ${S}/><path d="M18 18h58" fill="none" ${S}/><path d="M34 12v14M47 12v16M60 12v14" fill="none" ${S}/><rect x="30" y="26" width="8" height="8" ${F} ${S}/><rect x="43" y="28" width="8" height="8" ${F} ${S}/><rect x="56" y="26" width="8" height="8" ${F} ${S}/></svg>`,
+pastownica:`<svg viewBox="0 0 94 52"><circle cx="47" cy="15" r="8" ${W} ${S}/><circle cx="47" cy="37" r="8" ${W} ${S}/><path d="M14 26h66" fill="none" ${S}/><rect x="16" y="22" width="14" height="8" rx="1.5" ${F} ${S}/><rect x="64" y="22" width="14" height="8" rx="1.5" ${F} ${S}/></svg>`,
+formacja:`<svg viewBox="0 0 94 52"><rect x="20" y="8" width="54" height="38" rx="3" ${W} ${S}/><path d="M20 21h54M20 34h54M38 8v38M56 8v38" fill="none" ${S}/><rect x="25" y="12" width="9" height="5" ${F}/><rect x="43" y="25" width="9" height="5" ${F}/><rect x="61" y="38" width="9" height="5" ${F}/></svg>`,
+montaz:`<svg viewBox="0 0 94 52"><path d="M14 34h66" fill="none" ${S}/><circle cx="22" cy="40" r="3.5" ${W} ${S}/><circle cx="47" cy="40" r="3.5" ${W} ${S}/><circle cx="72" cy="40" r="3.5" ${W} ${S}/><rect x="24" y="22" width="13" height="12" rx="2" ${W} ${S}/><rect x="44" y="18" width="13" height="16" rx="2" ${F} ${S}/><rect x="64" y="22" width="13" height="12" rx="2" ${W} ${S}/></svg>`,
+ph:`<svg viewBox="0 0 94 52"><rect x="14" y="8" width="66" height="36" rx="5" fill="none" stroke="#DDD9D3" stroke-width="1.6" stroke-dasharray="5 4"/><text x="47" y="30" font-size="9" fill="#B9B6B0" text-anchor="middle">grafika wkrótce</text></svg>`
+};
+const DEV=Object.fromEntries(DEVICES.map(d=>[d.id,d]));
+
+/* ═══ STAN ═══ */
+let placed=[];    // {uid,dev,x,y,rot}
+let uidN=1, selUid=null, view="layout";
+let vb={x:-4,y:-6,w:HALA.dl+8,h:HALA.szer+14};
+let showMedia=true, showSerw=true, filtr="all", q="";
+/* założenia M4/M6 — wartości robocze do kalibracji, wszystkie edytowalne w UI */
+let zalozenia={
+  zmiany:{},          // id urządzenia -> 1|2|3 (domyślnie 3 = ruch ciągły, założenie robocze)
+  dniRobocze:250,     // dni pracy / rok
+  cenaEnergii:0.75,   // zł/kWh
+  cenaWody:15,        // zł/m³ (woda + ścieki)
+  cenaN2:0.80,        // zł/m³
+  stawkaOs:10000,     // zł/mies. — całkowity koszt pracodawcy
+  urPct:3,            // utrzymanie ruchu, % CAPEX / rok
+};
+try{const s=localStorage.getItem("klab_sym_v02")||localStorage.getItem("klab_sym_v01");
+  if(s){const j=JSON.parse(s);placed=(j.placed||[]).filter(p=>DEV[p.dev]);uidN=j.uidN||placed.length+1;
+    if(j.zalozenia)zalozenia={...zalozenia,...j.zalozenia,zmiany:{...(j.zalozenia.zmiany||{})}};}}catch(e){}
+const zmianyDev=id=>zalozenia.zmiany[id]||3;
+const hRokDev=id=>zmianyDev(id)*8*zalozenia.dniRobocze; // godziny pracy / rok
+
+const svg=document.getElementById("svg"), wrap=document.getElementById("canvasWrap"), fcard=document.getElementById("fcard");
+const fmtZl=n=>n>=1e6?(n/1e6).toLocaleString("pl-PL",{maximumFractionDigits:2})+" mln":Math.round(n/1e3)+" tys.";
+
+/* footprint incl. strefa serwisowa */
+function foot(p){const d=DEV[p.dev];const L=(p.rot%180?d.szer:d.dl)+2*d.serw, S=(p.rot%180?d.dl:d.szer)+2*d.serw;return{x:p.x-L/2,y:p.y-S/2,w:L,h:S};}
+function collisions(){const bad=new Set();for(let i=0;i<placed.length;i++)for(let j=i+1;j<placed.length;j++){const a=foot(placed[i]),b=foot(placed[j]);if(a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h){bad.add(placed[i].uid);bad.add(placed[j].uid);}}
+placed.forEach(p=>{const f=foot(p);if(f.x<0||f.y<0||f.x+f.w>HALA.dl||f.y+f.h>HALA.szer)bad.add(p.uid);});return bad;}
+
+/* ═══ RENDER CANVAS ═══ */
+function render(){
+  svg.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  const bad=collisions();
+  let s="";
+  // hala
+  s+=`<rect x="0" y="0" width="${HALA.dl}" height="${HALA.szer}" fill="#FBFAF8" stroke="#B9B6B0" stroke-width="0.25" rx="0.5"/>`;
+  // siatka
+  s+=`<g stroke="#ECEAE6" stroke-width="0.03">`;
+  for(let x=0;x<=HALA.dl;x+=2)s+=`<line x1="${x}" y1="0" x2="${x}" y2="${HALA.szer}"/>`;
+  for(let y=0;y<=HALA.szer;y+=2)s+=`<line x1="0" y1="${y}" x2="${HALA.dl}" y2="${y}"/>`;
+  s+=`</g>`;
+  // wymiary
+  s+=`<text x="${HALA.dl/2}" y="-1.6" font-size="1.4" fill="#8A8A85" text-anchor="middle">${HALA.dl} m</text>`;
+  s+=`<text x="-1.4" y="${HALA.szer/2}" font-size="1.4" fill="#8A8A85" text-anchor="middle" transform="rotate(-90 -1.4 ${HALA.szer/2})">${HALA.szer} m</text>`;
+  // szyny mediów (górna ściana)
+  const rails=[["energia",-4.2],["woda",-3.4],["n2",-2.6],["kwas",-1.8]];
+  rails.forEach(([m,y])=>{s+=`<line x1="0" y1="${y}" x2="${HALA.dl}" y2="${y}" stroke="${MEDIA_KOL[m]}" stroke-width="0.14" opacity="0.55"/><text x="${HALA.dl+0.6}" y="${y+0.35}" font-size="0.95" fill="${MEDIA_KOL[m]}">${m==="n2"?"N₂":m}</text>`;});
+  // linie mediów
+  if(showMedia)placed.forEach(p=>{const d=DEV[p.dev];d.media.forEach(m=>{const ry=rails.find(r=>r[0]===m)[1];s+=`<path class="mline ${m}" d="M ${p.x} ${p.y} V ${ry}"/>`;});});
+  // urządzenia
+  placed.forEach(p=>{
+    const d=DEV[p.dev], rot=p.rot%180, L=rot?d.szer:d.dl, S=rot?d.dl:d.szer;
+    const cls="dev"+(p.uid===selUid?" sel":"")+(bad.has(p.uid)?" coll":"");
+    s+=`<g class="${cls}" data-uid="${p.uid}">`;
+    if(showSerw)s+=`<rect class="serw" x="${p.x-L/2-d.serw}" y="${p.y-S/2-d.serw}" width="${L+2*d.serw}" height="${S+2*d.serw}" rx="0.4"/>`;
+    s+=`<rect class="body" x="${p.x-L/2}" y="${p.y-S/2}" width="${L}" height="${S}" rx="0.35"/>`;
+    // detal top-view: pas wewnętrzny
+    s+=`<rect x="${p.x-L/2+0.5}" y="${p.y-S/2+0.5}" width="${L-1}" height="${S-1}" rx="0.25" fill="none" stroke="#E5E3DF" stroke-width="0.08"/>`;
+    if(d.custom)s+=`<circle cx="${p.x-L/2+0.9}" cy="${p.y-S/2+0.9}" r="0.32" fill="#FF4D00"/>`;
+    s+=`<text x="${p.x}" y="${p.y-0.3}" font-size="1.05" font-weight="700" text-anchor="middle" fill="#1A1A1A">${d.id}</text>`;
+    s+=`<text x="${p.x}" y="${p.y+1.0}" font-size="0.75" text-anchor="middle" fill="#8A8A85">${d.kW} kW · ${d.os} os.</text>`;
+    s+=`</g>`;
+  });
+  svg.innerHTML=s;
+  renderKPI(bad); save();
+}
+
+/* ═══ KPI ═══ */
+function renderKPI(bad){
+  const P=placed.map(p=>DEV[p.dev]);
+  const kW=P.reduce((a,d)=>a+d.kW,0), kWsr=P.reduce((a,d)=>a+d.kWsr,0);
+  const n2=P.reduce((a,d)=>a+d.n2,0), woda=P.reduce((a,d)=>a+d.woda,0);
+  const os=P.reduce((a,d)=>a+d.os,0), capex=P.reduce((a,d)=>a+d.capex,0);
+  const pow=placed.reduce((a,p)=>{const f=foot(p);return a+f.w*f.h;},0);
+  const powPct=Math.round(100*pow/(HALA.dl*HALA.szer));
+  const items=[
+    ["Moc zainstalowana",kW.toLocaleString("pl-PL"),"kW",`śr. ${kWsr.toLocaleString("pl-PL")} kW`],
+    ["Azot N₂",n2,"m³/h",""],["Woda",woda,"m³/h",""],
+    ["Personel / zmianę",os,"os.",""],
+    ["Powierzchnia",powPct,"%",`${Math.round(pow)} / ${HALA.dl*HALA.szer} m²`],
+    ["CAPEX",fmtZl(capex),"zł","dane robocze"],
+    ["Kolizje",bad?bad.size:0,"",bad&&bad.size?"nakładki / poza halą":"brak"],
+  ];
+  document.getElementById("kpis").innerHTML=items.map(([l,v,u,sub],i)=>
+    `<div class="kpi${l==="Kolizje"&&v>0?" alert":""}"><div class="lbl">${l}</div><div class="v">${v}<small>${u}</small></div>${sub?`<div class="sub">${sub}</div>`:""}</div>`).join("");
+  document.getElementById("dockInfo").textContent=`${placed.length} urządzeń na hali`;
+}
+
+/* ═══ DOCK / KAFELKI ═══ */
+function renderTiles(){
+  const list=DEVICES.filter(d=>(filtr==="all"||d.linia===filtr)&&(!q||(d.id+d.nazwa).toLowerCase().includes(q)));
+  document.getElementById("tiles").innerHTML=list.map(d=>{
+    const n=placed.filter(p=>p.dev===d.id).length;
+    const load=Math.round(100*d.kWsr/d.kW);
+    const col=d.linia==="A"?"#FF4D00":"#7C3AED";
+    return `<div class="tile" data-id="${d.id}">
+      <div class="thead">
+        <div><div class="tid mono">${d.id}</div><div class="tnm">${d.nazwa}</div></div>
+        <div class="timg">${GFX[d.gfx]||GFX.ph}${d.custom?'<span class="badge custom cb">B+R</span>':""}</div>
+      </div>
+      <div class="frow"><span>${d.we}</span><span>${d.wy}</span></div>
+      <div class="bar">
+        <div class="trk"></div>
+        <div class="fill" style="width:${load}%;background:${col}"></div>
+        <div class="dotL" style="background:${col}"></div><div class="dotR"></div>
+        <div class="hnd" style="left:calc(${load}% - 14px);background:${col}"></div>
+      </div>
+      <div class="frow2"><span>Linia ${d.linia}</span><span>obc. ${load}%</span><span>${d.modul}</span></div>
+      <div class="stats"><span>⚡ ${d.kW} kW</span><span>▭ ${d.dl}×${d.szer} m</span><span>👤 ${d.os}${n?` <b style="color:var(--acc)">·${n}×</b>`:""}</span></div>
+    </div>`;}).join("");
+}
+
+/* ═══ INTERAKCJE ═══ */
+const pt=svg.createSVGPoint?null:null;
+function toSVG(e){const r=svg.getBoundingClientRect();return{x:vb.x+(e.clientX-r.left)/r.width*vb.w,y:vb.y+(e.clientY-r.top)/r.height*vb.h};}
+const snap=v=>Math.round(v/HALA.siatka)*HALA.siatka;
+
+// drag z doku
+let ghostDev=null;const ghost=document.getElementById("ghost");
+document.getElementById("tiles").addEventListener("pointerdown",e=>{
+  const t=e.target.closest(".tile");if(!t)return;
+  ghostDev=t.dataset.id;const d=DEV[ghostDev];
+  ghost.textContent=d.id+" · "+d.nazwa;ghost.style.display="block";
+  moveGhost(e);e.preventDefault();
+});
+function moveGhost(e){ghost.style.left=(e.clientX+12)+"px";ghost.style.top=(e.clientY+12)+"px";}
+window.addEventListener("pointermove",e=>{if(ghostDev)moveGhost(e);});
+window.addEventListener("pointerup",e=>{
+  if(!ghostDev)return;ghost.style.display="none";
+  const r=wrap.getBoundingClientRect();
+  if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom&&view==="layout"){
+    const c=toSVG(e);placed.push({uid:uidN++,dev:ghostDev,x:snap(c.x),y:snap(c.y),rot:0});
+    selUid=placed[placed.length-1].uid;render();renderTiles();showCard(e);
+  }
+  ghostDev=null;
+});
+
+// drag / select na kanwie + pan
+let dragP=null,panning=null,moved=false;
+svg.addEventListener("pointerdown",e=>{
+  const g=e.target.closest(".dev");moved=false;
+  if(g){const uid=+g.dataset.uid;const p=placed.find(x=>x.uid===uid);const c=toSVG(e);dragP={p,dx:c.x-p.x,dy:c.y-p.y};selUid=uid;render();}
+  else{panning={x:e.clientX,y:e.clientY,vb:{...vb}};wrap.classList.add("drag");hideCard();selUid=null;render();}
+});
+window.addEventListener("pointermove",e=>{
+  if(dragP){const c=toSVG(e);dragP.p.x=snap(c.x-dragP.dx);dragP.p.y=snap(c.y-dragP.dy);moved=true;hideCard();render();}
+  else if(panning){const r=svg.getBoundingClientRect();vb.x=panning.vb.x-(e.clientX-panning.x)/r.width*vb.w;vb.y=panning.vb.y-(e.clientY-panning.y)/r.height*vb.h;svg.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);}
+});
+window.addEventListener("pointerup",e=>{
+  if(dragP&&!moved)showCard(e);
+  dragP=null;panning=null;wrap.classList.remove("drag");
+});
+// zoom
+function zoom(f,cx,cy){const c=cx!==undefined?{x:cx,y:cy}:{x:vb.x+vb.w/2,y:vb.y+vb.h/2};vb={x:c.x-(c.x-vb.x)*f,y:c.y-(c.y-vb.y)*f,w:vb.w*f,h:vb.h*f};svg.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);}
+document.getElementById("zin").onclick=()=>zoom(.8);
+document.getElementById("zout").onclick=()=>zoom(1.25);
+document.getElementById("zfit").onclick=()=>{vb={x:-4,y:-6,w:HALA.dl+8,h:HALA.szer+14};render();};
+wrap.addEventListener("wheel",e=>{e.preventDefault();const c=toSVG(e);zoom(e.deltaY>0?1.12:0.89,c.x,c.y);},{passive:false});
+// klawisze
+window.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT")return;
+  const p=placed.find(x=>x.uid===selUid);if(!p)return;
+  if(e.key==="r"||e.key==="R"){p.rot=(p.rot+90)%360;render();}
+  if(e.key==="Delete"||e.key==="Backspace"){placed=placed.filter(x=>x.uid!==selUid);selUid=null;hideCard();render();renderTiles();}
+});
+
+/* ═══ FLOATING CARD ═══ */
+function showCard(e){
+  const p=placed.find(x=>x.uid===selUid);if(!p)return hideCard();
+  const d=DEV[p.dev];
+  fcard.innerHTML=`
+    <div class="top" style="display:flex;justify-content:space-between">
+      <span class="id mono">${d.id} · ${d.modul}</span>
+      ${d.custom?'<span class="badge custom">CUSTOM · B+R</span>':`<span class="badge ${d.linia.toLowerCase()}">LINIA ${d.linia}</span>`}</div>
+    <h3>${d.nazwa}</h3>
+    <div class="row"><span>Wymiary + serwis</span><b>${d.dl}×${d.szer} m + ${d.serw} m</b></div>
+    <div class="row"><span>Moc zainst. / średnia</span><b>${d.kW} / ${d.kWsr} kW</b></div>
+    <div class="row"><span>Media</span><b>${d.media.map(m=>m==="n2"?"N₂":m).join(", ")}${d.n2?` · ${d.n2} m³/h`:""}${d.woda?` · ${d.woda} m³/h`:""}</b></div>
+    <div class="row"><span>Personel / zmianę</span><b>${d.os} os.</b></div>
+    <div class="row"><span>CAPEX (robocze)</span><b>${fmtZl(d.capex)} zł</b></div>
+    <div class="acts"><button id="fRot">↻ Obróć</button><button id="fDel" class="del">Usuń</button></div>`;
+  const r=wrap.getBoundingClientRect();
+  let x=e.clientX-r.left+14,y=e.clientY-r.top-40;
+  x=Math.min(x,r.width-280);y=Math.max(10,Math.min(y,r.height-260));
+  fcard.style.left=x+"px";fcard.style.top=y+"px";fcard.style.display="block";
+  document.getElementById("fRot").onclick=()=>{const p2=placed.find(x=>x.uid===selUid);p2.rot=(p2.rot+90)%360;render();};
+  document.getElementById("fDel").onclick=()=>{placed=placed.filter(x=>x.uid!==selUid);selUid=null;hideCard();render();renderTiles();};
+}
+function hideCard(){fcard.style.display="none";}
+
+/* ═══ WIDOKI M2–M6 ═══ */
+const pane=document.getElementById("viewPane");
+const PUSTO='<tr><td colspan="9" style="color:var(--mut)">Przeciągnij urządzenia na halę w widoku Layout — widok liczy się z planu.</td></tr>';
+function renderView(){
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("act",b.dataset.v===view));
+  if(view==="layout"){pane.style.display="none";return;}
+  pane.style.display="block";hideCard();
+  if(view==="m2")renderM2();
+  else if(view==="m4")renderM4();
+  else if(view==="m6")renderM6();
+  else pane.innerHTML=`<div class="soon"><div class="big">◱</div><h2>Scenariusze źródeł energii</h2><p style="margin-top:8px;font-size:13px">sieć / PV / odzysk ciepła / kogeneracja / magazyn KLAB — iteracja 3, zasilana bilansem z M2. Czeka na dane z modułu M3 — nie wymyślamy założeń.</p></div>`;
+}
+document.getElementById("nav").addEventListener("click",e=>{const b=e.target.closest("button");if(b){view=b.dataset.v;renderView();}});
+
+/* ── M2: bilans energii i mediów ── */
+function renderM2(){
+  const grupy={};placed.forEach(p=>{const d=DEV[p.dev];(grupy[d.modul]=grupy[d.modul]||[]).push(d);});
+  const rows=Object.entries(grupy).map(([m,ds])=>{
+    const f=k=>ds.reduce((a,d)=>a+d[k],0);
+    return `<tr><td><b>${m}</b> <span style="color:var(--mut)">(${ds.length})</span></td><td class="num">${f("kW").toLocaleString("pl-PL")}</td><td class="num">${f("kWsr").toLocaleString("pl-PL")}</td><td class="num">${f("woda")}</td><td class="num">${f("n2")}</td><td class="num">${f("os")}</td></tr>`;}).join("");
+  const tot=k=>placed.reduce((a,p)=>a+DEV[p.dev][k],0);
+  pane.innerHTML=`<div class="vcard"><h2>Bilans energii i mediów — moduły funkcjonalne (M2)</h2>
+    <table><tr><th>Moduł funkcjonalny</th><th class="num">Moc zainst. [kW]</th><th class="num">Moc śr. [kW]</th><th class="num">Woda [m³/h]</th><th class="num">N₂ [m³/h]</th><th class="num">Os./zm.</th></tr>
+    ${rows||PUSTO}
+    ${rows?`<tr style="font-weight:700"><td>RAZEM</td><td class="num">${tot("kW").toLocaleString("pl-PL")}</td><td class="num">${tot("kWsr").toLocaleString("pl-PL")}</td><td class="num">${tot("woda")}</td><td class="num">${tot("n2")}</td><td class="num">${tot("os")}</td></tr>`:""}</table>
+    <p class="note">⚠ Dane urządzeń = placeholder (typ W-draft) do podmiany po review schematu przez Marcina. Zużycie na jednostkę produkcji i profil dobowy — iteracja 2 (wymaga kWh/m² elektrody — pytanie #5 do klienta).</p></div>`;
+}
+
+/* ── M4: personel i model zmianowy ── */
+function renderM4(){
+  const cnt={};placed.forEach(p=>cnt[p.dev]=(cnt[p.dev]||0)+1);
+  const ids=Object.keys(cnt).sort();
+  const rows=ids.map(id=>{const d=DEV[id],n=cnt[id],z=zmianyDev(id);
+    return `<tr><td><b class="mono">${d.id}</b><br><span style="color:var(--mut);font-size:11px">${d.nazwa}</span></td>
+      <td>${d.modul}</td><td class="num">${n}</td><td class="num">${d.os}</td>
+      <td><span class="chips">${[1,2,3].map(k=>`<button data-zmdev="${id}" data-zmval="${k}" class="${k===z?"act":""}">${k}</button>`).join("")}</span></td>
+      <td class="num"><b>${n*d.os*z}</b></td></tr>`;}).join("");
+  const shift=k=>placed.reduce((a,p)=>a+(zmianyDev(p.dev)>=k?DEV[p.dev].os:0),0);
+  const tot=placed.reduce((a,p)=>a+DEV[p.dev].os*zmianyDev(p.dev),0);
+  const mod={};placed.forEach(p=>{const d=DEV[p.dev];const m=mod[d.modul]=mod[d.modul]||{n:0,os:0,et:0};m.n++;m.os+=d.os;m.et+=d.os*zmianyDev(d.id);});
+  const mrows=Object.entries(mod).map(([m,v])=>`<tr><td><b>${m}</b> <span style="color:var(--mut)">(${v.n})</span></td><td class="num">${v.os}</td><td class="num">${v.et}</td></tr>`).join("");
+  pane.innerHTML=`
+  <div class="vcard"><h2>Personel — obłożenie stanowisk (M4)</h2>
+    <div class="tiles3">
+      <div class="t3"><div class="lbl">Zmiana I</div><div class="v">${shift(1)}<small>os.</small></div></div>
+      <div class="t3"><div class="lbl">Zmiana II</div><div class="v">${shift(2)}<small>os.</small></div></div>
+      <div class="t3"><div class="lbl">Zmiana III</div><div class="v">${shift(3)}<small>os.</small></div></div>
+      <div class="t3 hl"><div class="lbl">Razem etaty operacyjne</div><div class="v">${tot}<small>os.</small></div></div>
+    </div>
+    <table><tr><th>Urządzenie</th><th>Moduł funkcjonalny</th><th class="num">Na planie</th><th class="num">Os./zm.</th><th>Model zmianowy</th><th class="num">Obsada łącznie</th></tr>
+    ${rows||PUSTO}</table>
+    <p class="note">Obsada = szt. na planie × os./zmianę × liczba zmian. Model zmianowy per urządzenie = <b>założenie robocze</b> (domyślnie 3 zmiany); docelowo z pola <span class="mono">praca</span> po review schematu przez Marcina. Bez narzutu urlopowo-chorobowego i personelu pośredniego (UR, logistyka, QA) — iteracja 3.</p></div>
+  ${mrows?`<div class="vcard"><h2>Obłożenie per moduł funkcjonalny</h2>
+    <table><tr><th>Moduł funkcjonalny</th><th class="num">Os./zm. (gdy pracuje)</th><th class="num">Etaty łącznie</th></tr>${mrows}</table></div>`:""}`;
+}
+
+/* ── M6: koszty operacyjne + suwaki założeń ── */
+const SLIDERY=[
+  ["cenaEnergii","Cena energii",.3,1.5,.01],
+  ["cenaWody","Woda + ścieki",5,40,1],
+  ["cenaN2","Azot N₂",.2,3,.05],
+  ["stawkaOs","Koszt osobowy (całkowity)",6000,20000,250],
+  ["urPct","Utrzymanie ruchu",1,6,.25],
+  ["dniRobocze","Dni robocze / rok",200,360,5],
+];
+const KAT=[["energia","Energia","#F97316"],["woda","Woda + ścieki","#3B82F6"],["n2","Azot N₂","#9CA3AF"],["personel","Personel","#16A34A"],["ur","Utrzymanie ruchu","#8B5CF6"]];
+const pl2=v=>v.toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2});
+function fmtZal(k){const v=zalozenia[k];
+  if(k==="cenaEnergii")return pl2(v)+" zł/kWh";
+  if(k==="cenaWody")return v+" zł/m³";
+  if(k==="cenaN2")return pl2(v)+" zł/m³";
+  if(k==="stawkaOs")return v.toLocaleString("pl-PL")+" zł/mies.";
+  if(k==="urPct")return v.toLocaleString("pl-PL")+"% CAPEX/rok";
+  return v+" dni";}
+function opexCalc(){
+  let en=0,wo=0,az=0,os=0,cap=0;
+  placed.forEach(p=>{const d=DEV[p.dev],h=hRokDev(d.id);
+    en+=d.kWsr*h;wo+=d.woda*h;az+=d.n2*h;os+=d.os*zmianyDev(d.id);cap+=d.capex;});
+  return{energia:en*zalozenia.cenaEnergii,woda:wo*zalozenia.cenaWody,n2:az*zalozenia.cenaN2,
+    personel:os*zalozenia.stawkaOs*12,ur:cap*zalozenia.urPct/100};
+}
+function renderM6(){
+  pane.innerHTML=`
+  <div class="vcard"><h2>Założenia kosztowe — suwaki (M6)</h2>
+    ${SLIDERY.map(([k,l,mn,mx,st])=>`<div class="slrow"><span class="lbl">${l}</span>
+      <input type="range" data-zal="${k}" min="${mn}" max="${mx}" step="${st}" value="${zalozenia[k]}">
+      <span class="val" id="v_${k}">${fmtZal(k)}</span></div>`).join("")}
+    <p class="note">⚠ Ceny = założenia robocze do kalibracji (nie oferty). Dni robocze wspólne z modelem zmianowym w M4 (godziny pracy = zmiany × 8 h × dni).</p></div>
+  <div class="vcard"><h2>OPEX roczny — struktura</h2><div id="opexOut"></div></div>`;
+  updateM6();
+}
+function updateM6(){
+  SLIDERY.forEach(([k])=>{const el=document.getElementById("v_"+k);if(el)el.textContent=fmtZal(k);});
+  const out=document.getElementById("opexOut");if(!out)return;
+  if(!placed.length){out.innerHTML='<p class="note">Przeciągnij urządzenia na halę w widoku Layout — koszty liczą się z planu.</p>';return;}
+  const o=opexCalc(),sum=KAT.reduce((a,[k])=>a+o[k],0);
+  const pct=v=>{const p=100*v/sum;return p>0&&p<1?"<1":Math.round(p);};
+  out.innerHTML=`
+    <div class="opexV">${fmtZl(sum)}<small>zł / rok</small></div>
+    <div class="stack">${KAT.filter(([k])=>o[k]>0).map(([k,l,c])=>`<div data-tip="${l} · ${fmtZl(o[k])} zł/rok · ${pct(o[k])}%" style="flex:${o[k]};background:${c}"></div>`).join("")}</div>
+    ${KAT.map(([k,l,c])=>`<div class="leg"><span><span class="dot" style="background:${c}"></span>${l}</span><span><b>${fmtZl(o[k])} zł</b> <span style="color:var(--mut)">· ${pct(o[k])}%</span></span></div>`).join("")}
+    <p class="note">Energia liczona z mocy średniej × godziny pracy (model zmianowy z M4). Cash cost na jednostkę produkcji — po ustaleniu wolumenów linii A i B (pytania do klienta) — iteracja 3. Bez amortyzacji — OPEX gotówkowy.</p>`;
+}
+
+/* interakcje widoków: chipsy zmian, suwaki, tooltip */
+pane.addEventListener("click",e=>{
+  const b=e.target.closest("[data-zmdev]");
+  if(b){zalozenia.zmiany[b.dataset.zmdev]=+b.dataset.zmval;save();renderView();}
+});
+pane.addEventListener("input",e=>{
+  const s=e.target.closest("input[data-zal]");
+  if(s){zalozenia[s.dataset.zal]=+s.value;save();updateM6();}
+});
+const tip=document.getElementById("tip");
+pane.addEventListener("mousemove",e=>{
+  const t=e.target.closest("[data-tip]");
+  if(t){tip.textContent=t.dataset.tip;tip.style.display="block";tip.style.left=(e.clientX+12)+"px";tip.style.top=(e.clientY-32)+"px";}
+  else tip.style.display="none";
+});
+
+/* ═══ TOOLS ═══ */
+document.getElementById("tglMedia").onclick=e=>{showMedia=!showMedia;e.target.classList.toggle("on",showMedia);render();};
+document.getElementById("tglSerw").onclick=e=>{showSerw=!showSerw;e.target.classList.toggle("on",showSerw);render();};
+document.getElementById("btnExport").onclick=()=>{
+  const blob=new Blob([JSON.stringify({wersja:"0.2",data:new Date().toISOString(),hala:HALA,placed,zalozenia},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="klab_layout.json";a.click();};
+document.getElementById("btnImport").onclick=()=>document.getElementById("fileIn").click();
+document.getElementById("fileIn").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const j=JSON.parse(r.result);placed=(j.placed||[]).filter(p=>DEV[p.dev]);uidN=Math.max(0,...placed.map(p=>p.uid))+1;
+    if(j.zalozenia)zalozenia={...zalozenia,...j.zalozenia,zmiany:{...(j.zalozenia.zmiany||{})}};
+    render();renderTiles();renderView();}catch(err){alert("Nieprawidłowy plik JSON");}};r.readAsText(f);e.target.value="";};
+document.getElementById("q").oninput=e=>{q=e.target.value.toLowerCase();renderTiles();};
+document.querySelectorAll("#dock .f").forEach(f=>f.onclick=()=>{document.querySelectorAll("#dock .f").forEach(x=>x.classList.remove("act"));f.classList.add("act");filtr=f.dataset.f;renderTiles();});
+function save(){try{localStorage.setItem("klab_sym_v02",JSON.stringify({placed,uidN,zalozenia}));}catch(e){}}
+
+render();renderTiles();renderView();
+</script>
+</body>
+</html>
