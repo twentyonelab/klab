@@ -1,6 +1,6 @@
 # Symulator fabryki KLAB — instrukcje dla Claude Code
 
-Pracujesz nad **`Symulator fabryki v0.5.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
+Pracujesz nad **`Symulator fabryki v0.6.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
 
 ## Zanim zaczniesz — przeczytaj (w tej kolejności)
 
@@ -23,7 +23,9 @@ Pracujesz nad **`Symulator fabryki v0.5.html`** (starsze wersje zostają w repo 
 
 Tło `#F2F1EF` · karty białe radius 14–16 px cień `0 2px 12px rgba(0,0,0,.07)` · akcent `#FF4D00` (pomarańcz 21 zmysłów) · linia B na kafelkach `#7C3AED` · etykiety małe szare uppercase · liczby duże cienkie · media: energia `#F97316`, woda `#3B82F6`, N₂ `#9CA3AF`, kwas `#8B5CF6` · czarne przyciski-pigułki · ŻADNEGO dark mode na razie.
 
-## Stan obecny (v0.5)
+## Stan obecny (v0.6)
+
+Nowe w v0.6 — **program powierzchni (deliverable M5)**: Auto-układ generuje opcjonalnie **strefy** (przyjęcie+magazyn surowca z dokami przy lewej ścianie, magazyn wyrobów+wysyłka z dokami przy prawej, pas zaplecza przy górnej: socjal+śluzy Pb · QA/UR · technika · strefa kwasów) z metrażami edytowalnymi w panelu (domyślne = W-draft do kalibracji, np. surowiec z „20 t/d") oraz **pętlę obwodową ciągów** (pionowe odcinki główne przy strefach dokowych + dolny odcinek nad pasem mediów) zamiast samych pasów. Strefy są obiektami stanu: przesuwalne na planie, wymiary edytowalne w karcie po prawej, usuwalne (Del), w undo/eksporcie/localStorage, rysowane też w izometrii 3D jako plamy posadzki. Po rozstawieniu panel pokazuje **bilans powierzchni** (produkcja/strefy/komunikacja/rezerwa, z deficytem gdy program się nie mieści — wymiary hali 96×48 to założenie robocze, realne = pytanie do klienta). KPI „Zabudowa" pokazuje rozbicie prod/strefy/ciągi.
 
 Nowe w v0.5: **Auto-układ** (przycisk na kanwie) — deterministyczna heurystyka lean/SLP rozstawiająca urządzenia z planu: 3 strategie (przepływ liniowy I wg łańcucha we→wy per linia, komórka U/serpentyna, grupowanie wg modułów), między rzędami generowane **ciągi komunikacyjne** (główny/boczny/pieszy, szerokości edytowalne, domyślnie 4/3/1,2 m wg ogólnych zasad BHP) rysowane na planie i zapisywane w stanie (undo działa), opcja uzupełnienia planu o brakujące urządzenia z katalogu, po rozstawieniu **lista zaleceń infrastrukturalnych wg norm** (PN-EN 15154 przy kwasach, czujniki O₂ przy N₂, rozdzielnia >1 MW itd.) — jako zalecenia, NIE fizyczne urządzenia (zasada „zero urządzeń spoza dokumentacji" trzyma). Do tego: podgląd obrysu urządzenia na kanwie podczas przeciągania z katalogu, licznik sztuk w prawym górnym rogu kafelka, podpięcia mediów z kryciem 25% (klasa `mconn`), zakładki dwuwierszowe (kod M nad nazwą).
 
@@ -41,7 +43,7 @@ Grafiki: `GFX` = schematy kreskowe (używane na planie hali), `GFX2` = szare „
 
 1. **Widok M3 Energia:** scenariusze źródeł (sieć/PV/odzysk ciepła/kogeneracja/magazyn KLAB) — CZEKA na dane z modułu M3, nie wymyślaj założeń
 2. Po review Marcina: podmiana katalogu DEVICES na pełny (~15 pakietów) + ewentualne nowe pola schematu
-3. Strefy hali (magazyny, kwasy, socjal) jako rysowalne prostokąty; eksport rzutu do PNG/PDF (deliverable M5)
+3. Strefy hali: rysowanie prostokątów „od zera" ręcznie (generator + edycja są od v0.6); eksport rzutu do PNG/PDF (deliverable M5)
 4. M6: cash cost na jednostkę produkcji (czeka na wolumeny linii A i B — pytania do klienta) · M4: narzut urlopowo-chorobowy i personel pośredni (UR, logistyka, QA)
 
 ## Czego NIE robić
