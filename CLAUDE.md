@@ -1,6 +1,6 @@
 # Symulator fabryki KLAB — instrukcje dla Claude Code
 
-Pracujesz nad **`Symulator fabryki v0.3.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
+Pracujesz nad **`Symulator fabryki v0.4.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
 
 ## Zanim zaczniesz — przeczytaj (w tej kolejności)
 
@@ -23,7 +23,9 @@ Pracujesz nad **`Symulator fabryki v0.3.html`** (starsze wersje zostają w repo 
 
 Tło `#F2F1EF` · karty białe radius 14–16 px cień `0 2px 12px rgba(0,0,0,.07)` · akcent `#FF4D00` (pomarańcz 21 zmysłów) · linia B na kafelkach `#7C3AED` · etykiety małe szare uppercase · liczby duże cienkie · media: energia `#F97316`, woda `#3B82F6`, N₂ `#9CA3AF`, kwas `#8B5CF6` · czarne przyciski-pigułki · ŻADNEGO dark mode na razie.
 
-## Stan obecny (v0.3)
+## Stan obecny (v0.4)
+
+Nawigacja v0.4 (decyzja Krzyśka 13.07): **górne taby = moduły oferty M1–M6** (M1 · Schemat ciągu → widok procesu, M2 · Bilans mediów, M3 · Źródła energii → placeholder, M4 · Zatrudnienie, M5 · Layout hali → kanwa 2D, M6 · Koszty), **lewy pasek ikon = 4 widoki robocze**: układ hali 2D, schemat procesu, zestawienie modułów (wszystkie użyte karty pogrupowane per moduł z sumami), widok 3D hali. Widok procesu (M1) budowany automatycznie z pól `we→wy` (strzałka ciągła = dopasowanie dokładne, przerywana = przybliżone; linia B łańcuchuje się w całość, linia A ma jawne przerwy — brak podziału frakcji breakera w danych). Widok 3D = **statyczna izometria SVG** (bez WebGL/zależności), wysokości brył = założenie robocze 3 m do czasu pola `wys` w schemacie.
 
 Działa: layout drag&drop (siatka 0,25/0,5/1 m/wył., obrót R, kolizje, pan/zoom, undo/redo Ctrl+Z/Y, duplikowanie), KPI live (urządzenia, moc, media, personel, powierzchnia, CAPEX), magistrale mediów wewnątrz hali (chipy E/W/N/KW + punkty przyłączy), strefy serwisowe ze znacznikiem „S", widok M2 (bilans per moduł funkcjonalny), widok M4 Personel (model zmianowy 1/2/3 per urządzenie — założenie robocze, domyślnie 3 zmiany), widok M6 Koszty (OPEX z suwakami, stacked bar struktury), eksport/import JSON, localStorage (klucz `klab_sym_v02`, czyta też `klab_sym_v01`).
 
@@ -42,7 +44,7 @@ Grafiki: `GFX` = schematy kreskowe (używane na planie hali), `GFX2` = szare „
 
 ## Czego NIE robić
 
-3D · animacje ozdobne · dark mode · live-collab · optymalizacja layoutu algorytmem · dodawanie urządzeń spoza dokumentacji klienta · rozszerzanie zakresu poza 6 modułów oferty (M1–M6).
+Pełne 3D (WebGL, silniki, obracanie kamerą) — widok 3D wyłącznie jako statyczna izometria SVG (złagodzenie zasady na polecenie Krzyśka 13.07) · animacje ozdobne · dark mode · live-collab · optymalizacja layoutu algorytmem · dodawanie urządzeń spoza dokumentacji klienta · rozszerzanie zakresu poza 6 modułów oferty (M1–M6).
 
 ## Po sesji
 
