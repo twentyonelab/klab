@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLAB · Symulator fabryki v0.5</title>
+<style>
+:root{
+  --bg:#F2F1EF; --card:#FFFFFF; --ink:#1A1A1A; --mut:#8A8A85; --line:#E5E3DF;
+  --acc:#FF4D00; --ok:#16A34A; --warn:#F59E0B; --bad:#DC2626; --info:#2563EB;
+  --lineA:#FF4D00; --lineB:#7C3AED; --lav:#EDE9FE; --lavInk:#6D28D9;
+  --c-energia:#F97316; --c-woda:#3B82F6; --c-n2:#9CA3AF; --c-kwas:#8B5CF6;
+  --r:14px; --sh:0 2px 12px rgba(0,0,0,.07); --shF:0 6px 24px rgba(0,0,0,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.mono{font-family:"Consolas","JetBrains Mono",monospace}
+.lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+button{font-family:inherit;color:inherit}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── TOP BAR ── */
+header{display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--line);z-index:30;flex-shrink:0;height:52px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo>svg{width:30px;height:30px;flex:0 0 auto}
+.logo .tt b{display:block;font-size:15px;letter-spacing:.03em;line-height:1.1}
+.logo .tt span{font-size:8px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase}
+nav{display:flex;margin:0 auto;height:100%}
+nav button{border:0;background:transparent;padding:0 18px;font-size:12px;font-weight:600;color:var(--mut);cursor:pointer;white-space:nowrap;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+nav button .mk{font-size:8.5px;letter-spacing:.12em;font-weight:800;color:var(--mut);opacity:.8;line-height:1}
+nav button.act .mk{color:var(--acc);opacity:1}
+nav button+button{border-left:1px solid var(--line)}
+nav button.act{color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--acc)}
+nav button:hover:not(.act){color:var(--ink)}
+.wdraft{background:var(--lav);color:var(--lavInk);font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:6px 12px;border-radius:999px;white-space:nowrap;cursor:help}
+.tools{display:flex;gap:8px;align-items:center;position:relative}
+.pillb{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer}
+.pillb:hover{border-color:var(--ink)}
+.iconb{width:36px;height:36px;border:1px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.iconb:hover{border-color:var(--ink)}
+#menu{position:absolute;right:0;top:44px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shF);padding:6px;display:none;min-width:190px;z-index:40}
+#menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:8px 12px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer}
+#menu button:hover{background:var(--bg)}
+
+/* ── SHELL: rail + stage ── */
+#shell{flex:1;display:flex;min-height:0}
+#rail{width:52px;flex:0 0 52px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0;z-index:15}
+#rail button{width:38px;height:38px;border:0;background:transparent;border-radius:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--mut)}
+#rail button:hover{color:var(--ink);background:#E9E7E4}
+#rail button.act{color:var(--acc);background:#FFE9DE}
+#stage{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+
+/* ── KPI ── */
+#kpis{display:flex;gap:12px;padding:10px 16px 4px 4px;flex-shrink:0}
+.kpi{flex:1;min-width:0;background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:10px 14px;display:flex;align-items:center;gap:11px}
+.kpi .kic{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--ink)}
+.kpi .v{font-size:20px;font-weight:300;letter-spacing:-.02em;white-space:nowrap;line-height:1.15}
+.kpi .v small{font-size:10.5px;color:var(--mut);font-weight:600;margin-left:3px}
+.kpi .kl{font-size:10px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── STAGE BODY ── */
+#stageBody{flex:1;position:relative;min-height:0;display:flex;flex-direction:column}
+#canvasArea{flex:1;position:relative;min-height:0}
+#canvasWrap{position:absolute;inset:0;cursor:grab}
+#canvasWrap.drag{cursor:grabbing}
+#svg{display:block;width:100%;height:100%}
+.fpanel{position:absolute;background:var(--card);border-radius:16px;box-shadow:var(--shF);z-index:10}
+
+/* katalog (pływający, lewa) */
+#catalog{left:14px;top:10px;bottom:14px;width:236px;display:flex;flex-direction:column;max-height:calc(100% - 24px)}
+#catalog .chead{padding:12px 12px 9px;border-bottom:1px solid var(--line)}
+#catalog .chead .tt{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+#catalog h2{font-size:13px}
+#catX{border:0;background:transparent;cursor:pointer;color:var(--mut);width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+#catX:hover{background:var(--bg);color:var(--ink)}
+.srch{position:relative}
+.srch svg{position:absolute;left:9px;top:8px;width:13px;height:13px;stroke:var(--mut)}
+#catalog input{width:100%;border:1px solid var(--line);border-radius:10px;padding:6px 10px 6px 28px;font-size:11.5px;outline:none;background:var(--bg)}
+#catalog input:focus{border-color:var(--ink);background:var(--card)}
+.fchips{display:flex;gap:5px;margin-top:8px}
+.fchips .f{font-size:10.5px;font-weight:600;color:var(--mut);cursor:pointer;padding:4px 9px;border-radius:999px;border:1px solid var(--line);display:flex;align-items:center;gap:5px;background:var(--card)}
+.fchips .f.act{background:var(--ink);color:#fff;border-color:var(--ink)}
+.fchips .dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+#tiles{flex:1;overflow-y:auto;padding:9px 10px;display:flex;flex-direction:column;gap:8px}
+.tile{position:relative;border:1px solid var(--line);border-radius:14px;padding:11px 12px 8px;cursor:grab;user-select:none;background:var(--card);flex-shrink:0}
+.tcnt{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;border-radius:999px;background:var(--acc);color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 1px 4px rgba(0,0,0,.25);z-index:2}
+.tile.la{border-color:#FFDCCB}.tile.lb{border-color:#E5DBF8}
+.tile:hover{box-shadow:var(--sh)}
+.tile.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.tile .th{display:flex;gap:8px;align-items:flex-start}
+.tile .tt{flex:1;min-width:0}
+.tid{font-size:12.5px;font-weight:700;white-space:nowrap}
+.tpill{display:inline-block;font-size:8.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:#FFF1EA;margin-left:5px;white-space:nowrap;vertical-align:1.5px}
+.tnm{font-size:10px;color:var(--mut);line-height:1.3;margin-top:2px;max-height:27px;overflow:hidden}
+.timg{width:88px;height:48px;flex:0 0 auto;position:relative}
+.timg svg{width:100%;height:100%}
+.timg .cb{position:absolute;bottom:-5px;right:-4px}
+.route{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:700;margin-top:8px}
+.route span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rbar{position:relative;height:10px;margin-top:6px}
+.rbar .trk{position:absolute;left:0;right:0;top:4px;border-top:2px dotted #DDD9D3}
+.rbar .fill{position:absolute;left:0;top:4px;height:2px;border-radius:2px}
+.rbar .dotL{position:absolute;left:0;top:2.5px;width:5px;height:5px;border-radius:50%}
+.rbar .ring{position:absolute;right:0;top:1.5px;width:6px;height:6px;border-radius:50%;border:1.5px solid #DDD9D3;background:#fff}
+.rbar .hnd{position:absolute;top:0;width:20px;height:9px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.rsub{display:flex;justify-content:space-between;font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);margin-top:3px}
+.tstats{display:flex;border-top:1px solid var(--line);margin-top:9px;padding-top:6px;font-size:10px}
+.tstats span{flex:1;display:flex;align-items:center;gap:4px;justify-content:center;white-space:nowrap}
+.tstats span+span{border-left:1px solid var(--line)}
+#catalog .cfoot{border-top:1px solid var(--line);padding:8px 12px;font-size:10px;color:var(--mut);display:flex;align-items:center;gap:7px}
+#catBtn{position:absolute;left:14px;top:10px;z-index:9;display:none;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 13px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--sh)}
+
+/* karta urządzenia (pływająca, prawa) */
+#devCard{right:70px;top:10px;width:264px;max-height:calc(100% - 24px);overflow-y:auto;padding:13px}
+#devCard .empty{text-align:center;color:var(--mut);padding:14px 6px}
+#devCard .empty .big{font-size:28px;margin-bottom:8px}
+#devCard .hd{display:flex;justify-content:space-between;align-items:center;margin:5px 0 2px}
+#devCard .hd .tid{font-size:14px}
+#devCard h3{font-size:13.5px;margin:2px 0 8px;line-height:1.3}
+#devCard .big-img{height:96px;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;background:#FDFCFB}
+#devCard .big-img svg{width:100%;height:100%}
+.badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.badge.on{background:#EEF6EE;color:var(--ok)}
+.badge.off{background:var(--bg);color:var(--mut)}
+.badge.custom{background:#FFF1EA;color:var(--acc)}
+.prow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:11.5px}
+.prow .k{color:var(--mut);display:flex;align-items:center;gap:7px;flex:0 0 auto}
+.prow .k .pic{width:20px;height:20px;border-radius:6px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:9.5px}
+.prow b{text-align:right;font-weight:600}
+.ld{display:flex;align-items:center;gap:8px}
+.ld .tr{flex:1;height:3px;border-radius:2px;background:var(--line);position:relative}
+.ld .fi{position:absolute;left:0;top:0;height:100%;border-radius:2px}
+.ld b{font-size:10.5px;font-variant-numeric:tabular-nums}
+.acts{display:flex;gap:5px;margin-top:11px}
+.acts button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 0;font-size:11px;font-weight:600;cursor:pointer}
+.acts button:hover{border-color:var(--ink)}
+.acts button.del{color:var(--bad)}
+.rnote{font-size:9.5px;color:var(--mut);margin-top:9px;line-height:1.5}
+
+/* pasek narzędzi kanwy (prawa krawędź) */
+#toolRail{right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:3px;padding:6px}
+#toolRail button{width:36px;border:0;background:transparent;border-radius:9px;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;font-size:13px;font-weight:600}
+#toolRail button:hover{background:var(--bg)}
+#toolRail button.on{color:var(--acc);background:#FFE9DE}
+#toolRail button:disabled{opacity:.3;cursor:default;background:transparent}
+#toolRail .gv{font-size:8.5px;color:var(--mut);font-weight:700}
+#toolRail hr{border:0;border-top:1px solid var(--line);margin:2px 4px}
+#zoomPct{font-size:9px;color:var(--mut);text-align:center;font-weight:700}
+
+#collChip{position:absolute;left:14px;bottom:12px;background:#FFF3EC;border:1px solid #FFD9C4;color:var(--bad);border-radius:11px;padding:7px 13px;font-size:11.5px;font-weight:600;z-index:9;display:none}
+.hint{position:absolute;right:70px;bottom:12px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:10px;color:var(--mut);z-index:8;pointer-events:none}
+.hint b{color:var(--ink)}
+
+/* dolny pasek modułów */
+#bottomStrip{flex-shrink:0;display:flex;align-items:stretch;gap:9px;padding:9px 16px 12px 4px;overflow-x:auto}
+.mcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:106px;cursor:pointer;flex-shrink:0}
+.mcard:hover{border-color:var(--ink)}
+.mcard .mi{font-size:16px}
+.mcard .mn{font-size:10.5px;font-weight:600;white-space:nowrap}
+.mcard .mc{font-size:9px;color:var(--mut)}
+.mstrip-empty{align-self:center;font-size:11px;color:var(--mut);padding:14px 10px}
+#legend{margin-left:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;display:flex;flex-direction:column;justify-content:center;gap:3px;font-size:9.5px;color:var(--mut);flex-shrink:0}
+#legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+
+/* devices on canvas */
+.dev rect.body{fill:#fff;stroke:#C9C6C0;stroke-width:.14;filter:drop-shadow(0 .3px .6px rgba(0,0,0,.15))}
+.dev.sel rect.body{stroke:var(--acc);stroke-width:.24;fill:#FFF8F4}
+.dev.coll rect.body{stroke:var(--bad);stroke-width:.26}
+.dev text{user-select:none;pointer-events:none}
+.dev .serw{fill:none;stroke-width:.09;stroke-dasharray:.55 .4;opacity:.75}
+.dev.sel .serw{stroke:var(--acc)!important;opacity:1}
+.dev{cursor:move}
+.mline{fill:none;stroke-width:.13}
+.mconn{opacity:.25}
+.preview{opacity:.6;pointer-events:none}
+.preview rect.pbody{fill:#FFF8F4;stroke:var(--acc);stroke-width:.18;stroke-dasharray:.7 .4}
+
+/* auto-układ */
+#autoBtn{position:absolute;left:50%;transform:translateX(-50%);top:10px;z-index:9;background:var(--ink);color:#fff;border:0;border-radius:999px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--sh);display:flex;gap:7px;align-items:center}
+#autoBtn:hover{background:#000}
+#autoPanel{left:50%;top:50px;transform:translateX(-50%);width:420px;max-height:calc(100% - 66px);overflow-y:auto;padding:15px;display:none;z-index:14}
+#autoPanel h2{font-size:13.5px;margin-bottom:4px}
+#autoPanel .opis{font-size:10.5px;color:var(--mut);line-height:1.45;margin-bottom:10px}
+.aopt{display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:11px;margin-bottom:6px;cursor:pointer}
+.aopt:has(input:checked){border-color:var(--acc);background:#FFF8F4}
+.aopt input{margin-top:2px;accent-color:var(--acc)}
+.aopt b{font-size:12px;display:block}
+.aopt span{font-size:10px;color:var(--mut);line-height:1.35}
+.arow{display:grid;grid-template-columns:1fr 84px;gap:8px;align-items:center;padding:5px 0;font-size:11.5px}
+.arow input{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:11.5px;width:100%;text-align:right;outline:none}
+.arow input:focus{border-color:var(--ink)}
+.achk{display:flex;gap:8px;align-items:center;font-size:11.5px;padding:8px 0;cursor:pointer}
+.achk input{accent-color:var(--acc)}
+#autoPanel .abtns{display:flex;gap:6px;margin-top:8px}
+#autoPanel .abtns button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 0;font-size:11.5px;font-weight:700;cursor:pointer}
+#autoPanel .abtns button.go{background:var(--ink);color:#fff;border-color:var(--ink)}
+#autoOut{margin-top:10px;border-top:1px solid var(--line);padding-top:9px;display:none}
+#autoOut h3{font-size:11.5px;margin-bottom:5px}
+#autoOut ul{margin:0 0 6px 16px;font-size:10.5px;line-height:1.5;color:#3d3d3a}
+#autoOut .note{margin-top:6px}
+
+#ghost{position:fixed;pointer-events:none;z-index:100;opacity:.88;display:none;background:var(--card);border:2px solid var(--acc);border-radius:10px;padding:6px 12px;font-size:11.5px;font-weight:700;box-shadow:var(--sh)}
+#tip{position:fixed;z-index:99;background:var(--ink);color:#fff;font-size:11px;padding:5px 10px;border-radius:7px;pointer-events:none;display:none;white-space:nowrap}
+
+/* ── WIDOKI M2–M6 ── */
+#viewPane{position:absolute;inset:0;overflow:auto;padding:8px 16px 20px 4px;display:none;z-index:12;background:var(--bg)}
+.vcard{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:18px 20px;max-width:860px;margin:0 auto 14px}
+.vcard h2{font-size:15px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid var(--line)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.note{font-size:11px;color:var(--mut);margin-top:10px}
+.soon{max-width:520px;margin:60px auto;text-align:center;color:var(--mut)}
+.soon .big{font-size:40px;margin-bottom:10px}
+.chips{display:inline-flex;gap:4px}
+.chips button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--mut);cursor:pointer}
+.chips button:hover{border-color:var(--ink);color:var(--ink)}
+.chips button.act{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tiles3{display:flex;gap:10px;margin-bottom:14px}
+.t3{flex:1;background:var(--bg);border-radius:10px;padding:10px 14px}
+.t3 .v{font-size:22px;font-weight:300;letter-spacing:-.02em}
+.t3 .v small{font-size:11px;color:var(--mut);font-weight:600;margin-left:2px}
+.t3.hl{background:#FFF1EA}.t3.hl .v{color:var(--acc)}
+.slrow{display:grid;grid-template-columns:200px 1fr 110px;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.slrow:last-of-type{border:0}
+.slrow .lbl{font-size:11px}
+.slrow input[type=range]{width:100%;accent-color:var(--acc);cursor:pointer}
+.slrow .val{font-weight:700;text-align:right;font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.opexV{font-size:28px;font-weight:300;letter-spacing:-.02em}
+.opexV small{font-size:12px;color:var(--mut);font-weight:600;margin-left:4px}
+.stack{display:flex;gap:2px;height:14px;border-radius:7px;overflow:hidden;margin:12px 0 6px}
+.stack div{height:100%;min-width:3px}
+.leg{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)}
+.leg:last-of-type{border:0}
+.leg .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:8px}
+.leg b{font-variant-numeric:tabular-nums}
+
+/* ── widok: schemat procesu (M1) ── */
+.pchain{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
+.pchain:last-of-type{border:0}
+.pcard{border:1px solid var(--line);border-radius:12px;padding:8px 11px;min-width:128px;background:var(--card)}
+.pcard .pid{font-size:11.5px;font-weight:700}
+.pcard .pnm{font-size:9.5px;color:var(--mut);line-height:1.25;margin-top:1px;max-width:130px}
+.pcard .pim{height:34px;margin-top:4px}
+.pcard .pim svg{width:100%;height:100%}
+.pio{font-size:10.5px;font-weight:700;background:var(--bg);border-radius:999px;padding:5px 11px;white-space:nowrap}
+.pio.out{background:#EEF6EE;color:var(--ok)}
+.parw{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:56px}
+.parw i{font-style:normal;font-size:8.5px;color:var(--ink);font-weight:600;text-align:center;max-width:84px;line-height:1.2}
+.parw .ln{width:100%;height:0;border-top:2px solid #B9B6B0;position:relative}
+.parw .ln::after{content:"";position:absolute;right:-1px;top:-4px;border:3px solid transparent;border-left:5px solid #B9B6B0}
+.parw.ap .ln{border-top-style:dashed}
+.parw.ap i{color:var(--mut)}
+
+/* ── widok: zestawienie użytych kart ── */
+.zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:10px;margin-top:8px}
+.zsum{display:flex;gap:14px;font-size:11px;color:var(--mut);margin:6px 0 14px}
+.zsum b{color:var(--ink)}
+
+/* ── widok: 3D izometria ── */
+.isoWrap svg{width:100%;height:auto;display:block}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 32 32"><rect x="6.7" y="6.7" width="18.6" height="18.6" rx="2.5" transform="rotate(45 16 16)" fill="#1A1A1A"/><rect x="11.5" y="11.5" width="9" height="9" rx="1.5" transform="rotate(45 16 16)" fill="#FF4D00"/></svg>
+    <div class="tt"><b>KLAB</b><span>Symulator fabryki</span></div>
+  </div>
+  <nav id="nav">
+    <button data-v="proces" title="M1 · Schemat ciągu technologicznego + moduły funkcjonalne"><span class="mk">M1</span>Schemat ciągu</button>
+    <button data-v="m2" title="M2 · Bilans energii i mediów"><span class="mk">M2</span>Bilans mediów</button>
+    <button data-v="m3" title="M3 · Analiza źródeł energii"><span class="mk">M3</span>Źródła energii</button>
+    <button data-v="m4" title="M4 · Zatrudnienie i obłożenie stanowisk"><span class="mk">M4</span>Zatrudnienie</button>
+    <button data-v="layout" class="act" title="M5 · Program powierzchni i layout hali"><span class="mk">M5</span>Layout hali</button>
+    <button data-v="m6" title="M6 · Symulator kosztów eksploatacji"><span class="mk">M6</span>Koszty</button>
+  </nav>
+  <div class="tools">
+    <span class="wdraft" title="Dane urządzeń = placeholder (typ W-draft) do podmiany po review schematu przez Marcina">W-draft</span>
+    <button class="pillb" id="btnExport" title="Zapisz stan projektu do pliku JSON">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>
+      Zapisz projekt (JSON)</button>
+    <button class="iconb" id="kebab" title="Więcej"><svg viewBox="0 0 24 24" width="17" height="17"><circle cx="12" cy="5" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="19" r="1.7" fill="currentColor"/></svg></button>
+    <div id="menu">
+      <button id="btnImport">⭱ Wczytaj projekt (JSON)</button>
+      <button data-href="Symulator fabryki v0.4.html">Otwórz KLAB v0.4</button>
+      <button data-href="Symulator fabryki v0.3.html">Otwórz KLAB v0.3</button>
+      <button data-href="Symulator fabryki v0.2.html">Otwórz KLAB v0.2</button>
+      <button data-href="Symulator fabryki v0.1.html">Otwórz KLAB v0.1</button>
+    </div>
+  </div>
+</header>
+
+<div id="shell">
+  <aside id="rail">
+    <button data-v="layout" class="act" title="Układ hali (2D)"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+    <button data-v="proces" title="Schemat procesu"><svg class="ic" viewBox="0 0 24 24"><circle cx="4.7" cy="12" r="2.3"/><circle cx="12" cy="12" r="2.3"/><circle cx="19.3" cy="12" r="2.3"/><path d="M7 12h2.7M14.3 12H17"/></svg></button>
+    <button data-v="zestaw" title="Zestawienie modułów — wszystkie użyte karty"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6.5" rx="1.5"/><rect x="3" y="13.5" width="18" height="6.5" rx="1.5"/></svg></button>
+    <button data-v="iso" title="Widok 3D hali (izometria poglądowa)"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 12l9-5M12 12L3 7M12 12v10"/></svg></button>
+  </aside>
+
+  <main id="stage">
+    <div id="kpis"></div>
+    <div id="stageBody">
+      <div id="canvasArea">
+        <div id="canvasWrap"><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+
+        <div class="fpanel" id="catalog">
+          <div class="chead">
+            <div class="tt"><h2>Katalog urządzeń</h2><button id="catX" title="Zwiń katalog"><svg class="ic" viewBox="0 0 24 24" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>
+            <div class="srch"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" placeholder="Szukaj urządzenia…"></div>
+            <div class="fchips">
+              <span class="f act" data-f="all">Wszystkie</span>
+              <span class="f" data-f="A"><span class="dot" style="background:var(--lineA)"></span>Linia A</span>
+              <span class="f" data-f="B"><span class="dot" style="background:var(--lineB)"></span>Linia B</span>
+            </div>
+          </div>
+          <div id="tiles"></div>
+          <div class="cfoot"><svg class="ic" viewBox="0 0 24 24" width="12" height="12"><circle cx="8" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="18" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>Przeciągnij urządzenie na plan</div>
+        </div>
+        <button id="catBtn"><svg class="ic" viewBox="0 0 24 24" width="14" height="14"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Katalog urządzeń</button>
+
+        <div class="fpanel" id="devCard"></div>
+
+        <div class="fpanel" id="toolRail">
+          <button id="undoB" title="Cofnij (Ctrl+Z)">↺</button>
+          <button id="redoB" title="Ponów (Ctrl+Y)">↻</button>
+          <hr>
+          <button id="gridBtn" title="Siatka — kliknij, aby zmienić"><svg class="ic" viewBox="0 0 24 24" width="15" height="15"><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span class="gv" id="gridV">0,5 m</span></button>
+          <hr>
+          <button id="zin" title="Przybliż">+</button>
+          <div id="zoomPct">100%</div>
+          <button id="zout" title="Oddal">−</button>
+          <button id="zfit" title="Dopasuj widok"><svg class="ic" viewBox="0 0 24 24" width="15" height="15"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></svg></button>
+          <hr>
+          <button id="tglMedia" class="on" title="Pokaż / ukryj media"><svg class="ic" viewBox="0 0 24 24" width="15" height="15"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></button>
+          <button id="tglSerw" class="on" title="Pokaż / ukryj strefy serwisowe"><svg class="ic" viewBox="0 0 24 24" width="15" height="15"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/></svg></button>
+        </div>
+
+        <button id="autoBtn"><svg class="ic" viewBox="0 0 24 24" width="14" height="14"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>Auto-układ</button>
+        <div class="fpanel" id="autoPanel">
+          <div style="display:flex;justify-content:space-between;align-items:center"><h2>Auto-układ — rozstawienie urządzeń</h2><button id="autoX" style="border:0;background:none;cursor:pointer;color:var(--mut)">✕</button></div>
+          <p class="opis">Heurystyka wg lean / SLP (Systematic Layout Planning): kolejność z łańcucha procesu (pola we→wy), strefy serwisowe zachowane, między rzędami ciągi komunikacyjne o zadanych szerokościach.</p>
+          <label class="aopt"><input type="radio" name="astrat" value="i" checked><span><b>Lean — przepływ liniowy (I)</b><span>rząd linii A, ciąg główny, rząd linii B — materiał płynie w jedną stronę, minimalne krzyżowanie dróg</span></span></label>
+          <label class="aopt"><input type="radio" name="astrat" value="u"><span><b>Lean — komórka U</b><span>rzędy naprzemiennie (serpentyna) — początek i koniec przepływu po tej samej stronie, krótsze drogi operatorów</span></span></label>
+          <label class="aopt"><input type="radio" name="astrat" value="mod"><span><b>Grupowanie technologiczne (SLP)</b><span>urządzenia zgrupowane wg modułów funkcjonalnych — wspólne media i kompetencje obsady</span></span></label>
+          <div class="arow"><span>Ciąg główny (dwukierunkowy, wózki) [m]</span><input id="aGl" type="number" step="0.5" min="2" max="8" value="4"></div>
+          <div class="arow"><span>Ciąg boczny (jednokierunkowy) [m]</span><input id="aBo" type="number" step="0.5" min="1.5" max="6" value="3"></div>
+          <div class="arow"><span>Ciąg pieszy (przy ścianie) [m]</span><input id="aPi" type="number" step="0.1" min="0.75" max="3" value="1.2"></div>
+          <label class="achk"><input id="aUzup" type="checkbox">uzupełnij plan o brakujące urządzenia z katalogu (po 1 szt.)</label>
+          <div class="abtns"><button class="go" id="autoGo">Rozstaw urządzenia</button><button id="autoClr">Wyczyść ciągi</button></div>
+          <div id="autoOut"></div>
+        </div>
+        <div id="collChip"></div>
+        <div class="hint"><b>klik</b> = karta · <b>R</b> = obrót · <b>Del</b> = usuń</div>
+      </div>
+      <div id="bottomStrip"></div>
+      <div id="viewPane"></div>
+    </div>
+  </main>
+</div>
+
+<div id="ghost"></div>
+<div id="tip"></div>
+<input type="file" id="fileIn" accept=".json" style="display:none">
+
+<script>
+/* ═══ DANE — placeholder do podmiany po review Marcina (typ źródła: W-draft) ═══ */
+const HALA={dl:96,szer:48,siatka:.5};
+const MEDIA_KOL={energia:"#F97316",woda:"#3B82F6",n2:"#9CA3AF",kwas:"#8B5CF6"};
+const MEDIA_NAZ={energia:"energia",woda:"woda",n2:"azot",kwas:"kwas"};
+const MEDIA_LIT={energia:"E",woda:"W",n2:"N",kwas:"KW"};
+const DEVICES=[
+{id:"A-02",nazwa:"Breaker + separacja sink-float",linia:"A",modul:"Recykling mech.",dl:10,szer:4,serw:1,kW:160,kWsr:120,n2:0,woda:6,os:2,capex:1350000,media:["energia","woda"],we:"Złom LAB",wy:"Frakcje Pb·PP",gfx:"kruszarka"},
+{id:"A-06",nazwa:"Piec topielny nisko-T",linia:"A",modul:"Obróbka termiczna",dl:8,szer:4,serw:1.5,kW:400,kWsr:300,n2:0,woda:2,os:1,capex:1200000,media:["energia","woda"],we:"Wsad Pb",wy:"Pb rafinowany",gfx:"piec"},
+{id:"A-10",nazwa:"Hydrometalurgia pasty + kalcynacja",linia:"A",modul:"Hydrometalurgia",dl:14,szer:6,serw:1.5,kW:500,kWsr:380,n2:0,woda:10,os:2,capex:3120000,media:["energia","woda","kwas"],we:"Pasta PbSO₄",wy:"PbO · Na₂SO₄",gfx:"reaktor"},
+{id:"A-12",nazwa:"Regranulacja PP",linia:"A",modul:"Tworzywa",dl:10,szer:4,serw:1,kW:250,kWsr:180,n2:0,woda:8,os:1,capex:900000,media:["energia","woda"],we:"PP z breakera",wy:"Regranulat",gfx:"ekstruder"},
+{id:"B-03",nazwa:"Linia impregnacji pianki",linia:"B",modul:"Elektroda",dl:15,szer:3,serw:1,kW:120,kWsr:90,n2:0,woda:1,os:1,capex:2000000,media:["energia"],custom:true,we:"Pianka PU",wy:"Preforma",gfx:"rollline"},
+{id:"B-04",nazwa:"Piec pirolityczny LT+HT",linia:"B",modul:"Obróbka termiczna",dl:12,szer:3,serw:1.5,kW:850,kWsr:600,n2:40,woda:0,os:1,capex:3500000,media:["energia","n2"],we:"Preforma",wy:"Szkielet C",gfx:"piec"},
+{id:"B-05",nazwa:"Galwanika Pb",linia:"B",modul:"Elektroda",dl:10,szer:5,serw:1,kW:300,kWsr:220,n2:0,woda:6,os:2,capex:1800000,media:["energia","woda","kwas"],we:"Szkielet C",wy:"Elektroda Pb",gfx:"wanna"},
+{id:"B-08",nazwa:"Pastownica dwustronna",linia:"B",modul:"Montaż płyt",dl:8,szer:3,serw:1,kW:90,kWsr:70,n2:0,woda:1,os:1,capex:1500000,media:["energia","woda"],custom:true,we:"Elektroda",wy:"Płyta z pastą",gfx:"pastownica"},
+{id:"B-12",nazwa:"Formacja + testy EoL",linia:"B",modul:"Formacja",dl:14,szer:8,serw:1,kW:600,kWsr:450,n2:0,woda:4,os:2,capex:1800000,media:["energia","woda"],we:"Ogniwa",wy:"Test EoL OK",gfx:"formacja"},
+{id:"B-14",nazwa:"Jar assembly + pakowanie",linia:"B",modul:"Montaż ogniw",dl:12,szer:5,serw:1,kW:110,kWsr:80,n2:0,woda:0,os:3,capex:1400000,media:["energia"],we:"Płyty + sep.",wy:"Ogniwo",gfx:"montaz"},
+];
+const MOD_IC={"Recykling mech.":"♻","Obróbka termiczna":"🔥","Hydrometalurgia":"⚗","Tworzywa":"⬡","Elektroda":"▤","Montaż płyt":"🔧","Formacja":"🔋","Montaż ogniw":"📦"};
+
+/* ═══ GRAFIKI URZĄDZEŃ — schematy side-view (placeholder do podmiany na docelowe ilustracje) ═══ */
+const S='stroke="#B9B6B0" stroke-width="1.4" stroke-linecap="round"', F='fill="#EFEDEA"', W='fill="#FFFFFF"';
+const GFX={
+kruszarka:`<svg viewBox="0 0 94 52"><path d="M32 6h30l-7 14H39z" ${F} ${S}/><rect x="30" y="20" width="34" height="18" rx="3" ${W} ${S}/><circle cx="41" cy="29" r="4.2" ${F} ${S}/><circle cx="53" cy="29" r="4.2" ${F} ${S}/><rect x="24" y="40" width="46" height="5" rx="2" ${F} ${S}/></svg>`,
+piec:`<svg viewBox="0 0 94 52"><rect x="20" y="14" width="50" height="26" rx="4" ${W} ${S}/><rect x="58" y="4" width="7" height="12" rx="1.5" ${F} ${S}/><rect x="27" y="21" width="20" height="12" rx="2" ${F} ${S}/><path d="M54 22c1.5 2 1.5 4 0 6M60 22c1.5 2 1.5 4 0 6" fill="none" ${S}/><rect x="18" y="42" width="8" height="4" ${F} ${S}/><rect x="64" y="42" width="8" height="4" ${F} ${S}/></svg>`,
+reaktor:`<svg viewBox="0 0 94 52"><rect x="24" y="10" width="17" height="28" rx="8" ${W} ${S}/><rect x="52" y="10" width="17" height="28" rx="8" ${W} ${S}/><path d="M41 20h11" fill="none" ${S}/><path d="M32 38v8M60 38v8" fill="none" ${S}/><circle cx="32" cy="16" r="2" ${F} ${S}/><circle cx="60" cy="16" r="2" ${F} ${S}/></svg>`,
+ekstruder:`<svg viewBox="0 0 94 52"><path d="M28 8h14l-3 10h-8z" ${F} ${S}/><rect x="18" y="18" width="52" height="13" rx="4" ${W} ${S}/><path d="M25 24h38" stroke="#DDD9D3" stroke-width="2" stroke-dasharray="3 3" fill="none"/><rect x="70" y="21" width="8" height="7" rx="1.5" ${F} ${S}/><rect x="22" y="34" width="8" height="10" ${F} ${S}/><rect x="58" y="34" width="8" height="10" ${F} ${S}/></svg>`,
+rollline:`<svg viewBox="0 0 94 52"><circle cx="20" cy="20" r="9" ${W} ${S}/><circle cx="20" cy="20" r="3" ${F} ${S}/><rect x="32" y="24" width="46" height="11" rx="3" ${W} ${S}/><path d="M29 20h49" fill="none" ${S}/><rect x="36" y="38" width="6" height="8" ${F} ${S}/><rect x="68" y="38" width="6" height="8" ${F} ${S}/></svg>`,
+wanna:`<svg viewBox="0 0 94 52"><path d="M22 18v18a4 4 0 004 4h42a4 4 0 004-4V18" ${W} ${S}/><path d="M18 18h58" fill="none" ${S}/><path d="M34 12v14M47 12v16M60 12v14" fill="none" ${S}/><rect x="30" y="26" width="8" height="8" ${F} ${S}/><rect x="43" y="28" width="8" height="8" ${F} ${S}/><rect x="56" y="26" width="8" height="8" ${F} ${S}/></svg>`,
+pastownica:`<svg viewBox="0 0 94 52"><circle cx="47" cy="15" r="8" ${W} ${S}/><circle cx="47" cy="37" r="8" ${W} ${S}/><path d="M14 26h66" fill="none" ${S}/><rect x="16" y="22" width="14" height="8" rx="1.5" ${F} ${S}/><rect x="64" y="22" width="14" height="8" rx="1.5" ${F} ${S}/></svg>`,
+formacja:`<svg viewBox="0 0 94 52"><rect x="20" y="8" width="54" height="38" rx="3" ${W} ${S}/><path d="M20 21h54M20 34h54M38 8v38M56 8v38" fill="none" ${S}/><rect x="25" y="12" width="9" height="5" ${F}/><rect x="43" y="25" width="9" height="5" ${F}/><rect x="61" y="38" width="9" height="5" ${F}/></svg>`,
+montaz:`<svg viewBox="0 0 94 52"><path d="M14 34h66" fill="none" ${S}/><circle cx="22" cy="40" r="3.5" ${W} ${S}/><circle cx="47" cy="40" r="3.5" ${W} ${S}/><circle cx="72" cy="40" r="3.5" ${W} ${S}/><rect x="24" y="22" width="13" height="12" rx="2" ${W} ${S}/><rect x="44" y="18" width="13" height="16" rx="2" ${F} ${S}/><rect x="64" y="22" width="13" height="12" rx="2" ${W} ${S}/></svg>`,
+ph:`<svg viewBox="0 0 94 52"><rect x="14" y="8" width="66" height="36" rx="5" fill="none" stroke="#DDD9D3" stroke-width="1.6" stroke-dasharray="5 4"/><text x="47" y="30" font-size="9" fill="#B9B6B0" text-anchor="middle">grafika wkrótce</text></svg>`
+};
+const DEV=Object.fromEntries(DEVICES.map(d=>[d.id,d]));
+const GFXIN=g=>(GFX[g]||GFX.ph).replace(/^<svg[^>]*>/,"").replace(/<\/svg>$/,"");
+const LHEX=l=>l==="A"?"#FF4D00":"#7C3AED";
+
+/* ═══ ILUSTRACJE-RENDERY do kart katalogu (szarość, styl referencji Movara) —
+   placeholder do podmiany na zdjęcia/rendery od dostawców z pakietów RFQ (prawa!) ═══ */
+const C1="#ECEAE6",C2="#DBD8D2",C3="#C6C3BD",C4="#A9A6A0",CS="rgba(0,0,0,.07)";
+const GFX2={
+kruszarka:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="34" ry="3.5" fill="${CS}"/><path d="M40 6h40l-9 18H49z" fill="${C2}" stroke="${C4}" stroke-width="1"/><path d="M44 6h10l-6 18h-5z" fill="${C1}"/><rect x="42" y="24" width="38" height="22" rx="3" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="45" y="27" width="32" height="16" rx="2" fill="#fff"/><circle cx="54" cy="35" r="6" fill="${C3}"/><circle cx="68" cy="35" r="6" fill="${C3}"/><circle cx="54" cy="35" r="2" fill="${C4}"/><circle cx="68" cy="35" r="2" fill="${C4}"/><path d="M52 46h18l-5 10h-8z" fill="${C2}" stroke="${C4}" stroke-width="1"/><rect x="44" y="46" width="4" height="11" fill="${C3}"/><rect x="74" y="46" width="4" height="11" fill="${C3}"/></svg>`,
+piec:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="38" ry="3.5" fill="${CS}"/><rect x="76" y="4" width="8" height="18" rx="2" fill="${C3}"/><rect x="22" y="18" width="76" height="30" rx="15" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="22" y="18" width="76" height="12" rx="6" fill="#fff" opacity=".6"/><circle cx="42" cy="33" r="9" fill="${C2}" stroke="${C4}" stroke-width="1"/><circle cx="42" cy="33" r="4.5" fill="${C3}"/><rect x="60" y="27" width="26" height="12" rx="2" fill="${C2}"/><path d="M64 30c1.5 2 1.5 4 0 6M70 30c1.5 2 1.5 4 0 6M76 30c1.5 2 1.5 4 0 6" stroke="${C4}" stroke-width="1.2" fill="none"/><rect x="30" y="48" width="6" height="9" fill="${C3}"/><rect x="84" y="48" width="6" height="9" fill="${C3}"/></svg>`,
+reaktor:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="36" ry="3.5" fill="${CS}"/><rect x="42" y="4" width="8" height="8" rx="1.5" fill="${C3}"/><rect x="74" y="4" width="8" height="8" rx="1.5" fill="${C3}"/><rect x="32" y="12" width="28" height="36" rx="12" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="64" y="12" width="28" height="36" rx="12" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="36" y="14" width="8" height="32" rx="4" fill="#fff" opacity=".7"/><rect x="68" y="14" width="8" height="32" rx="4" fill="#fff" opacity=".7"/><rect x="58" y="26" width="8" height="4" fill="${C3}"/><circle cx="46" cy="52" r="2.5" fill="${C4}"/><circle cx="78" cy="52" r="2.5" fill="${C4}"/><rect x="42" y="48" width="4" height="8" fill="${C3}"/><rect x="76" y="48" width="4" height="8" fill="${C3}"/></svg>`,
+ekstruder:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="42" ry="3.5" fill="${CS}"/><path d="M32 4h14l-4 12h-6z" fill="${C2}" stroke="${C4}" stroke-width="1"/><rect x="12" y="14" width="14" height="20" rx="2" fill="${C3}"/><rect x="24" y="16" width="72" height="16" rx="8" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="24" y="16" width="72" height="6" rx="3" fill="#fff" opacity=".6"/><path d="M36 16v16M50 16v16M64 16v16M78 16v16" stroke="${C3}" stroke-width="1"/><rect x="96" y="19" width="12" height="10" rx="2" fill="${C2}" stroke="${C4}" stroke-width="1"/><rect x="18" y="38" width="84" height="6" rx="2" fill="${C2}"/><rect x="26" y="44" width="5" height="12" fill="${C3}"/><rect x="88" y="44" width="5" height="12" fill="${C3}"/></svg>`,
+rollline:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="44" ry="3.5" fill="${CS}"/><circle cx="20" cy="22" r="12" fill="${C1}" stroke="${C4}" stroke-width="1"/><circle cx="20" cy="22" r="4" fill="${C3}"/><circle cx="102" cy="22" r="9" fill="${C1}" stroke="${C4}" stroke-width="1"/><circle cx="102" cy="22" r="3" fill="${C3}"/><path d="M30 16h64" stroke="${C4}" stroke-width="1.4"/><rect x="46" y="28" width="28" height="12" rx="2" fill="${C2}" stroke="${C4}" stroke-width="1"/><rect x="49" y="31" width="22" height="6" rx="1" fill="${C1}"/><circle cx="53" cy="24" r="4" fill="${C3}"/><circle cx="67" cy="24" r="4" fill="${C3}"/><rect x="16" y="40" width="5" height="16" fill="${C3}"/><rect x="58" y="44" width="5" height="12" fill="${C3}"/><rect x="98" y="36" width="5" height="20" fill="${C3}"/></svg>`,
+wanna:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="42" ry="3.5" fill="${CS}"/><path d="M18 10h84" stroke="${C4}" stroke-width="1.6"/><path d="M34 10v12M48 10v14M62 10v12M76 10v14M90 10v12" stroke="${C4}" stroke-width="1"/><rect x="30" y="20" width="8" height="12" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="44" y="22" width="8" height="12" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="58" y="20" width="8" height="12" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="72" y="22" width="8" height="12" fill="${C2}" stroke="${C4}" stroke-width=".8"/><path d="M22 26v20a5 5 0 005 5h66a5 5 0 005-5V26" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="26" y="36" width="68" height="11" rx="2" fill="${C2}"/><rect x="104" y="34" width="9" height="14" rx="2" fill="${C3}"/></svg>`,
+pastownica:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="40" ry="3.5" fill="${CS}"/><rect x="38" y="6" width="44" height="44" rx="5" fill="${C1}" stroke="${C4}" stroke-width="1"/><circle cx="60" cy="20" r="10" fill="${C2}" stroke="${C4}" stroke-width="1"/><circle cx="60" cy="40" r="10" fill="${C2}" stroke="${C4}" stroke-width="1"/><circle cx="60" cy="20" r="3.5" fill="${C4}"/><circle cx="60" cy="40" r="3.5" fill="${C4}"/><path d="M10 30h28M82 30h28" stroke="${C4}" stroke-width="1.4"/><rect x="12" y="26" width="18" height="8" rx="1.5" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="90" y="26" width="18" height="8" rx="1.5" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="42" y="50" width="5" height="7" fill="${C3}"/><rect x="73" y="50" width="5" height="7" fill="${C3}"/></svg>`,
+formacja:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="40" ry="3.5" fill="${CS}"/><rect x="24" y="6" width="60" height="48" rx="3" fill="${C1}" stroke="${C4}" stroke-width="1"/><path d="M24 22h60M24 38h60" stroke="${C4}" stroke-width="1"/>${[0,1,2].map(r=>[0,1,2,3].map(c=>`<rect x="${29+c*14}" y="${10+r*16}" width="10" height="8" rx="1" fill="${C2}" stroke="${C4}" stroke-width=".6"/>`).join("")).join("")}<rect x="88" y="10" width="14" height="44" rx="2" fill="${C2}" stroke="${C4}" stroke-width="1"/><circle cx="95" cy="18" r="2.5" fill="${C4}"/><path d="M91 26h8M91 31h8M91 36h8" stroke="${C4}" stroke-width="1"/></svg>`,
+montaz:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="44" ry="3.5" fill="${CS}"/><path d="M30 8h12v10" fill="none" stroke="${C4}" stroke-width="1.4"/><path d="M42 18l6 6" stroke="${C4}" stroke-width="1.4"/><circle cx="49" cy="25" r="3" fill="${C3}"/><rect x="14" y="34" width="92" height="9" rx="4.5" fill="${C1}" stroke="${C4}" stroke-width="1"/><circle cx="24" cy="47" r="3.5" fill="${C3}"/><circle cx="48" cy="47" r="3.5" fill="${C3}"/><circle cx="72" cy="47" r="3.5" fill="${C3}"/><circle cx="96" cy="47" r="3.5" fill="${C3}"/><rect x="28" y="24" width="13" height="10" rx="1.5" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="60" y="22" width="13" height="12" rx="1.5" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="86" y="24" width="13" height="10" rx="1.5" fill="${C2}" stroke="${C4}" stroke-width=".8"/></svg>`,
+};
+
+/* ═══ STAN ═══ */
+let placed=[];    // {uid,dev,x,y,rot}
+let ciagi=[];     // ciągi komunikacyjne {x,y,w,h,nazwa} — generowane przez Auto-układ
+let preview=null; // podgląd urządzenia podczas przeciągania z katalogu
+let uidN=1, selUid=null, selDev=null, view="layout";
+function fitVB(){return{x:-4.5,y:-4,w:HALA.dl+8,h:HALA.szer+6.5};}
+let vb=fitVB();
+let showMedia=true, showSerw=true, filtr="all", q="";
+const GRIDS=[[0.5,"0,5 m"],[1,"1 m"],[0.25,"0,25 m"],[0,"wył."]];let gridI=0;
+/* założenia M4/M6 — wartości robocze do kalibracji, wszystkie edytowalne w UI */
+let zalozenia={
+  zmiany:{},          // id urządzenia -> 1|2|3 (domyślnie 3 = ruch ciągły, założenie robocze)
+  dniRobocze:250,     // dni pracy / rok
+  cenaEnergii:0.75,   // zł/kWh
+  cenaWody:15,        // zł/m³ (woda + ścieki)
+  cenaN2:0.80,        // zł/m³
+  stawkaOs:10000,     // zł/mies. — całkowity koszt pracodawcy
+  urPct:3,            // utrzymanie ruchu, % CAPEX / rok
+};
+try{const s=localStorage.getItem("klab_sym_v02")||localStorage.getItem("klab_sym_v01");
+  if(s){const j=JSON.parse(s);placed=(j.placed||[]).filter(p=>DEV[p.dev]);uidN=j.uidN||placed.length+1;
+    ciagi=j.ciagi||[];
+    if(j.zalozenia)zalozenia={...zalozenia,...j.zalozenia,zmiany:{...(j.zalozenia.zmiany||{})}};}}catch(e){}
+const zmianyDev=id=>zalozenia.zmiany[id]||3;
+const hRokDev=id=>zmianyDev(id)*8*zalozenia.dniRobocze; // godziny pracy / rok
+
+const svg=document.getElementById("svg"), wrap=document.getElementById("canvasWrap");
+const fmtZl=n=>n>=1e6?(n/1e6).toLocaleString("pl-PL",{maximumFractionDigits:2})+" mln":Math.round(n/1e3)+" tys.";
+
+/* ═══ HISTORIA (undo/redo) ═══ */
+let hist=[],histI=-1;
+function snap(){hist=hist.slice(0,histI+1);hist.push(JSON.stringify({p:placed,c:ciagi}));if(hist.length>60)hist.shift();histI=hist.length-1;updUR();}
+function restore(i){histI=i;const j=JSON.parse(hist[i]);placed=j.p||[];ciagi=j.c||[];selUid=null;render();renderTiles();renderRight();updUR();}
+function undo(){if(histI>0)restore(histI-1);}
+function redo(){if(histI<hist.length-1)restore(histI+1);}
+function updUR(){document.getElementById("undoB").disabled=histI<=0;document.getElementById("redoB").disabled=histI>=hist.length-1;}
+
+/* footprint incl. strefa serwisowa */
+function foot(p){const d=DEV[p.dev];const L=(p.rot%180?d.szer:d.dl)+2*d.serw, S=(p.rot%180?d.dl:d.szer)+2*d.serw;return{x:p.x-L/2,y:p.y-S/2,w:L,h:S};}
+function collisions(){const bad=new Set();for(let i=0;i<placed.length;i++)for(let j=i+1;j<placed.length;j++){const a=foot(placed[i]),b=foot(placed[j]);if(a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h){bad.add(placed[i].uid);bad.add(placed[j].uid);}}
+placed.forEach(p=>{const f=foot(p);if(f.x<0||f.y<0||f.x+f.w>HALA.dl||f.y+f.h>HALA.szer)bad.add(p.uid);});return bad;}
+
+/* ═══ RENDER CANVAS ═══ */
+function render(){
+  svg.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  const bad=collisions();
+  let s="";
+  // hala: obrys architektoniczny (podwójna ściana)
+  s+=`<rect x="-0.5" y="-0.5" width="${HALA.dl+1}" height="${HALA.szer+1}" fill="#FBFAF8" stroke="#9B9891" stroke-width="0.22" rx="0.3"/>`;
+  s+=`<rect x="0" y="0" width="${HALA.dl}" height="${HALA.szer}" fill="none" stroke="#B9B6B0" stroke-width="0.1"/>`;
+  // siatka
+  s+=`<g stroke="#ECEAE6" stroke-width="0.03">`;
+  for(let x=2;x<HALA.dl;x+=2)s+=`<line x1="${x}" y1="0" x2="${x}" y2="${HALA.szer}"/>`;
+  for(let y=2;y<HALA.szer;y+=2)s+=`<line x1="0" y1="${y}" x2="${HALA.dl}" y2="${y}"/>`;
+  s+=`</g>`;
+  // linijki wymiarowe
+  s+=`<g fill="#8A8A85" font-size="1.05">`;
+  for(let x=0;x<=HALA.dl;x+=5){const mj=x%10===0;s+=`<line x1="${x}" y1="${mj?-1.5:-1.15}" x2="${x}" y2="-0.8" stroke="#C9C6C0" stroke-width="0.06"/>`;if(mj)s+=`<text x="${x}" y="-2" text-anchor="middle">${x}</text>`;}
+  for(let y=0;y<=HALA.szer;y+=5){const mj=y%10===0;s+=`<line x1="${mj?-1.5:-1.15}" y1="${y}" x2="-0.8" y2="${y}" stroke="#C9C6C0" stroke-width="0.06"/>`;if(mj)s+=`<text x="-2" y="${y+0.38}" text-anchor="end">${y}</text>`;}
+  s+=`<text x="${HALA.dl+1}" y="-2">m</text>`;
+  s+=`</g>`;
+  // ciągi komunikacyjne (z Auto-układu)
+  ciagi.forEach(c=>{
+    s+=`<g><rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="0.3" fill="#8A8A85" opacity="0.06"/><rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="0.3" fill="none" stroke="#B9B6B0" stroke-width="0.06" stroke-dasharray="0.9 0.55"/><text x="${c.x+0.9}" y="${c.y+c.h/2+0.3}" font-size="0.8" fill="#9B9891">${c.nazwa}</text></g>`;
+  });
+  // magistrale mediów (wewnątrz hali, przy dolnej ścianie)
+  const rails=[["energia",HALA.szer-5.4],["woda",HALA.szer-4.3],["n2",HALA.szer-3.2],["kwas",HALA.szer-2.1]];
+  if(showMedia){
+    rails.forEach(([m,y])=>{
+      const k=MEDIA_KOL[m],lit=MEDIA_LIT[m],lw=lit.length>1?2:1.3;
+      s+=`<rect x="1.2" y="${y-0.62}" width="${lw}" height="1.24" rx="0.25" fill="${k}"/><text x="${1.2+lw/2}" y="${y+0.32}" font-size="0.8" font-weight="700" fill="#fff" text-anchor="middle">${lit}</text>`;
+      s+=`<text x="${1.6+lw}" y="${y+0.3}" font-size="0.85" fill="${k}">${MEDIA_NAZ[m]}</text>`;
+      s+=`<line x1="7.5" y1="${y}" x2="${HALA.dl-1.5}" y2="${y}" stroke="${k}" stroke-width="0.13" opacity="0.55"/><circle cx="${HALA.dl-1.5}" cy="${y}" r="0.22" fill="${k}"/>`;
+    });
+    s+=`<g class="mconn">`; // podpięcia urządzeń do magistral — krycie 25%
+    placed.forEach(p=>{const d=DEV[p.dev];d.media.forEach(m=>{const r=rails.find(r=>r[0]===m);const k=MEDIA_KOL[m];
+      s+=`<path class="mline" stroke="${k}" d="M ${p.x} ${p.y} V ${r[1]}"/><circle cx="${p.x}" cy="${r[1]}" r="0.2" fill="${k}"/>`;});});
+    s+=`</g>`;
+  }
+  // urządzenia
+  placed.forEach(p=>{
+    const d=DEV[p.dev], rot=p.rot%180, L=rot?d.szer:d.dl, Sz=rot?d.dl:d.szer;
+    const cls="dev"+(p.uid===selUid?" sel":"")+(bad.has(p.uid)?" coll":"");
+    const col=LHEX(d.linia);
+    s+=`<g class="${cls}" data-uid="${p.uid}">`;
+    if(showSerw){
+      s+=`<rect class="serw" stroke="${col}" x="${p.x-L/2-d.serw}" y="${p.y-Sz/2-d.serw}" width="${L+2*d.serw}" height="${Sz+2*d.serw}" rx="0.4"/>`;
+      s+=`<rect x="${p.x-L/2-d.serw}" y="${p.y+Sz/2+d.serw-1.15}" width="1.15" height="1.15" rx="0.2" fill="#fff" stroke="${col}" stroke-width="0.07"/><text x="${p.x-L/2-d.serw+0.575}" y="${p.y+Sz/2+d.serw-0.32}" font-size="0.68" font-weight="700" text-anchor="middle" fill="${col}">S</text>`;
+    }
+    s+=`<rect class="body" x="${p.x-L/2}" y="${p.y-Sz/2}" width="${L}" height="${Sz}" rx="0.35"/>`;
+    if(p.uid===selUid){ // narożne uchwyty zaznaczenia
+      [[-L/2,-Sz/2],[L/2,-Sz/2],[-L/2,Sz/2],[L/2,Sz/2]].forEach(([dx,dy])=>{
+        s+=`<rect x="${p.x+dx-0.3}" y="${p.y+dy-0.3}" width="0.6" height="0.6" fill="#fff" stroke="var(--acc)" stroke-width="0.09"/>`;});
+    }
+    if(d.custom)s+=`<circle cx="${p.x+L/2-0.85}" cy="${p.y-Sz/2+0.85}" r="0.3" fill="#FF4D00"/>`;
+    const mx=Math.max(4,Math.floor((L-1.2)/0.36));
+    const nm=d.nazwa.length>mx?d.nazwa.slice(0,mx-1)+"…":d.nazwa;
+    s+=`<text x="${p.x-L/2+0.7}" y="${p.y-Sz/2+1.25}" font-size="0.9" font-weight="700" fill="${col}">${d.id}</text>`;
+    s+=`<text x="${p.x-L/2+0.7}" y="${p.y-Sz/2+2.2}" font-size="0.62" fill="#5c5c58">${nm}</text>`;
+    const ih=Sz-3.4;
+    if(ih>1.2)s+=`<svg x="${p.x-L/2+0.6}" y="${p.y-Sz/2+2.7}" width="${L-1.2}" height="${ih}" viewBox="0 0 94 52" preserveAspectRatio="xMidYMid meet" opacity="0.92">${GFXIN(d.gfx)}</svg>`;
+    else if(Sz>=4)s+=`<text x="${p.x+L/2-0.7}" y="${p.y+Sz/2-0.5}" font-size="0.58" fill="#8A8A85" text-anchor="end">${d.kW} kW · ${d.os} os.</text>`;
+    s+=`</g>`;
+  });
+  // podgląd urządzenia przeciąganego z katalogu
+  if(preview){
+    const d=DEV[preview.dev],L=d.dl,Sz=d.szer;
+    s+=`<g class="preview">`;
+    s+=`<rect x="${preview.x-L/2-d.serw}" y="${preview.y-Sz/2-d.serw}" width="${L+2*d.serw}" height="${Sz+2*d.serw}" rx="0.4" fill="none" stroke="${LHEX(d.linia)}" stroke-width="0.09" stroke-dasharray="0.55 0.4"/>`;
+    s+=`<rect class="pbody" x="${preview.x-L/2}" y="${preview.y-Sz/2}" width="${L}" height="${Sz}" rx="0.35"/>`;
+    s+=`<text x="${preview.x-L/2+0.7}" y="${preview.y-Sz/2+1.25}" font-size="0.9" font-weight="700" fill="${LHEX(d.linia)}">${d.id}</text>`;
+    const ih=Sz-3.4;
+    if(ih>1.2)s+=`<svg x="${preview.x-L/2+0.6}" y="${preview.y-Sz/2+2.7}" width="${L-1.2}" height="${ih}" viewBox="0 0 94 52" preserveAspectRatio="xMidYMid meet">${GFXIN(d.gfx)}</svg>`;
+    s+=`</g>`;
+  }
+  svg.innerHTML=s;
+  // chip kolizji
+  const chip=document.getElementById("collChip"),n=bad.size;
+  chip.style.display=n?"block":"none";
+  if(n)chip.textContent=`⚠ ${n} ${n===1?"kolizja":(n%10>=2&&n%10<=4&&(n%100<12||n%100>14))?"kolizje":"kolizji"} stref serwisowych / poza halą`;
+  updZoom();renderKPI();renderStrip();save();
+}
+function updZoom(){document.getElementById("zoomPct").textContent=Math.round((HALA.dl+8)/vb.w*100)+"%";}
+
+/* ═══ KPI ═══ */
+const IC={
+grid:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+bolt:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>',
+drop:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>',
+user:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+area:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/></svg>',
+coin:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>'};
+function renderKPI(){
+  const P=placed.map(p=>DEV[p.dev]);
+  const kW=P.reduce((a,d)=>a+d.kW,0), kWsr=P.reduce((a,d)=>a+d.kWsr,0);
+  const n2=P.reduce((a,d)=>a+d.n2,0), woda=P.reduce((a,d)=>a+d.woda,0);
+  const os=P.reduce((a,d)=>a+d.os,0), capex=P.reduce((a,d)=>a+d.capex,0);
+  const pow=placed.reduce((a,p)=>{const f=foot(p);return a+f.w*f.h;},0);
+  const powPct=Math.round(100*pow/(HALA.dl*HALA.szer));
+  const mw=v=>v>=1000?[(v/1000).toLocaleString("pl-PL",{maximumFractionDigits:2}),"MW"]:[v.toLocaleString("pl-PL"),"kW"];
+  const n=placed.length;
+  const uPl=n===1?"urządzenie":(n%10>=2&&n%10<=4&&(n%100<12||n%100>14))?"urządzenia":"urządzeń";
+  const [mv,mu]=mw(kWsr),[zv,zu]=mw(kW);
+  const items=[
+    [IC.grid,n,"",uPl+" na hali",""],
+    [IC.bolt,mv,mu,"Moc średnia",`zainstalowana ${zv} ${zu}`],
+    [IC.drop,(woda+n2).toLocaleString("pl-PL"),"m³/h",`Media (woda ${woda} · N₂ ${n2})`,""],
+    [IC.user,os,"os./zm.","Personel / zmianę",""],
+    [IC.area,powPct,"%","Powierzchnia ze strefami",`${Math.round(pow)} / ${HALA.dl*HALA.szer} m²`],
+    [IC.coin,fmtZl(capex),"zł","CAPEX (dane robocze)",""],
+  ];
+  document.getElementById("kpis").innerHTML=items.map(([ic,v,u,l,tt])=>
+    `<div class="kpi"${tt?` title="${tt}"`:""}><span class="kic">${ic}</span><div><div class="v">${v}<small>${u}</small></div><div class="kl">${l}</div></div></div>`).join("");
+}
+
+/* ═══ KATALOG (pływający) ═══ */
+function renderTiles(){
+  const list=DEVICES.filter(d=>(filtr==="all"||d.linia===filtr)&&(!q||(d.id+d.nazwa+d.modul).toLowerCase().includes(q)));
+  document.getElementById("tiles").innerHTML=list.map(d=>{
+    const n=placed.filter(p=>p.dev===d.id).length;
+    const col=LHEX(d.linia);
+    const load=Math.round(100*d.kWsr/d.kW);
+    return `<div class="tile l${d.linia.toLowerCase()}${d.id===selDev?" sel":""}" data-id="${d.id}" title="${d.nazwa}${n?` — na planie ${n}×`:""}">
+      ${n?`<span class="tcnt" style="background:${col}">${n}</span>`:""}
+      <div class="th">
+        <div class="tt"><span class="tid mono">${d.id}</span><div class="tnm">${d.nazwa}</div></div>
+        <div class="timg">${GFX2[d.gfx]||GFX.ph}${d.custom?'<span class="badge custom cb">B+R</span>':""}</div>
+      </div>
+      <div class="route"><span>${d.we}</span><span>${d.wy}</span></div>
+      <div class="rbar"><div class="trk"></div><div class="fill" style="width:${load}%;background:${col}"></div><div class="dotL" style="background:${col}"></div><div class="ring"></div><div class="hnd" style="left:calc(${load}% - 12px);background:${col}"></div></div>
+      <div class="rsub"><span>obc. ${load}%</span><span>${d.modul}</span></div>
+      <div class="tstats"><span>⚡ ${d.kW} kW</span><span>▭ ${String(d.dl).replace(".",",")}×${String(d.szer).replace(".",",")} m</span><span>👤 ${d.os}</span></div>
+    </div>`;}).join("")||'<div style="font-size:11px;color:var(--mut);padding:10px 4px">Brak wyników.</div>';
+}
+
+/* ═══ KARTA URZĄDZENIA (pływająca, prawa) ═══ */
+function renderRight(){
+  const el=document.getElementById("devCard");
+  const p=placed.find(x=>x.uid===selUid);
+  const d=p?DEV[p.dev]:DEV[selDev];
+  if(!d){el.innerHTML=`<span class="lbl">Wybrana karta urządzenia</span><div class="empty"><div class="big">◱</div><p style="font-size:11px;line-height:1.5">Kliknij urządzenie na hali albo w katalogu, żeby zobaczyć szczegóły.</p></div>`;return;}
+  const n=placed.filter(x=>x.dev===d.id).length;
+  const col=LHEX(d.linia);
+  const load=Math.round(100*d.kWsr/d.kW);
+  const media=d.media.map(m=>m==="n2"?"N₂":MEDIA_NAZ[m]).join(", ");
+  el.innerHTML=`
+    <span class="lbl">Wybrana karta urządzenia</span>
+    <div class="hd"><span class="tid mono" style="color:${col}">${d.id}</span>
+      ${p?'<span class="badge on">● Na planie</span>':n?`<span class="badge on">● Na planie ${n}×</span>`:'<span class="badge off">W katalogu</span>'}</div>
+    <h3>${d.nazwa}${d.custom?' <span class="badge custom">CUSTOM · B+R</span>':""}</h3>
+    <div class="big-img">${GFX2[d.gfx]||GFX.ph}</div>
+    <div class="prow"><span class="k"><span class="pic">▭</span>Wymiary (dł. × szer.)</span><b>${String(d.dl).replace(".",",")} × ${String(d.szer).replace(".",",")} m</b></div>
+    <div class="prow"><span class="k"><span class="pic">▦</span>Strefa serwisowa</span><b>+ ${String(d.serw).replace(".",",")} m</b></div>
+    <div class="prow"><span class="k"><span class="pic">⚡</span>Moc zainst. / śr.</span><b>${d.kW} / ${d.kWsr} kW</b></div>
+    <div class="prow"><span class="k"><span class="pic">◍</span>Media</span><b>${media}</b></div>
+    ${d.woda?`<div class="prow"><span class="k"><span class="pic">💧</span>Woda</span><b>${d.woda} m³/h</b></div>`:""}
+    ${d.n2?`<div class="prow"><span class="k"><span class="pic">N₂</span>Azot</span><b>${d.n2} m³/h</b></div>`:""}
+    <div class="prow"><span class="k"><span class="pic">👤</span>Personel / zmianę</span><b>${d.os} os.</b></div>
+    <div class="prow"><span class="k"><span class="pic">zł</span>CAPEX (robocze)</span><b>${fmtZl(d.capex)} zł</b></div>
+    <div class="prow"><span class="k"><span class="pic">→</span>Przepływ</span><b style="font-size:10.5px">${d.we} → ${d.wy}</b></div>
+    <div class="ld" style="margin-top:9px"><span class="lbl">Obciążenie</span><div class="tr"><div class="fi" style="width:${load}%;background:${col}"></div></div><b>${load}%</b></div>
+    ${p?`<div class="acts"><button id="rRot">↻ Obróć</button><button id="rDup">⧉ Duplikuj</button><button id="rDel" class="del">Usuń</button></div>`
+       :`<div class="acts"><button disabled style="opacity:.55;cursor:default">Przeciągnij kafelek na plan, aby umieścić</button></div>`}
+    <p class="rnote">Źródło danych: <b>W-draft</b> (placeholder do review Marcina). Pola wys. / wymagania (ATEX itd.) dojdą po zatwierdzeniu schematu — wtedy też edycja parametrów.</p>`;
+  if(p){
+    document.getElementById("rRot").onclick=()=>{p.rot=(p.rot+90)%360;snap();render();};
+    document.getElementById("rDup").onclick=()=>{const c={uid:uidN++,dev:p.dev,x:snapV(p.x+2),y:snapV(p.y+2),rot:p.rot};placed.push(c);selUid=c.uid;snap();render();renderTiles();renderRight();};
+    document.getElementById("rDel").onclick=()=>{placed=placed.filter(x=>x.uid!==selUid);selUid=null;snap();render();renderTiles();renderRight();};
+  }
+}
+
+/* ═══ DOLNY PASEK: moduły funkcjonalne na planie ═══ */
+function renderStrip(){
+  const el=document.getElementById("bottomStrip");
+  const mod={};placed.forEach(p=>{const d=DEV[p.dev];mod[d.modul]=(mod[d.modul]||0)+1;});
+  const cards=Object.entries(mod).map(([m,n])=>
+    `<div class="mcard" data-mod="${m}" title="Pokaż w katalogu"><span class="mi">${MOD_IC[m]||"▦"}</span><span class="mn">${m}</span><span class="mc">${n} urz.</span></div>`).join("");
+  el.innerHTML=(cards||`<div class="mstrip-empty">Moduły funkcjonalne pojawią się tu wraz z urządzeniami na planie.</div>`)+
+    `<div id="legend">${Object.keys(MEDIA_KOL).map(m=>`<span><i style="background:${MEDIA_KOL[m]}"></i>${MEDIA_NAZ[m]}</span>`).join("")}</div>`;
+  document.getElementById("legend").style.visibility=showMedia?"visible":"hidden";
+}
+document.getElementById("bottomStrip").addEventListener("click",e=>{
+  const c=e.target.closest(".mcard");if(!c)return;
+  const inp=document.getElementById("q");inp.value=c.dataset.mod;q=c.dataset.mod.toLowerCase();
+  document.getElementById("catalog").style.display="flex";document.getElementById("catBtn").style.display="none";
+  renderTiles();
+});
+
+/* ═══ INTERAKCJE ═══ */
+function toSVG(e){const r=svg.getBoundingClientRect();return{x:vb.x+(e.clientX-r.left)/r.width*vb.w,y:vb.y+(e.clientY-r.top)/r.height*vb.h};}
+const snapV=v=>HALA.siatka?Math.round(v/HALA.siatka)*HALA.siatka:Math.round(v*100)/100;
+
+// drag z katalogu (klik bez ruchu = wybór karty)
+let ghostDev=null,ghostStart=null,ghostOn=false;const ghost=document.getElementById("ghost");
+document.getElementById("tiles").addEventListener("pointerdown",e=>{
+  const t=e.target.closest(".tile");if(!t)return;
+  ghostDev=t.dataset.id;ghostStart={x:e.clientX,y:e.clientY};ghostOn=false;e.preventDefault();
+});
+function moveGhost(e){ghost.style.left=(e.clientX+12)+"px";ghost.style.top=(e.clientY+12)+"px";}
+function overCanvas(e){
+  const r=wrap.getBoundingClientRect();
+  return view==="layout"&&!(e.target.closest&&e.target.closest(".fpanel"))
+    &&e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;
+}
+window.addEventListener("pointermove",e=>{
+  if(!ghostDev)return;
+  if(!ghostOn&&Math.hypot(e.clientX-ghostStart.x,e.clientY-ghostStart.y)>6){
+    ghostOn=true;const d=DEV[ghostDev];ghost.textContent=d.id+" · "+d.nazwa;}
+  if(ghostOn){
+    if(overCanvas(e)){ // nad kanwą: podgląd urządzenia zamiast etykiety
+      ghost.style.display="none";
+      const c=toSVG(e);preview={dev:ghostDev,x:snapV(c.x),y:snapV(c.y)};render();
+    }else{
+      ghost.style.display="block";moveGhost(e);
+      if(preview){preview=null;render();}
+    }
+  }
+});
+window.addEventListener("pointerup",e=>{
+  if(!ghostDev)return;
+  ghost.style.display="none";
+  if(!ghostOn){selDev=ghostDev;selUid=null;renderTiles();renderRight();render();}
+  else{
+    if(overCanvas(e)){
+      const c=toSVG(e);placed.push({uid:uidN++,dev:ghostDev,x:snapV(c.x),y:snapV(c.y),rot:0});
+      selUid=placed[placed.length-1].uid;selDev=null;preview=null;snap();render();renderTiles();renderRight();
+    }else if(preview){preview=null;render();}
+  }
+  ghostDev=null;ghostOn=false;
+});
+
+// drag / select na kanwie + pan
+let dragP=null,panning=null,moved=false;
+svg.addEventListener("pointerdown",e=>{
+  const g=e.target.closest(".dev");moved=false;
+  if(g){const uid=+g.dataset.uid;const p=placed.find(x=>x.uid===uid);const c=toSVG(e);dragP={p,dx:c.x-p.x,dy:c.y-p.y};selUid=uid;selDev=null;render();renderTiles();renderRight();}
+  else{panning={x:e.clientX,y:e.clientY,vb:{...vb}};wrap.classList.add("drag");}
+});
+window.addEventListener("pointermove",e=>{
+  if(dragP){const c=toSVG(e);dragP.p.x=snapV(c.x-dragP.dx);dragP.p.y=snapV(c.y-dragP.dy);moved=true;render();}
+  else if(panning){const r=svg.getBoundingClientRect();vb.x=panning.vb.x-(e.clientX-panning.x)/r.width*vb.w;vb.y=panning.vb.y-(e.clientY-panning.y)/r.height*vb.h;svg.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);}
+});
+window.addEventListener("pointerup",e=>{
+  if(dragP&&moved)snap();
+  if(panning&&Math.hypot(e.clientX-panning.x,e.clientY-panning.y)<4){selUid=null;render();renderRight();}
+  dragP=null;panning=null;wrap.classList.remove("drag");
+});
+// zoom
+function zoom(f,cx,cy){const c=cx!==undefined?{x:cx,y:cy}:{x:vb.x+vb.w/2,y:vb.y+vb.h/2};vb={x:c.x-(c.x-vb.x)*f,y:c.y-(c.y-vb.y)*f,w:vb.w*f,h:vb.h*f};svg.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);updZoom();}
+document.getElementById("zin").onclick=()=>zoom(.8);
+document.getElementById("zout").onclick=()=>zoom(1.25);
+document.getElementById("zfit").onclick=()=>{vb=fitVB();render();};
+wrap.addEventListener("wheel",e=>{e.preventDefault();const c=toSVG(e);zoom(e.deltaY>0?1.12:0.89,c.x,c.y);},{passive:false});
+// klawisze
+window.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT")return;
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();e.shiftKey?redo():undo();return;}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){e.preventDefault();redo();return;}
+  if(e.key==="Escape"){selUid=null;selDev=null;render();renderTiles();renderRight();return;}
+  const p=placed.find(x=>x.uid===selUid);if(!p)return;
+  if(e.key==="r"||e.key==="R"){p.rot=(p.rot+90)%360;snap();render();}
+  if(e.key==="Delete"||e.key==="Backspace"){placed=placed.filter(x=>x.uid!==selUid);selUid=null;snap();render();renderTiles();renderRight();}
+});
+document.getElementById("undoB").onclick=undo;
+document.getElementById("redoB").onclick=redo;
+document.getElementById("gridBtn").onclick=()=>{gridI=(gridI+1)%GRIDS.length;HALA.siatka=GRIDS[gridI][0];document.getElementById("gridV").textContent=GRIDS[gridI][1];};
+// katalog zwijany
+document.getElementById("catX").onclick=()=>{document.getElementById("catalog").style.display="none";document.getElementById("catBtn").style.display="flex";};
+document.getElementById("catBtn").onclick=()=>{document.getElementById("catalog").style.display="flex";document.getElementById("catBtn").style.display="none";};
+// menu ⋮
+const menu=document.getElementById("menu");
+document.getElementById("kebab").onclick=e=>{e.stopPropagation();menu.style.display=menu.style.display==="block"?"none":"block";};
+window.addEventListener("click",e=>{if(!e.target.closest("#menu")&&!e.target.closest("#kebab"))menu.style.display="none";});
+menu.querySelectorAll("[data-href]").forEach(b=>b.onclick=()=>location.href=encodeURI(b.dataset.href));
+
+/* ═══ WIDOKI M2–M6 ═══ */
+const pane=document.getElementById("viewPane");
+const PUSTO='<tr><td colspan="9" style="color:var(--mut)">Przeciągnij urządzenia na halę w widoku Układ hali — widok liczy się z planu.</td></tr>';
+function renderView(){
+  document.querySelectorAll("#nav button,#rail button").forEach(b=>b.classList.toggle("act",b.dataset.v===view));
+  if(view==="layout"){pane.style.display="none";return;}
+  pane.style.display="block";
+  if(view==="m2")renderM2();
+  else if(view==="m4")renderM4();
+  else if(view==="m6")renderM6();
+  else if(view==="proces")renderProces();
+  else if(view==="zestaw")renderZestaw();
+  else if(view==="iso")renderIso();
+  else pane.innerHTML=`<div class="soon"><div class="big">◱</div><h2>Analiza źródeł energii (M3)</h2><p style="margin-top:8px;font-size:13px">warianty zasilania: sieć / PV / odzysk ciepła procesowego / kogeneracja / magazyn energii na ogniwach KLAB — porównanie po CAPEX/OPEX i śladzie CO₂. Czeka na dane z modułu M3 — nie wymyślamy założeń.</p></div>`;
+}
+
+/* ── widok: schemat procesu (M1) — wyprowadzony z pól we→wy katalogu ── */
+function lineChains(linia){
+  const list=DEVICES.filter(d=>d.linia===linia);
+  const N=s=>s.trim().toLowerCase();
+  const M=(a,b)=>{a=N(a);b=N(b);if(a===b)return 2;if(a.slice(0,4)===b.slice(0,4))return 1;return 0;};
+  const nextOf={},hasIn=new Set();
+  list.forEach(x=>{let best=null,bs=0;list.forEach(y=>{if(x!==y){const s=M(x.wy,y.we);if(s>bs){bs=s;best=y;}}});if(best){nextOf[x.id]={to:best.id,s:bs};hasIn.add(best.id);}});
+  const chains=[],used=new Set();
+  list.filter(d=>!hasIn.has(d.id)).forEach(st=>{const ch=[];let cur=st;while(cur&&!used.has(cur.id)){used.add(cur.id);ch.push(cur);const nx=nextOf[cur.id];cur=nx&&!used.has(nx.to)?DEV[nx.to]:null;}if(ch.length)chains.push(ch);});
+  list.filter(d=>!used.has(d.id)).forEach(d=>chains.push([d]));
+  return{chains,nextOf};
+}
+function pcardHTML(d){const n=placed.filter(p=>p.dev===d.id).length;
+  return `<div class="pcard" style="border-color:${d.linia==="A"?"#FFDCCB":"#E5DBF8"}">
+    <span class="pid mono" style="color:${LHEX(d.linia)}">${d.id}</span>${n?`<span class="tpill" style="color:${LHEX(d.linia)}">${n}×</span>`:""}
+    <div class="pnm">${d.nazwa}</div><div class="pim">${GFX2[d.gfx]||GFX.ph}</div></div>`;}
+function renderProces(){
+  const sekcja=linia=>{
+    const {chains,nextOf}=lineChains(linia);
+    return chains.map(ch=>{
+      let h=`<div class="pchain"><span class="pio">${ch[0].we}</span><span class="parw"><div class="ln"></div></span>`;
+      ch.forEach((d,i)=>{
+        h+=pcardHTML(d);
+        const nx=i<ch.length-1?nextOf[d.id]:null;
+        if(nx)h+=`<span class="parw${nx.s===1?" ap":""}" title="${nx.s===1?"dopasowanie przybliżone pól we→wy":"dopasowanie dokładne pól we→wy"}"><i>${d.wy}</i><div class="ln"></div></span>`;
+      });
+      h+=`<span class="parw"><div class="ln"></div></span><span class="pio out">${ch[ch.length-1].wy}</span></div>`;
+      return h;}).join("");
+  };
+  const mody={};DEVICES.forEach(d=>{(mody[d.modul]=mody[d.modul]||[]).push(d.id);});
+  pane.innerHTML=`
+  <div class="vcard" style="max-width:1080px"><h2>Schemat ciągu technologicznego (M1) — Linia A · recykling LAB</h2>${sekcja("A")}
+    <p class="note">Połączenia wyprowadzone automatycznie z pól we→wy katalogu (ciągła strzałka = dopasowanie dokładne, przerywana = przybliżone). Brakujące ogniwa linii A (podział frakcji z breakera na wsad Pb / pastę / PP) oraz etapy 1–8 / 1–14 i intralogistyka — po dostarczeniu schematu procesu z dokumentacji (M1 czeka na dane, nie zgadujemy).</p></div>
+  <div class="vcard" style="max-width:1080px"><h2>Linia B · produkcja ogniw</h2>${sekcja("B")}</div>
+  <div class="vcard" style="max-width:1080px"><h2>Moduły funkcjonalne (podział fabryki)</h2>
+    <table><tr><th>Moduł funkcjonalny</th><th>Urządzenia w katalogu</th><th class="num">Na planie</th></tr>
+    ${Object.entries(mody).map(([m,ids])=>`<tr><td><b>${MOD_IC[m]||"▦"} ${m}</b></td><td>${ids.map(i=>`<span class="mono">${i}</span>`).join(" · ")}</td><td class="num">${placed.filter(p=>ids.includes(p.dev)).length}</td></tr>`).join("")}</table></div>`;
+}
+
+/* ── widok: zestawienie modułów — wszystkie użyte karty ── */
+function renderZestaw(){
+  const cnt={};placed.forEach(p=>cnt[p.dev]=(cnt[p.dev]||0)+1);
+  const ids=Object.keys(cnt).sort();
+  if(!ids.length){pane.innerHTML=`<div class="soon"><div class="big">◱</div><h2>Zestawienie modułów</h2><p style="margin-top:8px;font-size:13px">Przeciągnij urządzenia na halę w widoku Układ hali — zestawienie zbiera wszystkie użyte karty.</p></div>`;return;}
+  const mods={};ids.forEach(id=>{const d=DEV[id];(mods[d.modul]=mods[d.modul]||[]).push(id);});
+  const card=id=>{const d=DEV[id],n=cnt[id],col=LHEX(d.linia),load=Math.round(100*d.kWsr/d.kW);
+    return `<div class="tile l${d.linia.toLowerCase()}" style="cursor:default" title="${d.nazwa}">
+      <div class="th"><div class="tt"><span class="tid mono">${d.id}</span><span class="tpill" style="color:${col}">${n}× na planie</span><div class="tnm">${d.nazwa}</div></div>
+        <div class="timg">${GFX2[d.gfx]||GFX.ph}${d.custom?'<span class="badge custom cb">B+R</span>':""}</div></div>
+      <div class="route"><span>${d.we}</span><span>${d.wy}</span></div>
+      <div class="rbar"><div class="trk"></div><div class="fill" style="width:${load}%;background:${col}"></div><div class="dotL" style="background:${col}"></div><div class="ring"></div><div class="hnd" style="left:calc(${load}% - 12px);background:${col}"></div></div>
+      <div class="rsub"><span>obc. ${load}%</span><span>${d.modul}</span></div>
+      <div class="tstats"><span>⚡ ${n}× ${d.kW} kW</span><span>👤 ${n}× ${d.os}</span><span>${fmtZl(n*d.capex)} zł</span></div>
+    </div>`;};
+  const sek=Object.entries(mods).map(([m,mi])=>{
+    const f=k=>mi.reduce((a,id)=>a+cnt[id]*DEV[id][k],0);
+    return `<h2 style="font-size:14px;margin-top:16px">${MOD_IC[m]||"▦"} ${m}</h2>
+    <div class="zsum"><span>moc zainst. <b>${f("kW").toLocaleString("pl-PL")} kW</b></span><span>os./zm. <b>${f("os")}</b></span><span>CAPEX <b>${fmtZl(f("capex"))} zł</b></span></div>
+    <div class="zgrid">${mi.map(card).join("")}</div>`;}).join("");
+  const tot=k=>placed.reduce((a,p)=>a+DEV[p.dev][k],0);
+  pane.innerHTML=`<div class="vcard" style="max-width:1080px"><h2>Zestawienie modułów — wszystkie użyte karty</h2>
+    <div class="zsum"><span>urządzeń <b>${placed.length}</b> (${ids.length} typów)</span><span>moc zainst. <b>${tot("kW").toLocaleString("pl-PL")} kW</b></span><span>os./zm. <b>${tot("os")}</b></span><span>CAPEX <b>${fmtZl(tot("capex"))} zł</b> (dane robocze)</span></div>
+    ${sek}</div>`;
+}
+
+/* ── widok: 3D hali (izometria poglądowa, statyczna) ── */
+function renderIso(){
+  const c=Math.cos(Math.PI/6),s=.5,H=3,W=5.5; // H = robocza wysokość urządzeń, W = ścian
+  const ip=(x,y,z=0)=>[(x-y)*c,(x+y)*s-z];
+  const poly=(pts,fill,st,w)=>`<polygon points="${pts.map(p=>p[0].toFixed(2)+","+p[1].toFixed(2)).join(" ")}" fill="${fill}"${st?` stroke="${st}" stroke-width="${w||.1}" stroke-linejoin="round"`:""}/>`;
+  const box=(x0,y0,x1,y1,h,ct,cr,cf,st)=>
+    poly([ip(x1,y0,h),ip(x1,y1,h),ip(x1,y1),ip(x1,y0)],cr,st)+
+    poly([ip(x0,y1,h),ip(x1,y1,h),ip(x1,y1),ip(x0,y1)],cf,st)+
+    poly([ip(x0,y0,h),ip(x1,y0,h),ip(x1,y1,h),ip(x0,y1,h)],ct,st);
+  let g="";
+  // ściany tylne + podłoga
+  g+=poly([ip(0,0,W),ip(HALA.dl,0,W),ip(HALA.dl,0),ip(0,0)],"#F1EFEB","#C9C6C0",.12);
+  g+=poly([ip(0,0,W),ip(0,HALA.szer,W),ip(0,HALA.szer),ip(0,0)],"#E7E4DF","#C9C6C0",.12);
+  g+=poly([ip(0,0),ip(HALA.dl,0),ip(HALA.dl,HALA.szer),ip(0,HALA.szer)],"#FBFAF8","#B9B6B0",.14);
+  for(let x=10;x<HALA.dl;x+=10)g+=`<line x1="${ip(x,0)[0]}" y1="${ip(x,0)[1]}" x2="${ip(x,HALA.szer)[0]}" y2="${ip(x,HALA.szer)[1]}" stroke="#ECEAE6" stroke-width=".07"/>`;
+  for(let y=10;y<HALA.szer;y+=10)g+=`<line x1="${ip(0,y)[0]}" y1="${ip(0,y)[1]}" x2="${ip(HALA.dl,y)[0]}" y2="${ip(HALA.dl,y)[1]}" stroke="#ECEAE6" stroke-width=".07"/>`;
+  // urządzenia od najdalszych
+  [...placed].sort((a,b)=>(a.x+a.y)-(b.x+b.y)).forEach(p=>{
+    const d=DEV[p.dev],rot=p.rot%180,L=rot?d.szer:d.dl,Sz=rot?d.dl:d.szer;
+    const x0=p.x-L/2,y0=p.y-Sz/2,x1=p.x+L/2,y1=p.y+Sz/2,col=LHEX(d.linia);
+    g+=box(x0,y0,x1,y1,H,"#F7F5F2","#DFDBD5","#CFCBC5","#ABA8A2");
+    g+=`<text x="${ip(p.x,p.y,H)[0]}" y="${ip(p.x,p.y,H)[1]-.5}" font-size="1.25" font-weight="700" fill="${col}" text-anchor="middle">${d.id}</text>`;
+  });
+  const minX=(0-HALA.szer)*c-2,maxX=HALA.dl*c+2,minY=-W-2.5,maxY=(HALA.dl+HALA.szer)*s+2;
+  pane.innerHTML=`<div class="vcard isoWrap" style="max-width:1080px"><h2>Widok 3D hali — izometria poglądowa</h2>
+    <svg viewBox="${minX.toFixed(1)} ${minY.toFixed(1)} ${(maxX-minX).toFixed(1)} ${(maxY-minY).toFixed(1)}" xmlns="http://www.w3.org/2000/svg">${g}</svg>
+    <p class="note">Widok poglądowy (statyczna izometria SVG). Wysokości brył = <b>założenie robocze ${H} m</b> — pole <span class="mono">wys</span> dojdzie do katalogu po review schematu przez Marcina. ${placed.length?"":"Przeciągnij urządzenia na halę w widoku Układ hali."}</p></div>`;
+}
+document.getElementById("nav").addEventListener("click",e=>{const b=e.target.closest("button");if(b){view=b.dataset.v;renderView();}});
+document.getElementById("rail").addEventListener("click",e=>{const b=e.target.closest("button");if(b){view=b.dataset.v;renderView();}});
+
+/* ── M2: bilans energii i mediów ── */
+function renderM2(){
+  const grupy={};placed.forEach(p=>{const d=DEV[p.dev];(grupy[d.modul]=grupy[d.modul]||[]).push(d);});
+  const rows=Object.entries(grupy).map(([m,ds])=>{
+    const f=k=>ds.reduce((a,d)=>a+d[k],0);
+    return `<tr><td><b>${m}</b> <span style="color:var(--mut)">(${ds.length})</span></td><td class="num">${f("kW").toLocaleString("pl-PL")}</td><td class="num">${f("kWsr").toLocaleString("pl-PL")}</td><td class="num">${f("woda")}</td><td class="num">${f("n2")}</td><td class="num">${f("os")}</td></tr>`;}).join("");
+  const tot=k=>placed.reduce((a,p)=>a+DEV[p.dev][k],0);
+  pane.innerHTML=`<div class="vcard"><h2>Bilans energii i mediów — moduły funkcjonalne (M2)</h2>
+    <table><tr><th>Moduł funkcjonalny</th><th class="num">Moc zainst. [kW]</th><th class="num">Moc śr. [kW]</th><th class="num">Woda [m³/h]</th><th class="num">N₂ [m³/h]</th><th class="num">Os./zm.</th></tr>
+    ${rows||PUSTO}
+    ${rows?`<tr style="font-weight:700"><td>RAZEM</td><td class="num">${tot("kW").toLocaleString("pl-PL")}</td><td class="num">${tot("kWsr").toLocaleString("pl-PL")}</td><td class="num">${tot("woda")}</td><td class="num">${tot("n2")}</td><td class="num">${tot("os")}</td></tr>`:""}</table>
+    <p class="note">⚠ Dane urządzeń = placeholder (typ W-draft) do podmiany po review schematu przez Marcina. Zużycie na jednostkę produkcji i profil dobowy — iteracja 2 (wymaga kWh/m² elektrody — pytanie #5 do klienta).</p></div>`;
+}
+
+/* ── M4: personel i model zmianowy ── */
+function renderM4(){
+  const cnt={};placed.forEach(p=>cnt[p.dev]=(cnt[p.dev]||0)+1);
+  const ids=Object.keys(cnt).sort();
+  const rows=ids.map(id=>{const d=DEV[id],n=cnt[id],z=zmianyDev(id);
+    return `<tr><td><b class="mono">${d.id}</b><br><span style="color:var(--mut);font-size:11px">${d.nazwa}</span></td>
+      <td>${d.modul}</td><td class="num">${n}</td><td class="num">${d.os}</td>
+      <td><span class="chips">${[1,2,3].map(k=>`<button data-zmdev="${id}" data-zmval="${k}" class="${k===z?"act":""}">${k}</button>`).join("")}</span></td>
+      <td class="num"><b>${n*d.os*z}</b></td></tr>`;}).join("");
+  const shift=k=>placed.reduce((a,p)=>a+(zmianyDev(p.dev)>=k?DEV[p.dev].os:0),0);
+  const tot=placed.reduce((a,p)=>a+DEV[p.dev].os*zmianyDev(p.dev),0);
+  const mod={};placed.forEach(p=>{const d=DEV[p.dev];const m=mod[d.modul]=mod[d.modul]||{n:0,os:0,et:0};m.n++;m.os+=d.os;m.et+=d.os*zmianyDev(d.id);});
+  const mrows=Object.entries(mod).map(([m,v])=>`<tr><td><b>${m}</b> <span style="color:var(--mut)">(${v.n})</span></td><td class="num">${v.os}</td><td class="num">${v.et}</td></tr>`).join("");
+  pane.innerHTML=`
+  <div class="vcard"><h2>Zatrudnienie i obłożenie stanowisk (M4)</h2>
+    <div class="tiles3">
+      <div class="t3"><div class="lbl">Zmiana I</div><div class="v">${shift(1)}<small>os.</small></div></div>
+      <div class="t3"><div class="lbl">Zmiana II</div><div class="v">${shift(2)}<small>os.</small></div></div>
+      <div class="t3"><div class="lbl">Zmiana III</div><div class="v">${shift(3)}<small>os.</small></div></div>
+      <div class="t3 hl"><div class="lbl">Razem etaty operacyjne</div><div class="v">${tot}<small>os.</small></div></div>
+    </div>
+    <table><tr><th>Urządzenie</th><th>Moduł funkcjonalny</th><th class="num">Na planie</th><th class="num">Os./zm.</th><th>Model zmianowy</th><th class="num">Obsada łącznie</th></tr>
+    ${rows||PUSTO}</table>
+    <p class="note">Obsada = szt. na planie × os./zmianę × liczba zmian. Model zmianowy per urządzenie = <b>założenie robocze</b> (domyślnie 3 zmiany); docelowo z pola <span class="mono">praca</span> po review schematu przez Marcina. Bez narzutu urlopowo-chorobowego i personelu pośredniego (UR, logistyka, QA) — iteracja 3.</p></div>
+  ${mrows?`<div class="vcard"><h2>Obłożenie per moduł funkcjonalny</h2>
+    <table><tr><th>Moduł funkcjonalny</th><th class="num">Os./zm. (gdy pracuje)</th><th class="num">Etaty łącznie</th></tr>${mrows}</table></div>`:""}`;
+}
+
+/* ── M6: koszty operacyjne + suwaki założeń ── */
+const SLIDERY=[
+  ["cenaEnergii","Cena energii",.3,1.5,.01],
+  ["cenaWody","Woda + ścieki",5,40,1],
+  ["cenaN2","Azot N₂",.2,3,.05],
+  ["stawkaOs","Koszt osobowy (całkowity)",6000,20000,250],
+  ["urPct","Utrzymanie ruchu",1,6,.25],
+  ["dniRobocze","Dni robocze / rok",200,360,5],
+];
+const KAT=[["energia","Energia","#F97316"],["woda","Woda + ścieki","#3B82F6"],["n2","Azot N₂","#9CA3AF"],["personel","Personel","#16A34A"],["ur","Utrzymanie ruchu","#8B5CF6"]];
+const pl2=v=>v.toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2});
+function fmtZal(k){const v=zalozenia[k];
+  if(k==="cenaEnergii")return pl2(v)+" zł/kWh";
+  if(k==="cenaWody")return v+" zł/m³";
+  if(k==="cenaN2")return pl2(v)+" zł/m³";
+  if(k==="stawkaOs")return v.toLocaleString("pl-PL")+" zł/mies.";
+  if(k==="urPct")return v.toLocaleString("pl-PL")+"% CAPEX/rok";
+  return v+" dni";}
+function opexCalc(){
+  let en=0,wo=0,az=0,os=0,cap=0;
+  placed.forEach(p=>{const d=DEV[p.dev],h=hRokDev(d.id);
+    en+=d.kWsr*h;wo+=d.woda*h;az+=d.n2*h;os+=d.os*zmianyDev(d.id);cap+=d.capex;});
+  return{energia:en*zalozenia.cenaEnergii,woda:wo*zalozenia.cenaWody,n2:az*zalozenia.cenaN2,
+    personel:os*zalozenia.stawkaOs*12,ur:cap*zalozenia.urPct/100};
+}
+function renderM6(){
+  pane.innerHTML=`
+  <div class="vcard"><h2>Założenia kosztowe — suwaki (M6)</h2>
+    ${SLIDERY.map(([k,l,mn,mx,st])=>`<div class="slrow"><span class="lbl">${l}</span>
+      <input type="range" data-zal="${k}" min="${mn}" max="${mx}" step="${st}" value="${zalozenia[k]}">
+      <span class="val" id="v_${k}">${fmtZal(k)}</span></div>`).join("")}
+    <p class="note">⚠ Ceny = założenia robocze do kalibracji (nie oferty). Dni robocze wspólne z modelem zmianowym w M4 (godziny pracy = zmiany × 8 h × dni).</p></div>
+  <div class="vcard"><h2>OPEX roczny — struktura</h2><div id="opexOut"></div></div>`;
+  updateM6();
+}
+function updateM6(){
+  SLIDERY.forEach(([k])=>{const el=document.getElementById("v_"+k);if(el)el.textContent=fmtZal(k);});
+  const out=document.getElementById("opexOut");if(!out)return;
+  if(!placed.length){out.innerHTML='<p class="note">Przeciągnij urządzenia na halę w widoku Układ hali — koszty liczą się z planu.</p>';return;}
+  const o=opexCalc(),sum=KAT.reduce((a,[k])=>a+o[k],0);
+  const pct=v=>{const p=100*v/sum;return p>0&&p<1?"<1":Math.round(p);};
+  out.innerHTML=`
+    <div class="opexV">${fmtZl(sum)}<small>zł / rok</small></div>
+    <div class="stack">${KAT.filter(([k])=>o[k]>0).map(([k,l,c])=>`<div data-tip="${l} · ${fmtZl(o[k])} zł/rok · ${pct(o[k])}%" style="flex:${o[k]};background:${c}"></div>`).join("")}</div>
+    ${KAT.map(([k,l,c])=>`<div class="leg"><span><span class="dot" style="background:${c}"></span>${l}</span><span><b>${fmtZl(o[k])} zł</b> <span style="color:var(--mut)">· ${pct(o[k])}%</span></span></div>`).join("")}
+    <p class="note">Energia liczona z mocy średniej × godziny pracy (model zmianowy z M4). Cash cost na jednostkę produkcji — po ustaleniu wolumenów linii A i B (pytania do klienta) — iteracja 3. Bez amortyzacji — OPEX gotówkowy.</p>`;
+}
+
+/* ═══ AUTO-UKŁAD — heurystyka lean/SLP (deterministyczna, bez solvera) ═══ */
+function autoLayout(o){ // o: {strat:'i'|'u'|'mod', gl,bo,pi, uzup}
+  if(o.uzup)DEVICES.forEach(d=>{if(!placed.some(p=>p.dev===d.id))placed.push({uid:uidN++,dev:d.id,x:0,y:0,rot:0});});
+  if(!placed.length)return{ok:false,msg:"Plan jest pusty — przeciągnij urządzenia albo zaznacz uzupełnienie z katalogu."};
+  const margin=2.5,maxW=HALA.dl-2*margin;
+  const szBox=p=>{const d=DEV[p.dev];return{w:d.dl+2*d.serw,h:d.szer+2*d.serw};};
+  // kolejność instancji: łańcuch procesu (we→wy) per linia, albo wg modułów
+  const instLine=linia=>{
+    const order=lineChains(linia).chains.flat().map(d=>d.id);
+    const out=[];order.forEach(id=>placed.filter(p=>p.dev===id).forEach(p=>out.push(p)));
+    return out;};
+  const rowPack=items=>{const rs=[];let cur=[],w=0;
+    items.forEach(p=>{const need=szBox(p).w+1;
+      if(w+need>maxW&&cur.length){rs.push(cur);cur=[];w=0;}
+      cur.push(p);w+=need;});
+    if(cur.length)rs.push(cur);return rs;};
+  let rows;
+  if(o.strat==="mod"){
+    const seq=[...placed].sort((a,b)=>(DEV[a.dev].modul+DEV[a.dev].linia+a.dev).localeCompare(DEV[b.dev].modul+DEV[b.dev].linia+b.dev,"pl"));
+    rows=rowPack(seq).map(r=>({items:r}));
+  }else{
+    rows=[...rowPack(instLine("A")).map(r=>({items:r,linia:"A"})),...rowPack(instLine("B")).map(r=>({items:r,linia:"B"}))];
+  }
+  ciagi=[{x:1,y:0.6,w:HALA.dl-2,h:o.pi,nazwa:"ciąg pieszy "+String(o.pi).replace(".",",")+" m"}];
+  let y=margin;
+  rows.forEach((row,ri)=>{
+    const h=Math.max(...row.items.map(p=>szBox(p).h));
+    const cy=y+h/2;
+    const dir=o.strat==="u"&&ri%2===1?-1:1; // serpentyna w wariancie U
+    let x=dir===1?margin:HALA.dl-margin;
+    row.items.forEach(p=>{const b=szBox(p);
+      p.rot=0;
+      p.x=snapV(dir===1?x+b.w/2:x-b.w/2);p.y=snapV(cy);
+      x=dir===1?x+b.w+1:x-b.w-1;});
+    y+=h;
+    if(ri<rows.length-1){
+      const glowny=row.linia&&rows[ri+1].linia&&row.linia!==rows[ri+1].linia;
+      const cw=glowny?o.gl:o.bo;
+      ciagi.push({x:1,y:y+0.15,w:HALA.dl-2,h:cw-0.3,nazwa:(glowny?"ciąg główny (transport dwukier.) ":"ciąg boczny ")+String(cw).replace(".",",")+" m"});
+      y+=cw;
+    }
+  });
+  const zmiescilo=y<=HALA.szer-6.5; // pas magistral mediów przy dolnej ścianie
+  return{ok:true,msg:zmiescilo?"":"⚠ Rozstawienie wychodzi poza strefę hali / pas mediów — zmniejsz szerokości ciągów albo halę trzeba powiększyć."};
+}
+/* zalecenia infrastrukturalne wg norm/dobrych praktyk — lista, nie urządzenia (zasada: zero urządzeń spoza dokumentacji) */
+function zaleceniaNorm(){
+  const P=placed.map(p=>DEV[p.dev]);const out=[];
+  if(P.some(d=>d.media.includes("kwas")))out.push("Strefa kwasów: prysznic bezpieczeństwa + oczomyjka w zasięgu stanowisk (PN-EN 15154), wanny wychwytowe, posadzka kwasoodporna.");
+  if(P.some(d=>d.n2>0))out.push("Azot: stacja/zbiornik N₂ (zwykle na zewnątrz + parownica) i czujniki niedoboru tlenu przy piecu (ryzyko asfiksji).");
+  if(P.some(d=>d.gfx==="piec"))out.push("Piece: odciągi miejscowe i wentylacja — szczegóły z pola `wymagania` po review schematu.");
+  const kW=P.reduce((a,d)=>a+d.kW,0);
+  if(kW>1000)out.push(`Moc zainstalowana ${kW.toLocaleString("pl-PL")} kW — przewidzieć rozdzielnię / stację trafo i trasy kablowe.`);
+  if(P.some(d=>d.woda>0))out.push("Woda procesowa: podczyszczalnia ścieków (kwaśne, ołowionośne) przed zrzutem.");
+  out.push("Drogi wg ogólnych przepisów BHP: dwukierunkowa ≥ 2×szer. środka transportu + 0,9 m; jednokierunkowa ≥ szer. + 0,6 m; pieszy ≥ 0,75 m (przyjęto 1,2 m).");
+  out.push("Praca z Pb: śluzy higieniczne (szatnia czysta/brudna z prysznicami); zaplecze socjalne wg obłożenia z M4.");
+  return out;
+}
+const autoPanel=document.getElementById("autoPanel");
+document.getElementById("autoBtn").onclick=()=>{autoPanel.style.display=autoPanel.style.display==="block"?"none":"block";};
+document.getElementById("autoX").onclick=()=>autoPanel.style.display="none";
+document.getElementById("autoClr").onclick=()=>{ciagi=[];snap();render();};
+document.getElementById("autoGo").onclick=()=>{
+  const o={strat:document.querySelector('input[name="astrat"]:checked').value,
+    gl:+document.getElementById("aGl").value||4,bo:+document.getElementById("aBo").value||3,
+    pi:+document.getElementById("aPi").value||1.2,uzup:document.getElementById("aUzup").checked};
+  const r=autoLayout(o);
+  const out=document.getElementById("autoOut");out.style.display="block";
+  if(!r.ok){out.innerHTML=`<p class="note">${r.msg}</p>`;return;}
+  selUid=null;snap();render();renderTiles();renderRight();
+  out.innerHTML=`${r.msg?`<p class="note" style="color:var(--bad)">${r.msg}</p>`:""}
+    <h3>Zalecenia infrastrukturalne (normy / dobre praktyki)</h3>
+    <ul>${zaleceniaNorm().map(z=>`<li>${z}</li>`).join("")}</ul>
+    <p class="note">Zalecenia poglądowe — do weryfikacji przez projektanta technologii i BHP. Symulator nie dodaje urządzeń spoza dokumentacji klienta — potrzeby wykazuje listą (jako rysowalne strefy wejdą w iteracji M5). Rozstawienie cofniesz przez Ctrl+Z.</p>`;
+};
+
+/* interakcje widoków: chipsy zmian, suwaki, tooltip */
+pane.addEventListener("click",e=>{
+  const b=e.target.closest("[data-zmdev]");
+  if(b){zalozenia.zmiany[b.dataset.zmdev]=+b.dataset.zmval;save();renderView();}
+});
+pane.addEventListener("input",e=>{
+  const s=e.target.closest("input[data-zal]");
+  if(s){zalozenia[s.dataset.zal]=+s.value;save();updateM6();}
+});
+const tip=document.getElementById("tip");
+pane.addEventListener("mousemove",e=>{
+  const t=e.target.closest("[data-tip]");
+  if(t){tip.textContent=t.dataset.tip;tip.style.display="block";tip.style.left=(e.clientX+12)+"px";tip.style.top=(e.clientY-32)+"px";}
+  else tip.style.display="none";
+});
+
+/* ═══ TOOLS ═══ */
+document.getElementById("tglMedia").onclick=e=>{showMedia=!showMedia;e.currentTarget.classList.toggle("on",showMedia);render();};
+document.getElementById("tglSerw").onclick=e=>{showSerw=!showSerw;e.currentTarget.classList.toggle("on",showSerw);render();};
+document.getElementById("btnExport").onclick=()=>{
+  const blob=new Blob([JSON.stringify({wersja:"0.5",data:new Date().toISOString(),hala:HALA,placed,ciagi,zalozenia},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="klab_projekt.json";a.click();};
+document.getElementById("btnImport").onclick=()=>{menu.style.display="none";document.getElementById("fileIn").click();};
+document.getElementById("fileIn").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const j=JSON.parse(r.result);placed=(j.placed||[]).filter(p=>DEV[p.dev]);uidN=Math.max(0,...placed.map(p=>p.uid))+1;
+    ciagi=j.ciagi||[];
+    if(j.zalozenia)zalozenia={...zalozenia,...j.zalozenia,zmiany:{...(j.zalozenia.zmiany||{})}};
+    selUid=null;snap();render();renderTiles();renderRight();renderView();}catch(err){alert("Nieprawidłowy plik JSON");}};r.readAsText(f);e.target.value="";};
+document.getElementById("q").oninput=e=>{q=e.target.value.toLowerCase();renderTiles();};
+document.querySelectorAll(".fchips .f").forEach(f=>f.onclick=()=>{document.querySelectorAll(".fchips .f").forEach(x=>x.classList.remove("act"));f.classList.add("act");filtr=f.dataset.f;renderTiles();});
+function save(){try{localStorage.setItem("klab_sym_v02",JSON.stringify({placed,uidN,ciagi,zalozenia}));}catch(e){}}
+
+snap();render();renderTiles();renderRight();renderView();
+</script>
+</body>
+</html>
