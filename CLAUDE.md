@@ -1,6 +1,6 @@
 # Symulator fabryki KLAB — instrukcje dla Claude Code
 
-Pracujesz nad **`Symulator fabryki v0.6.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
+Pracujesz nad **`Symulator fabryki v0.7.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
 
 ## Zanim zaczniesz — przeczytaj (w tej kolejności)
 
@@ -23,7 +23,11 @@ Pracujesz nad **`Symulator fabryki v0.6.html`** (starsze wersje zostają w repo 
 
 Tło `#F2F1EF` · karty białe radius 14–16 px cień `0 2px 12px rgba(0,0,0,.07)` · akcent `#FF4D00` (pomarańcz 21 zmysłów) · linia B na kafelkach `#7C3AED` · etykiety małe szare uppercase · liczby duże cienkie · media: energia `#F97316`, woda `#3B82F6`, N₂ `#9CA3AF`, kwas `#8B5CF6` · czarne przyciski-pigułki · ŻADNEGO dark mode na razie.
 
-## Stan obecny (v0.6)
+## Stan obecny (v0.7)
+
+Nowe w v0.7: **strona startowa** (intro w tym samym pliku: splash w akcencie, wielki napis KLAB, izometryczna hala z efektem „latarki" — kursor odsłania zapełnioną wersję; przyciski „Zaimportuj dane" (.json z eksportu) / „Zacznij od zera" / „Zacznij projektowanie"; stopka © 21 zmysłów LAB). Grafiki intro to generowane SVG-placeholdery — **sloty `INTRO_IMG_PUSTA` / `INTRO_IMG_PELNA`** w skrypcie przyjmą data-URI obrazów od Krzyśka (ten sam kadr, pusta vs zapełniona hala). Do tego: **monit automatycznego powiększania hali** (przy deficycie w Auto-układzie przycisk „Tak, powiększ" przelicza układ ponownie; przy urządzeniu poza obrysem chip kolizji dostaje „Powiększ halę…" z confirmem), **wymiar hali w pasku KPI** (karta „Hala (wymiar roboczy)"), wymiar hali zapisywany w localStorage/eksporcie/undo, przyklejony nagłówek panelu Auto-układu (krzyżyk widoczny przy scrollu). Bez Google Fonts i zewnętrznych zasobów — plik dalej offline.
+
+## Stan poprzedni (v0.6)
 
 Nowe w v0.6 — **program powierzchni (deliverable M5)**: Auto-układ generuje opcjonalnie **strefy** (przyjęcie+magazyn surowca z dokami przy lewej ścianie, magazyn wyrobów+wysyłka z dokami przy prawej, pas zaplecza przy górnej: socjal+śluzy Pb · QA/UR · technika · strefa kwasów) z metrażami edytowalnymi w panelu (domyślne = W-draft do kalibracji, np. surowiec z „20 t/d") oraz **pętlę obwodową ciągów** (pionowe odcinki główne przy strefach dokowych + dolny odcinek nad pasem mediów) zamiast samych pasów. Strefy są obiektami stanu: przesuwalne na planie, wymiary edytowalne w karcie po prawej, usuwalne (Del), w undo/eksporcie/localStorage, rysowane też w izometrii 3D jako plamy posadzki. Po rozstawieniu panel pokazuje **bilans powierzchni** (produkcja/strefy/komunikacja/rezerwa, z deficytem gdy program się nie mieści — wymiary hali 96×48 to założenie robocze, realne = pytanie do klienta). KPI „Zabudowa" pokazuje rozbicie prod/strefy/ciągi.
 
@@ -56,4 +60,5 @@ Pełne 3D (WebGL, silniki, obracanie kamerą) — widok 3D wyłącznie jako stat
 - **Po każdym wgraniu (push) ZAWSZE podaj na końcu odpowiedzi link do podglądu:**
   `https://twentyonelab.github.io/klab/`
   GitHub Pages jest skonfigurowane w trybie „Deploy from a branch" (gałąź `claude/new-session-07diir`, root) — po pushu odświeża się samo w ~1 min. `index.html` w korzeniu przekierowuje do najnowszej wersji symulatora — **przy tworzeniu nowej wersji v0.X zaktualizuj URL w przekierowaniu.**
+- Sloty grafik intro: w pliku v0.X szukaj `INTRO_IMG_PUSTA`/`INTRO_IMG_PELNA` — wklej data-URI (base64) obrazów wygenerowanych przez Krzyśka; dopóki `null`, rysują się wektorowe placeholdery.
 - Zapasowy podgląd na claude.ai (artefakt, prywatny): `https://claude.ai/code/artifact/1e0579ce-3855-409d-a7d8-aae3b4d6fd21` — aktualizacja: z pliku v0.X usuń tagi `<!DOCTYPE>`, `<html>`, `<head>`, `<body>` i `<meta>` (zostaje `<title>` + `<style>` + treść body ze skryptem) i opublikuj narzędziem Artifact z parametrem `url` jak wyżej, żeby nie powstał nowy adres.
