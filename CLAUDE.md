@@ -1,6 +1,6 @@
 # Symulator fabryki KLAB — instrukcje dla Claude Code
 
-Pracujesz nad **`Symulator fabryki v0.8.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
+Pracujesz nad **`Symulator fabryki v0.9.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
 
 ## Zanim zaczniesz — przeczytaj (w tej kolejności)
 
@@ -22,6 +22,10 @@ Pracujesz nad **`Symulator fabryki v0.8.html`** (starsze wersje zostają w repo 
 ## Styl wizualny (skrót — pełny spec w nocie o języku wizualnym)
 
 Tło `#F2F1EF` · karty białe radius 14–16 px cień `0 2px 12px rgba(0,0,0,.07)` · akcent `#FF4D00` (pomarańcz 21 zmysłów) · linia B na kafelkach `#7C3AED` · etykiety małe szare uppercase · liczby duże cienkie · media: energia `#F97316`, woda `#3B82F6`, N₂ `#9CA3AF`, kwas `#8B5CF6` · czarne przyciski-pigułki · ŻADNEGO dark mode na razie.
+
+## Stan obecny (v0.9)
+
+Nowe w v0.9: intro — nagłówek zmieniony na krótki opis („Symulator fabryki KLAB — planujesz halę, media, personel i koszty…", słowa jako osobne węzły z realnymi spacjami), reszta bez zmian. **Auto-układ przebudowany pod redukcję strat miejsca**: pakowanie z obrotem urządzeń do poziomu (landscape) + ciaśniejsze rzędy (gap 0,6 m, realny ciąg co 3. rząd zamiast po każdym). „Pokaż 3 propozycje układu" liczy 3 warianty (Kompakt — sort po wysokości/min. straty; Lean I — przepływ; Komórka U) i pokazuje dla każdego metrykę (głębokość rzędów, rezerwa, deficyt), oznacza NAJLEPSZĄ, każdy z „Zastosuj". Przycisk **„Optymalizuj obecny układ"** zagęszcza to, co już stoi (obrót + ciasne rzędy, bez programu stref), raportuje odzyskane m². `trialLayout` = dry-run metryk bez zatwierdzania. Pas mediów w auto-układzie zmniejszony (media na dachu wg dok.). Uwaga: naiwne pakowanie w rzędy nie mieści 23 urządzeń + pełnego programu stref w 156×72 tak dobrze jak ręczny plan referencyjny (Autorozmieszczenie) — auto-układ uczciwie pokazuje deficyt + monit powiększenia.
 
 ## Stan obecny (v0.8)
 
