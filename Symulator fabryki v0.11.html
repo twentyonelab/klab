@@ -21,11 +21,12 @@ button{font-family:inherit;color:inherit}
 
 /* ── TOP BAR ── */
 header{display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--line);z-index:30;flex-shrink:0;height:52px}
-.logo{display:flex;align-items:center;gap:10px;cursor:pointer}
-.logo:hover .tt b{color:var(--acc)}
-.logo>svg{width:30px;height:30px;flex:0 0 auto}
-.logo .tt b{display:block;font-size:15px;letter-spacing:.03em;line-height:1.1}
-.logo .tt span{font-size:8px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase}
+.logo{display:flex;align-items:center;gap:11px;cursor:pointer}
+.logo .klabmark{display:flex;align-items:center}
+.logo .klabmark svg{height:21px;width:auto;display:block}
+.logo:hover .klabmark svg path,.logo:hover .klabmark svg circle{stroke:var(--acc)}
+.logo:hover .klabmark svg text{fill:var(--acc)}
+.logo .tt-sub{font-size:8px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase;border-left:1px solid var(--line);padding-left:11px}
 nav{display:flex;margin:0 auto;height:100%}
 nav button{border:0;background:transparent;padding:0 18px;font-size:12px;font-weight:600;color:var(--mut);cursor:pointer;white-space:nowrap;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 nav button .mk{font-size:8.5px;letter-spacing:.12em;font-weight:800;color:var(--mut);opacity:.8;line-height:1}
@@ -69,6 +70,8 @@ nav button:hover:not(.act){color:var(--ink)}
 #canvasWrap{position:absolute;inset:0;cursor:grab}
 #canvasWrap.drag{cursor:grabbing}
 #svg{display:block;width:100%;height:100%}
+/* znak wodny logo w interfejsie (dyskretny, prawy-dolny róg kanwy) */
+#uiWm{position:absolute;right:18px;bottom:14px;width:150px;height:38px;background-repeat:no-repeat;background-position:right center;background-size:contain;opacity:.5;pointer-events:none;z-index:2;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.18))}
 .fpanel{position:absolute;background:var(--card);border-radius:16px;box-shadow:var(--shF);z-index:10}
 
 /* katalog (pływający, lewa) */
@@ -342,30 +345,26 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 @keyframes splashTop{from{transform:translateY(0)}to{transform:translateY(-100%)}}
 @keyframes splashBottom{from{transform:translateY(0)}to{transform:translateY(100%)}}
 @keyframes splashHide{to{opacity:0;visibility:hidden}}
-.intro-logo{position:absolute;top:26px;left:32px;z-index:20;display:flex;align-items:center;gap:10px}
-.intro-logo svg{width:34px;height:34px}
-.intro-logo b{font-size:16px;letter-spacing:.03em;color:var(--ink)}
-.intro-logo span{display:block;font-size:8px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase}
-.intro-big{position:absolute;bottom:-2vw;left:0;right:0;z-index:1;pointer-events:none;text-align:center}
-.intro-big h2{font-weight:600;color:#fff;line-height:80%;letter-spacing:-.04em;white-space:nowrap;font-size:clamp(180px,30vw,560px)}
-@keyframes heroImageIn{from{opacity:0;transform:scale(1.35) rotate(2deg)}to{opacity:1;transform:scale(1) rotate(0)}}
-.intro-img{position:absolute;top:0;left:0;right:0;bottom:0;background-size:cover;background-repeat:no-repeat;background-position:center 65%;z-index:3}
-.intro-img.animate{animation:heroImageIn 1.2s cubic-bezier(.25,.46,.45,.94) forwards;animation-delay:.9s;opacity:0}
-#introReveal{z-index:4;pointer-events:none}
-#introCanvas{display:none;position:absolute;inset:0;pointer-events:none}
+.intro-logo{position:absolute;top:26px;left:32px;z-index:20;display:flex;align-items:center;gap:12px}
+.intro-logo .klabmark svg{height:26px;width:auto;display:block}
+.intro-logo .ilsub{font-size:8.5px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase;border-left:1px solid var(--line);padding-left:12px}
+/* znak wodny logo — intro (biały, przezroczysty, w tle, wyśrodkowany) */
+.intro-wm{position:absolute;inset:0;z-index:1;pointer-events:none;display:flex;align-items:center;justify-content:center}
+.intro-wm i{display:block;width:min(62vw,900px);height:auto;aspect-ratio:1210/300;background-repeat:no-repeat;background-position:center;background-size:contain;filter:drop-shadow(0 8px 40px rgba(0,0,0,.05));animation:wmIn 1.2s cubic-bezier(.25,.46,.45,.94) forwards;opacity:0}
+@keyframes wmIn{from{opacity:0;transform:scale(1.12)}to{opacity:.55;transform:scale(1)}}
 @keyframes wordReveal{from{opacity:0;transform:translateY(10px);filter:blur(10px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
 .word-reveal{opacity:0;display:inline-block;margin-right:.28em;animation:wordReveal .4s ease forwards}
 @keyframes slideUpScale{from{opacity:0;transform:translateY(60px) scale(.5)}to{opacity:1;transform:translateY(0) scale(1)}}
 .cta-animate{opacity:0;animation:slideUpScale .8s cubic-bezier(.25,.46,.45,.94) forwards;animation-delay:1.1s}
-.intro-content{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;justify-content:space-between;padding:110px 40px 34px;pointer-events:none}
+.intro-content{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:26px;padding:96px 40px 40px;pointer-events:none}
 .intro-content>*{pointer-events:auto}
-.intro-head{font-size:26px;font-weight:600;line-height:125%;letter-spacing:-.02em;color:var(--ink);max-width:560px}
+.intro-head{font-size:28px;font-weight:600;line-height:125%;letter-spacing:-.02em;color:var(--ink);max-width:620px;margin:0 auto}
 .intro-btns{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
 .intro-btns button{border:1px solid var(--ink);background:var(--card);border-radius:999px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px}
 .intro-btns button:hover{background:var(--ink);color:#fff}
-.intro-small{font-size:10px;color:var(--mut);margin-top:10px;max-width:480px;line-height:1.5}
-.intro-bottom{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
-.intro-ctarow{display:flex;gap:14px;flex-wrap:wrap}
+.intro-small{font-size:10px;color:var(--mut);margin:10px auto 0;max-width:520px;line-height:1.5}
+.intro-bottom{display:flex;flex-direction:column;gap:14px;align-items:center}
+.intro-ctarow{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
 .intro-continue{font-size:12px;color:var(--acc);font-weight:600;text-decoration:none}
 .intro-continue:hover{text-decoration:underline}
 .cta-btn{position:relative;overflow:hidden;display:flex;align-items:center;border:none;background:none;cursor:pointer;border-radius:9999px;padding:8px;gap:12px}
@@ -379,7 +378,8 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){
   .splash{animation:splashHide .01s linear forwards}
   .splash-box{animation:none!important}
-  .intro-img.animate,.word-reveal,.cta-animate{animation:none!important;opacity:1!important;transform:none!important;filter:none!important}
+  .intro-wm i,.word-reveal,.cta-animate{animation:none!important;opacity:.7;transform:none!important;filter:none!important}
+  .word-reveal,.cta-animate{opacity:1!important}
 }
 </style>
 </head>
@@ -391,13 +391,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
     <div class="splash-row splash-row-top"><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div></div>
     <div class="splash-row splash-row-bottom"><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div></div>
   </div>
-  <div class="intro-big"><h2>KLAB</h2></div>
-  <div class="intro-img animate" id="introBase"></div>
-  <canvas id="introCanvas"></canvas>
-  <div class="intro-img" id="introReveal"></div>
+  <div class="intro-wm"><i id="introWm"></i></div>
   <div class="intro-logo">
-    <svg viewBox="0 0 32 32"><rect x="6.7" y="6.7" width="18.6" height="18.6" rx="2.5" transform="rotate(45 16 16)" fill="#1A1A1A"/><rect x="11.5" y="11.5" width="9" height="9" rx="1.5" transform="rotate(45 16 16)" fill="#FF4D00"/></svg>
-    <div><b>KLAB</b><span>Symulator fabryki</span></div>
+    <span class="klabmark" id="introLogoMark"></span>
+    <span class="ilsub">Symulator fabryki</span>
   </div>
   <div class="intro-content">
     <div>
@@ -426,8 +423,8 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 
 <header>
   <div class="logo" id="logoHome" title="Wróć do strony startowej">
-    <svg viewBox="0 0 32 32"><rect x="6.7" y="6.7" width="18.6" height="18.6" rx="2.5" transform="rotate(45 16 16)" fill="#1A1A1A"/><rect x="11.5" y="11.5" width="9" height="9" rx="1.5" transform="rotate(45 16 16)" fill="#FF4D00"/></svg>
-    <div class="tt"><b>KLAB</b><span>Symulator fabryki</span></div>
+    <span class="klabmark" id="hdrLogo"></span>
+    <span class="tt-sub">Symulator fabryki</span>
   </div>
   <nav id="nav">
     <button data-v="proces" title="M1 · Schemat ciągu technologicznego + moduły funkcjonalne"><span class="mk">M1</span>Schemat ciągu</button>
@@ -438,7 +435,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
     <button data-v="m6" title="M6 · Symulator kosztów eksploatacji"><span class="mk">M6</span>Koszty</button>
   </nav>
   <div class="tools">
-    <span class="wdraft" title="Dane urządzeń = placeholder (typ W-draft) do podmiany po review schematu przez Marcina">W-draft</span>
+    <span class="wdraft" title="Dane urządzeń = wartości robocze (W-draft) do doprecyzowania po weryfikacji specyfikacji technicznej i ofertach RFQ">W-draft</span>
     <button class="pillb" id="btnExport" title="Zapisz stan projektu do pliku JSON">
       <svg class="ic" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>
       Zapisz projekt (JSON)</button>
@@ -473,7 +470,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
     <div id="kpis"></div>
     <div id="stageBody">
       <div id="canvasArea">
-        <div id="canvasWrap"><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+        <div id="canvasWrap"><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg><div id="uiWm" title="21 zmysłów · KLAB"></div></div>
 
         <div class="fpanel" id="catalog">
           <div class="chead">
@@ -550,7 +547,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 <input type="file" id="fileIn" accept=".json" style="display:none">
 
 <script>
-/* ═══ DANE — placeholder do podmiany po review Marcina (typ źródła: W-draft) ═══ */
+/* ═══ DANE — wartości robocze (W-draft) do podmiany po weryfikacji specyfikacji technicznej ═══ */
 const HALA={dl:156,szer:72,siatka:.5};
 const MEDIA_KOL={energia:"#F97316",woda:"#3B82F6",n2:"#9CA3AF",kwas:"#8B5CF6"};
 const MEDIA_NAZ={energia:"energia",woda:"woda",n2:"azot",kwas:"kwas"};
@@ -1250,7 +1247,7 @@ function renderIso(){
   const minX=(0-HALA.szer)*c-2,maxX=HALA.dl*c+2,minY=-W-2.5,maxY=(HALA.dl+HALA.szer)*s+2;
   pane.innerHTML=`<div class="vcard isoWrap" style="max-width:1080px"><h2>Widok 3D hali — izometria poglądowa</h2>
     <svg viewBox="${minX.toFixed(1)} ${minY.toFixed(1)} ${(maxX-minX).toFixed(1)} ${(maxY-minY).toFixed(1)}" xmlns="http://www.w3.org/2000/svg">${g}</svg>
-    <p class="note">Widok poglądowy (statyczna izometria SVG). Wysokości brył = <b>założenie robocze ${H} m</b> — pole <span class="mono">wys</span> dojdzie do katalogu po review schematu przez Marcina. ${placed.length?"":"Przeciągnij urządzenia na halę w widoku Układ hali."}</p></div>`;
+    <p class="note">Widok poglądowy (statyczna izometria). Wysokości brył przyjęto roboczo na <b>${H} m</b> — zostaną zaktualizowane po doprecyzowaniu specyfikacji technicznej urządzeń. ${placed.length?"":"Przeciągnij urządzenia na halę w widoku Układ hali."}</p></div>`;
 }
 document.getElementById("nav").addEventListener("click",e=>{const b=e.target.closest("button");if(b){view=b.dataset.v;renderView();}});
 document.getElementById("rail").addEventListener("click",e=>{const b=e.target.closest("button");if(b){view=b.dataset.v;renderView();}});
@@ -1266,7 +1263,7 @@ function renderM2(){
     <table><tr><th>Moduł funkcjonalny</th><th class="num">Moc zainst. [kW]</th><th class="num">Moc śr. [kW]</th><th class="num">Woda [m³/h]</th><th class="num">N₂ [m³/h]</th><th class="num">Os./zm.</th></tr>
     ${rows||PUSTO}
     ${rows?`<tr style="font-weight:700"><td>RAZEM</td><td class="num">${tot("kW").toLocaleString("pl-PL")}</td><td class="num">${tot("kWsr").toLocaleString("pl-PL")}</td><td class="num">${tot("woda")}</td><td class="num">${tot("n2")}</td><td class="num">${tot("os")}</td></tr>`:""}</table>
-    <p class="note">⚠ Dane urządzeń = placeholder (typ W-draft) do podmiany po review schematu przez Marcina. Zużycie na jednostkę produkcji i profil dobowy — iteracja 2 (wymaga kWh/m² elektrody — pytanie #5 do klienta).</p></div>`;
+    <p class="note">Dane urządzeń = wartości robocze (W-draft) do doprecyzowania po weryfikacji specyfikacji technicznej. Zużycie na jednostkę produkcji i profil dobowy — kolejny etap (wymaga kWh/m² elektrody, do ustalenia z klientem).</p></div>`;
 }
 
 /* ── M4: personel i model zmianowy ── */
@@ -1292,7 +1289,7 @@ function renderM4(){
     </div>
     <table><tr><th>Urządzenie</th><th>Moduł funkcjonalny</th><th class="num">Na planie</th><th class="num">Os./zm.</th><th>Model zmianowy</th><th class="num">Obsada łącznie</th></tr>
     ${rows||PUSTO}</table>
-    <p class="note">Obsada = szt. na planie × os./zmianę × liczba zmian. Model zmianowy per urządzenie = <b>założenie robocze</b> (domyślnie 3 zmiany); docelowo z pola <span class="mono">praca</span> po review schematu przez Marcina. Bez narzutu urlopowo-chorobowego i personelu pośredniego (UR, logistyka, QA) — iteracja 3.</p></div>
+    <p class="note">Obsada = szt. na planie × os./zmianę × liczba zmian. Model zmianowy per urządzenie = <b>założenie robocze</b> (domyślnie 3 zmiany); docelowo z pola <span class="mono">praca</span> po doprecyzowaniu specyfikacji technicznej. Bez narzutu urlopowo-chorobowego i personelu pośredniego (UR, logistyka, QA) — kolejny etap.</p></div>
   ${mrows?`<div class="vcard"><h2>Obłożenie per moduł funkcjonalny</h2>
     <table><tr><th>Moduł funkcjonalny</th><th class="num">Os./zm. (gdy pracuje)</th><th class="num">Etaty łącznie</th></tr>${mrows}</table></div>`:""}`;
 }
@@ -1476,7 +1473,7 @@ function zaleceniaNorm(){
   const P=placed.map(p=>DEV[p.dev]);const out=[];
   if(P.some(d=>d.media.includes("kwas")))out.push("Strefa kwasów: prysznic bezpieczeństwa + oczomyjka w zasięgu stanowisk (PN-EN 15154), wanny wychwytowe, posadzka kwasoodporna.");
   if(P.some(d=>d.n2>0))out.push("Azot: stacja/zbiornik N₂ (zwykle na zewnątrz + parownica) i czujniki niedoboru tlenu przy piecu (ryzyko asfiksji).");
-  if(P.some(d=>d.gfx==="piec"))out.push("Piece: odciągi miejscowe i wentylacja — szczegóły z pola `wymagania` po review schematu.");
+  if(P.some(d=>d.gfx==="piec"))out.push("Piece: odciągi miejscowe i wentylacja — szczegóły do doprecyzowania po weryfikacji specyfikacji technicznej.");
   const kW=P.reduce((a,d)=>a+d.kW,0);
   if(kW>1000)out.push(`Moc zainstalowana ${kW.toLocaleString("pl-PL")} kW — przewidzieć rozdzielnię / stację trafo i trasy kablowe.`);
   if(P.some(d=>d.woda>0))out.push("Woda procesowa: podczyszczalnia ścieków (kwaśne, ołowionośne) przed zrzutem.");
@@ -1666,68 +1663,36 @@ function save(){try{localStorage.setItem("klab_sym_v02",JSON.stringify({placed,u
 snap();render();renderTiles();renderRight();renderView();
 
 /* ═══ STRONA STARTOWA — logika ═══ */
-/* SLOTY NA OBRAZY Z CHATGPT: wklej data-URI (data:image/webp;base64,...) — pusta i zapełniona hala, ten sam kadr.
-   Dopóki null, rysujemy wektorowe placeholdery (izometria jak w widoku 3D). */
-const INTRO_IMG_PUSTA=null;
-const INTRO_IMG_PELNA=null;
-function introSVG(pelna){
-  const c=Math.cos(Math.PI/6),s2=.5,K=9.2,OX=830,OY=210;
-  const ip=(x,y,z=0)=>[(OX+(x-y)*c*K).toFixed(1),(OY+(x+y)*s2*K-z*K).toFixed(1)];
-  const poly=(pts,f,st,w)=>`<polygon points="${pts.map(p=>p.join(",")).join(" ")}" fill="${f}"${st?` stroke="${st}" stroke-width="${w||1}" stroke-linejoin="round"`:""}/>`;
-  const box=(x0,y0,x1,y1,h)=>poly([ip(x1,y0,h),ip(x1,y1,h),ip(x1,y1),ip(x1,y0)],"#DFDBD5","#ABA8A2",1)+
-    poly([ip(x0,y1,h),ip(x1,y1,h),ip(x1,y1),ip(x0,y1)],"#CFCBC5","#ABA8A2",1)+
-    poly([ip(x0,y0,h),ip(x1,y0,h),ip(x1,y1,h),ip(x0,y1,h)],"#F7F5F2","#ABA8A2",1);
-  let g="";
-  g+=poly([ip(0,0,7),ip(96,0,7),ip(96,0),ip(0,0)],"#F1EFEB","#C9C6C0",1.4);
-  g+=poly([ip(0,0,7),ip(0,48,7),ip(0,48),ip(0,0)],"#E7E4DF","#C9C6C0",1.4);
-  g+=poly([ip(0,0),ip(96,0),ip(96,48),ip(0,48)],"#FBFAF8","#B9B6B0",1.6);
-  for(let x=8;x<96;x+=8)g+=`<line x1="${ip(x,0)[0]}" y1="${ip(x,0)[1]}" x2="${ip(x,48)[0]}" y2="${ip(x,48)[1]}" stroke="#ECEAE6" stroke-width="0.8"/>`;
-  for(let y=8;y<48;y+=8)g+=`<line x1="${ip(0,y)[0]}" y1="${ip(0,y)[1]}" x2="${ip(96,y)[0]}" y2="${ip(96,y)[1]}" stroke="#ECEAE6" stroke-width="0.8"/>`;
-  if(pelna){
-    [["#F59E0B",1,3,9,45],["#16A34A",88,3,95,45],["#7C3AED",12,3,32,10],["#2563EB",36,3,58,10],["#8B5CF6",62,3,74,10]]
-      .forEach(([k,x0,y0,x1,y1])=>{g+=poly([ip(x0,y0),ip(x1,y0),ip(x1,y1),ip(x0,y1)],k+"1E");});
-    [["#F97316",42.6],["#3B82F6",43.9],["#9CA3AF",45.2]].forEach(([k,y])=>{
-      g+=`<line x1="${ip(4,y)[0]}" y1="${ip(4,y)[1]}" x2="${ip(92,y)[0]}" y2="${ip(92,y)[1]}" stroke="${k}" stroke-width="1.6" opacity=".6"/>`;});
-    [[14,14,26,19,3.4],[30,13,40,18,4.2],[44,14,58,20,3.2],[62,13,72,17,3],[16,26,32,30,3],[36,25,48,29,4.6],[52,26,62,31,3.2],[66,25,74,28,3],[24,34,38,39,3.4],[44,34,58,42,3.6]]
-      .forEach(([x0,y0,x1,y1,h])=>{g+=box(x0,y0,x1,y1,h);});
-  }
-  return "data:image/svg+xml;utf8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1660 940">${g}</svg>`);
+/* Logo KLAB — wektorowa rekonstrukcja znaku firmowego (wordmark „KLAB®").
+   color = kolor znaku: '#1A1A1A' pełny (nagłówek/intro), '#ffffff' znak wodny. */
+function KLAB_SVG(color){
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1210 300" fill="none" stroke="${color}" stroke-width="60" stroke-linejoin="miter" stroke-linecap="butt" role="img" aria-label="KLAB">`+
+    `<path d="M74 52 V250"/><path d="M74 151 L226 52"/><path d="M74 151 L244 250"/>`+
+    `<path d="M360 52 V250"/><path d="M331 221 H500"/>`+
+    `<path d="M566 250 L660 52 L754 250"/>`+
+    `<path d="M840 52 V250"/><path d="M840 82 H936 a34.5 34.5 0 0 1 0 69 H840"/><path d="M840 151 H936 a34.5 34.5 0 0 1 0 69 H840"/>`+
+    `<circle cx="1120" cy="80" r="28" stroke-width="11"/>`+
+    `<text x="1120" y="91" font-size="32" font-family="Arial,Helvetica,sans-serif" font-weight="700" text-anchor="middle" fill="${color}" stroke="none">R</text>`+
+    `</svg>`;
 }
+const KLAB_WM_URL="data:image/svg+xml;utf8,"+encodeURIComponent(KLAB_SVG("#ffffff"));
 let introOn=true;
 (function(){
   const intro=document.getElementById("intro");
-  document.getElementById("introBase").style.backgroundImage=`url("${INTRO_IMG_PUSTA||introSVG(false)}")`;
-  const rev=document.getElementById("introReveal");
-  rev.style.backgroundImage=`url("${INTRO_IMG_PELNA||introSVG(true)}")`;
+  document.getElementById("introWm").style.backgroundImage=`url("${KLAB_WM_URL}")`;
+  const uiwm=document.getElementById("uiWm");if(uiwm)uiwm.style.backgroundImage=`url("${KLAB_WM_URL}")`;
+  // wordmark KLAB w nagłówku aplikacji i w logo intro (znak pełny)
+  const hl=document.getElementById("hdrLogo");if(hl)hl.innerHTML=KLAB_SVG("#1A1A1A");
+  const il=document.getElementById("introLogoMark");if(il)il.innerHTML=KLAB_SVG("#1A1A1A");
   // nagłówek słowo po słowie
   const head=document.getElementById("introHead");
   "Symulator fabryki KLAB — planujesz halę, media, personel i koszty produkcji akumulatorów w jednym narzędziu.".split(" ").forEach((w,i)=>{
     const sp=document.createElement("span");sp.className="word-reveal";sp.textContent=w;
     sp.style.animationDelay=(1+i*.05)+"s";head.appendChild(sp);head.appendChild(document.createTextNode(" "));});
-  // latarka: kursor odsłania zapełnioną halę
-  const cv=document.getElementById("introCanvas"),ctx=cv.getContext("2d");
-  const R=260,mouse={x:-999,y:-999},sm={x:-999,y:-999};
-  const rs=()=>{cv.width=innerWidth;cv.height=innerHeight;};rs();addEventListener("resize",rs);
-  intro.addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY;});
-  function loop(){
-    if(!introOn)return;
-    sm.x+=(mouse.x-sm.x)*.1;sm.y+=(mouse.y-sm.y)*.1;
-    ctx.clearRect(0,0,cv.width,cv.height);
-    const gr=ctx.createRadialGradient(sm.x,sm.y,0,sm.x,sm.y,R);
-    gr.addColorStop(0,"rgba(255,255,255,1)");gr.addColorStop(.4,"rgba(255,255,255,1)");
-    gr.addColorStop(.6,"rgba(255,255,255,.75)");gr.addColorStop(.75,"rgba(255,255,255,.4)");
-    gr.addColorStop(.88,"rgba(255,255,255,.12)");gr.addColorStop(1,"rgba(255,255,255,0)");
-    ctx.beginPath();ctx.arc(sm.x,sm.y,R,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
-    const du=cv.toDataURL();
-    rev.style.webkitMaskImage=`url(${du})`;rev.style.maskImage=`url(${du})`;
-    rev.style.webkitMaskSize="100% 100%";rev.style.maskSize="100% 100%";
-    requestAnimationFrame(loop);
-  }
-  loop();
   function closeIntro(){introOn=false;intro.classList.add("bye");setTimeout(()=>{intro.style.display="none";},500);}
   // klik w logo aplikacji = powrót do strony startowej
   document.getElementById("logoHome").onclick=()=>{
-    intro.style.display="block";intro.classList.remove("bye");introOn=true;loop();
+    intro.style.display="block";intro.classList.remove("bye");introOn=true;
   };
   document.getElementById("btnIntroZero").onclick=()=>{
     if(placed.length||strefy.length||ciagi.length){
