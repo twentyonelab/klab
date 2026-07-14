@@ -58,6 +58,10 @@ nav button:hover:not(.act){color:var(--ink)}
 .kpi .v{font-size:20px;font-weight:300;letter-spacing:-.02em;white-space:nowrap;line-height:1.15}
 .kpi .v small{font-size:10.5px;color:var(--mut);font-weight:600;margin-left:3px}
 .kpi .kl{font-size:10px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi.edit{cursor:pointer}
+.kpi.edit:hover{box-shadow:0 0 0 1px var(--ink),var(--sh)}
+#halaPanel{position:fixed;left:50%;top:110px;transform:translateX(-50%);width:300px;background:var(--card);border-radius:16px;box-shadow:var(--shF);padding:14px;z-index:55;display:none}
+#halaPanel h2{font-size:13px;margin-bottom:8px}
 
 /* ── STAGE BODY ── */
 #stageBody{flex:1;position:relative;min-height:0;display:flex;flex-direction:column}
@@ -458,6 +462,14 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   </main>
 </div>
 
+<div id="halaPanel">
+  <h2>Wymiary hali — edycja ręczna</h2>
+  <div class="arow"><span>Długość [m]</span><input id="hDl" type="number" step="2" min="20" max="400"></div>
+  <div class="arow"><span>Szerokość [m]</span><input id="hSz" type="number" step="2" min="20" max="300"></div>
+  <p class="note">Wymiar roboczy — do potwierdzenia z klientem. Jeśli po pomniejszeniu coś wystaje poza obrys, chip kolizji zaproponuje powiększenie.</p>
+  <div class="abtns"><button class="go" id="hOk">Zastosuj</button><button id="hNo">Anuluj</button></div>
+</div>
+
 <div id="ghost"></div>
 <div id="tip"></div>
 <input type="file" id="fileIn" accept=".json" style="display:none">
@@ -703,12 +715,12 @@ function renderKPI(){
     [IC.bolt,mv,mu,"Moc średnia",`zainstalowana ${zv} ${zu}`],
     [IC.drop,(woda+n2).toLocaleString("pl-PL"),"m³/h",`Media (woda ${woda} · N₂ ${n2})`,""],
     [IC.user,os,"os./zm.","Personel / zmianę",""],
-    [IC.hall,`${HALA.dl} × ${HALA.szer}`,"m","Hala (wymiar roboczy)",`${b.hala.toLocaleString("pl-PL")} m² — do potwierdzenia z klientem`],
+    [IC.hall,`${HALA.dl} × ${HALA.szer}`,"m",`Hala robocza · ${b.hala.toLocaleString("pl-PL")} m²`,"Kliknij, aby ręcznie zmienić wymiary hali (założenie robocze — do potwierdzenia z klientem)","hala"],
     [IC.area,powPct,"%",`Zabudowa: prod. ${Math.round(100*b.prod/b.hala)} · strefy ${Math.round(100*b.str/b.hala)} · ciągi ${Math.round(100*b.kom/b.hala)}%`,`${Math.round(b.prod+b.str+b.kom).toLocaleString("pl-PL")} / ${b.hala.toLocaleString("pl-PL")} m²`],
     [IC.coin,fmtZl(capex),"zł","CAPEX (dane robocze)",""],
   ];
-  document.getElementById("kpis").innerHTML=items.map(([ic,v,u,l,tt])=>
-    `<div class="kpi"${tt?` title="${tt}"`:""}><span class="kic">${ic}</span><div><div class="v">${v}<small>${u}</small></div><div class="kl">${l}</div></div></div>`).join("");
+  document.getElementById("kpis").innerHTML=items.map(([ic,v,u,l,tt,ed])=>
+    `<div class="kpi${ed?" edit":""}"${ed?` data-edit="${ed}"`:""}${tt?` title="${tt}"`:""}><span class="kic">${ic}</span><div><div class="v">${v}<small>${u}</small></div><div class="kl">${l}</div></div></div>`).join("");
 }
 
 /* ═══ KATALOG (pływający) ═══ */
@@ -1239,6 +1251,20 @@ function runAuto(){
   }
 }
 document.getElementById("autoGo").onclick=runAuto;
+/* ręczna edycja wymiarów hali — klik w kafel KPI */
+document.getElementById("kpis").addEventListener("click",e=>{
+  if(!e.target.closest('[data-edit="hala"]'))return;
+  document.getElementById("hDl").value=HALA.dl;
+  document.getElementById("hSz").value=HALA.szer;
+  document.getElementById("halaPanel").style.display="block";
+});
+document.getElementById("hNo").onclick=()=>document.getElementById("halaPanel").style.display="none";
+document.getElementById("hOk").onclick=()=>{
+  HALA.dl=Math.min(400,Math.max(20,+document.getElementById("hDl").value||HALA.dl));
+  HALA.szer=Math.min(300,Math.max(20,+document.getElementById("hSz").value||HALA.szer));
+  document.getElementById("halaPanel").style.display="none";
+  vb=fitVB();snap();render();
+};
 /* monit powiększenia hali przy urządzeniach poza obrysem (chip kolizji) */
 document.getElementById("collChip").addEventListener("click",e=>{
   if(e.target.id!=="chipGrow")return;
