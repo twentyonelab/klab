@@ -350,8 +350,8 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .intro-logo .ilsub{font-size:8.5px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase;border-left:1px solid var(--line);padding-left:12px}
 /* znak wodny logo — intro (biały, przezroczysty, w tle, wyśrodkowany) */
 .intro-wm{position:absolute;inset:0;z-index:1;pointer-events:none;display:flex;align-items:center;justify-content:center}
-.intro-wm i{display:block;width:min(62vw,900px);height:auto;aspect-ratio:1486/327;background-repeat:no-repeat;background-position:center;background-size:contain;filter:drop-shadow(0 8px 40px rgba(0,0,0,.05));animation:wmIn 1.2s cubic-bezier(.25,.46,.45,.94) forwards;opacity:0}
-@keyframes wmIn{from{opacity:0;transform:scale(1.12)}to{opacity:.55;transform:scale(1)}}
+.intro-wm i{display:block;width:min(62vw,900px);height:auto;aspect-ratio:1486/327;background-repeat:no-repeat;background-position:center;background-size:contain;filter:drop-shadow(0 8px 40px rgba(0,0,0,.05));transform:translateY(-13vh);animation:wmIn 1.2s cubic-bezier(.25,.46,.45,.94) forwards;opacity:0}
+@keyframes wmIn{from{opacity:0;transform:translateY(-13vh) scale(1.12)}to{opacity:.55;transform:translateY(-13vh) scale(1)}}
 @keyframes wordReveal{from{opacity:0;transform:translateY(10px);filter:blur(10px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
 .word-reveal{opacity:0;display:inline-block;margin-right:.28em;animation:wordReveal .4s ease forwards}
 @keyframes slideUpScale{from{opacity:0;transform:translateY(60px) scale(.5)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -378,8 +378,8 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){
   .splash{animation:splashHide .01s linear forwards}
   .splash-box{animation:none!important}
-  .intro-wm i,.word-reveal,.cta-animate{animation:none!important;opacity:.7;transform:none!important;filter:none!important}
-  .word-reveal,.cta-animate{opacity:1!important}
+  .intro-wm i{animation:none!important;opacity:.55!important;transform:translateY(-13vh)!important}
+  .word-reveal,.cta-animate{animation:none!important;opacity:1!important;transform:none!important;filter:none!important}
 }
 </style>
 </head>
@@ -399,7 +399,6 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   <div class="intro-content">
     <div>
       <h1 class="intro-head" id="introHead"></h1>
-      <p class="intro-small cta-animate" style="animation-delay:1.35s">Nowość: pełny katalog <b>23 kart procesowych KLAB</b> (A1–A8, B1–B14) z danych klienta (rev. 07.2026) — dostawcy, media, odpady, BHP. Przycisk <b>Autorozmieszczenie</b> stawia całą fabrykę wg planu referencyjnego 156×72 m.</p>
     </div>
     <div class="intro-bottom">
       <div class="intro-ctarow">
@@ -1680,7 +1679,7 @@ let introOn=true;
   const il=document.getElementById("introLogoMark");if(il)il.innerHTML=KLAB_SVG("#1A1A1A");
   // nagłówek słowo po słowie
   const head=document.getElementById("introHead");
-  "Symulator fabryki KLAB — planujesz halę, media, personel i koszty produkcji akumulatorów w jednym narzędziu.".split(" ").forEach((w,i)=>{
+  "Symulator fabryki KLAB — zakładu recyklingu akumulatorów kwasowo-ołowiowych i produkcji nowych ogniw w obiegu zamkniętym.".split(" ").forEach((w,i)=>{
     const sp=document.createElement("span");sp.className="word-reveal";sp.textContent=w;
     sp.style.animationDelay=(1+i*.05)+"s";head.appendChild(sp);head.appendChild(document.createTextNode(" "));});
   function closeIntro(){introOn=false;intro.classList.add("bye");setTimeout(()=>{intro.style.display="none";},500);}
