@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLAB · Symulator fabryki v0.10</title>
+<style>
+:root{
+  --bg:#F2F1EF; --card:#FFFFFF; --ink:#1A1A1A; --mut:#8A8A85; --line:#E5E3DF;
+  --acc:#FF4D00; --ok:#16A34A; --warn:#F59E0B; --bad:#DC2626; --info:#2563EB;
+  --lineA:#FF4D00; --lineB:#7C3AED; --lav:#EDE9FE; --lavInk:#6D28D9;
+  --c-energia:#F97316; --c-woda:#3B82F6; --c-n2:#9CA3AF; --c-kwas:#8B5CF6;
+  --r:14px; --sh:0 2px 12px rgba(0,0,0,.07); --shF:0 6px 24px rgba(0,0,0,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.mono{font-family:"Consolas","JetBrains Mono",monospace}
+.lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+button{font-family:inherit;color:inherit}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── TOP BAR ── */
+header{display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--line);z-index:30;flex-shrink:0;height:52px}
+.logo{display:flex;align-items:center;gap:10px;cursor:pointer}
+.logo:hover .tt b{color:var(--acc)}
+.logo>svg{width:30px;height:30px;flex:0 0 auto}
+.logo .tt b{display:block;font-size:15px;letter-spacing:.03em;line-height:1.1}
+.logo .tt span{font-size:8px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase}
+nav{display:flex;margin:0 auto;height:100%}
+nav button{border:0;background:transparent;padding:0 18px;font-size:12px;font-weight:600;color:var(--mut);cursor:pointer;white-space:nowrap;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+nav button .mk{font-size:8.5px;letter-spacing:.12em;font-weight:800;color:var(--mut);opacity:.8;line-height:1}
+nav button.act .mk{color:var(--acc);opacity:1}
+nav button+button{border-left:1px solid var(--line)}
+nav button.act{color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--acc)}
+nav button:hover:not(.act){color:var(--ink)}
+.wdraft{background:var(--lav);color:var(--lavInk);font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:6px 12px;border-radius:999px;white-space:nowrap;cursor:help}
+.tools{display:flex;gap:8px;align-items:center;position:relative}
+.pillb{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer}
+.pillb:hover{border-color:var(--ink)}
+.iconb{width:36px;height:36px;border:1px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.iconb:hover{border-color:var(--ink)}
+#menu{position:absolute;right:0;top:44px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shF);padding:6px;display:none;min-width:190px;z-index:40}
+#menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:8px 12px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer}
+#menu button:hover{background:var(--bg)}
+
+/* ── SHELL: rail + stage ── */
+#shell{flex:1;display:flex;min-height:0}
+#rail{width:52px;flex:0 0 52px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0;z-index:15}
+#rail button{width:38px;height:38px;border:0;background:transparent;border-radius:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--mut)}
+#rail button:hover{color:var(--ink);background:#E9E7E4}
+#rail button.act{color:var(--acc);background:#FFE9DE}
+#stage{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+
+/* ── KPI ── */
+#kpis{display:flex;gap:12px;padding:10px 16px 4px 4px;flex-shrink:0}
+.kpi{flex:1;min-width:0;background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:10px 14px;display:flex;align-items:center;gap:11px}
+.kpi .kic{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--ink)}
+.kpi .v{font-size:20px;font-weight:300;letter-spacing:-.02em;white-space:nowrap;line-height:1.15}
+.kpi .v small{font-size:10.5px;color:var(--mut);font-weight:600;margin-left:3px}
+.kpi .kl{font-size:10px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi.edit{cursor:pointer}
+.kpi.edit:hover{box-shadow:0 0 0 1px var(--ink),var(--sh)}
+#halaPanel{position:fixed;left:50%;top:110px;transform:translateX(-50%);width:300px;background:var(--card);border-radius:16px;box-shadow:var(--shF);padding:14px;z-index:55;display:none}
+#halaPanel h2{font-size:13px;margin-bottom:8px}
+
+/* ── STAGE BODY ── */
+#stageBody{flex:1;position:relative;min-height:0;display:flex;flex-direction:column}
+#canvasArea{flex:1;position:relative;min-height:0}
+#canvasWrap{position:absolute;inset:0;cursor:grab}
+#canvasWrap.drag{cursor:grabbing}
+#svg{display:block;width:100%;height:100%}
+.fpanel{position:absolute;background:var(--card);border-radius:16px;box-shadow:var(--shF);z-index:10}
+
+/* katalog (pływający, lewa) */
+#catalog{left:14px;top:10px;bottom:14px;width:236px;display:flex;flex-direction:column;max-height:calc(100% - 24px)}
+#catalog .chead{padding:12px 12px 9px;border-bottom:1px solid var(--line)}
+#catalog .chead .tt{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+#catalog h2{font-size:13px}
+#catX{border:0;background:transparent;cursor:pointer;color:var(--mut);width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+#catX:hover{background:var(--bg);color:var(--ink)}
+.srch{position:relative}
+.srch svg{position:absolute;left:9px;top:8px;width:13px;height:13px;stroke:var(--mut)}
+#catalog input{width:100%;border:1px solid var(--line);border-radius:10px;padding:6px 10px 6px 28px;font-size:11.5px;outline:none;background:var(--bg)}
+#catalog input:focus{border-color:var(--ink);background:var(--card)}
+.fchips{display:flex;gap:5px;margin-top:8px}
+.fchips .f{font-size:10.5px;font-weight:600;color:var(--mut);cursor:pointer;padding:4px 9px;border-radius:999px;border:1px solid var(--line);display:flex;align-items:center;gap:5px;background:var(--card)}
+.fchips .f.act{background:var(--ink);color:#fff;border-color:var(--ink)}
+.fchips .dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+#tiles{flex:1;overflow-y:auto;padding:9px 10px;display:flex;flex-direction:column;gap:8px}
+.tile{position:relative;border:1px solid var(--line);border-radius:14px;padding:11px 12px 8px;cursor:grab;user-select:none;background:var(--card);flex-shrink:0}
+.tcnt{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;border-radius:999px;background:var(--acc);color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 1px 4px rgba(0,0,0,.25);z-index:2}
+.tile.la{border-color:#FFDCCB}.tile.lb{border-color:#E5DBF8}
+.tile:hover{box-shadow:var(--sh)}
+.tile.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.tile .th{display:flex;gap:8px;align-items:flex-start}
+.tile .tt{flex:1;min-width:0}
+.tid{font-size:12.5px;font-weight:700;white-space:nowrap}
+.tpill{display:inline-block;font-size:8.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:#FFF1EA;margin-left:5px;white-space:nowrap;vertical-align:1.5px}
+.tnm{font-size:10px;color:var(--mut);line-height:1.3;margin-top:2px;max-height:27px;overflow:hidden}
+.timg{width:88px;height:48px;flex:0 0 auto;position:relative}
+.timg svg{width:100%;height:100%}
+.timg .cb{position:absolute;bottom:-5px;right:-4px}
+.route{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:700;margin-top:8px}
+.route span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rbar{position:relative;height:10px;margin-top:6px}
+.rbar .trk{position:absolute;left:0;right:0;top:4px;border-top:2px dotted #DDD9D3}
+.rbar .fill{position:absolute;left:0;top:4px;height:2px;border-radius:2px}
+.rbar .dotL{position:absolute;left:0;top:2.5px;width:5px;height:5px;border-radius:50%}
+.rbar .ring{position:absolute;right:0;top:1.5px;width:6px;height:6px;border-radius:50%;border:1.5px solid #DDD9D3;background:#fff}
+.rbar .hnd{position:absolute;top:0;width:20px;height:9px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.rsub{display:flex;justify-content:space-between;font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);margin-top:3px}
+.tstats{display:flex;border-top:1px solid var(--line);margin-top:9px;padding-top:6px;font-size:10px}
+.tstats span{flex:1;display:flex;align-items:center;gap:4px;justify-content:center;white-space:nowrap}
+.tstats span+span{border-left:1px solid var(--line)}
+#catalog .cfoot{border-top:1px solid var(--line);padding:8px 12px;font-size:10px;color:var(--mut);display:flex;align-items:center;gap:7px}
+#catBtn{position:absolute;left:14px;top:10px;z-index:9;display:none;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 13px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--sh)}
+
+/* karta urządzenia (pływająca, prawa) */
+#devCard{right:70px;top:10px;width:264px;max-height:calc(100% - 24px);overflow-y:auto;padding:13px}
+#devCard .empty{text-align:center;color:var(--mut);padding:14px 6px}
+#devCard .empty .big{font-size:28px;margin-bottom:8px}
+#devCard .hd{display:flex;justify-content:space-between;align-items:center;margin:5px 0 2px}
+#devCard .hd .tid{font-size:14px}
+#devCard h3{font-size:13.5px;margin:2px 0 8px;line-height:1.3}
+#devCard .big-img{height:96px;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;background:#FDFCFB}
+#devCard .big-img svg{width:100%;height:100%}
+.badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.badge.on{background:#EEF6EE;color:var(--ok)}
+.badge.off{background:var(--bg);color:var(--mut)}
+.badge.custom{background:#FFF1EA;color:var(--acc)}
+.prow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:11.5px}
+.prow .k{color:var(--mut);display:flex;align-items:center;gap:7px;flex:0 0 auto}
+.prow .k .pic{width:20px;height:20px;border-radius:6px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:9.5px}
+.prow b{text-align:right;font-weight:600}
+.ld{display:flex;align-items:center;gap:8px}
+.ld .tr{flex:1;height:3px;border-radius:2px;background:var(--line);position:relative}
+.ld .fi{position:absolute;left:0;top:0;height:100%;border-radius:2px}
+.ld b{font-size:10.5px;font-variant-numeric:tabular-nums}
+.acts{display:flex;gap:5px;margin-top:11px}
+.acts button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 0;font-size:11px;font-weight:600;cursor:pointer}
+.acts button:hover{border-color:var(--ink)}
+.acts button.del{color:var(--bad)}
+.rnote{font-size:9.5px;color:var(--mut);margin-top:9px;line-height:1.5}
+
+/* pasek narzędzi kanwy (prawa krawędź) */
+#toolRail{right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:3px;padding:6px}
+#toolRail button{width:36px;border:0;background:transparent;border-radius:9px;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;font-size:13px;font-weight:600}
+#toolRail button:hover{background:var(--bg)}
+#toolRail button.on{color:var(--acc);background:#FFE9DE}
+#toolRail button:disabled{opacity:.3;cursor:default;background:transparent}
+#toolRail .gv{font-size:8.5px;color:var(--mut);font-weight:700}
+#toolRail hr{border:0;border-top:1px solid var(--line);margin:2px 4px}
+#zoomPct{font-size:9px;color:var(--mut);text-align:center;font-weight:700}
+
+#collChip{position:absolute;left:14px;bottom:12px;background:#FFF3EC;border:1px solid #FFD9C4;color:var(--bad);border-radius:11px;padding:7px 13px;font-size:11.5px;font-weight:600;z-index:9;display:none}
+.hint{position:absolute;right:70px;bottom:12px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:10px;color:var(--mut);z-index:8;pointer-events:none}
+.hint b{color:var(--ink)}
+
+/* dolny pasek modułów */
+#bottomStrip{flex-shrink:0;display:flex;align-items:stretch;gap:9px;padding:9px 16px 12px 4px;overflow-x:auto}
+.mcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:106px;cursor:pointer;flex-shrink:0}
+.mcard:hover{border-color:var(--ink)}
+.mcard .mi{font-size:16px}
+.mcard .mn{font-size:10.5px;font-weight:600;white-space:nowrap}
+.mcard .mc{font-size:9px;color:var(--mut)}
+.mstrip-empty{align-self:center;font-size:11px;color:var(--mut);padding:14px 10px}
+#legend{margin-left:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;display:flex;flex-direction:column;justify-content:center;gap:3px;font-size:9.5px;color:var(--mut);flex-shrink:0}
+#legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+
+/* devices on canvas */
+.dev rect.body{fill:#fff;stroke:#C9C6C0;stroke-width:.14;filter:drop-shadow(0 .3px .6px rgba(0,0,0,.15))}
+.dev.sel rect.body{stroke:var(--acc);stroke-width:.24;fill:#FFF8F4}
+.dev.coll rect.body{stroke:var(--bad);stroke-width:.26}
+.dev text{user-select:none;pointer-events:none}
+.dev .serw{fill:none;stroke-width:.09;stroke-dasharray:.55 .4;opacity:.75}
+.dev.sel .serw{stroke:var(--acc)!important;opacity:1}
+.dev{cursor:move}
+.mline{fill:none;stroke-width:.13}
+.mconn{opacity:.25}
+.preview{opacity:.6;pointer-events:none}
+.preview rect.pbody{fill:#FFF8F4;stroke:var(--acc);stroke-width:.18;stroke-dasharray:.7 .4}
+.zone{cursor:move}
+.zone text{user-select:none;pointer-events:none}
+.zone.sel rect.zr{stroke:var(--acc)!important;stroke-width:.22;stroke-dasharray:none}
+
+/* auto-układ */
+#autoRow{position:absolute;left:50%;transform:translateX(-50%);top:10px;z-index:9;display:flex;gap:8px}
+#autoRow button{background:var(--ink);color:#fff;border:0;border-radius:999px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--sh);display:flex;gap:7px;align-items:center}
+#autoRow button:hover{background:#000}
+#refBtn{background:var(--acc)!important}
+#refBtn:hover{background:#E64500!important}
+#optBtn{background:var(--ok)!important}
+#optBtn:hover{background:#12833c!important}
+#growBtn{position:absolute;left:50%;transform:translateX(-50%);top:52px;z-index:9;display:none;background:#FFF3EC;color:var(--bad);border:1px solid #FFC9A8;border-radius:999px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--sh)}
+#growBtn:hover{background:#FFE6D6}
+#autoPanel{left:50%;top:50px;transform:translateX(-50%);width:420px;max-height:calc(100% - 66px);overflow-y:auto;padding:0 15px 15px;display:none;z-index:14}
+#autoHead{position:sticky;top:0;background:var(--card);z-index:3;display:flex;justify-content:space-between;align-items:center;padding:13px 0 9px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+#autoPanel h2{font-size:13.5px}
+#autoPanel .opis{font-size:10.5px;color:var(--mut);line-height:1.45;margin-bottom:10px}
+.aopt{display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:11px;margin-bottom:6px;cursor:pointer}
+.aopt:has(input:checked){border-color:var(--acc);background:#FFF8F4}
+.aopt input{margin-top:2px;accent-color:var(--acc)}
+.aopt b{font-size:12px;display:block}
+.aopt span{font-size:10px;color:var(--mut);line-height:1.35}
+.arow{display:grid;grid-template-columns:1fr 84px;gap:8px;align-items:center;padding:5px 0;font-size:11.5px}
+.arow input{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:11.5px;width:100%;text-align:right;outline:none}
+.arow input:focus{border-color:var(--ink)}
+.achk{display:flex;gap:8px;align-items:center;font-size:11.5px;padding:8px 0;cursor:pointer}
+.achk input{accent-color:var(--acc)}
+#autoPanel .abtns{display:flex;gap:6px;margin-top:8px}
+#autoPanel .abtns button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 0;font-size:11.5px;font-weight:700;cursor:pointer}
+#autoPanel .abtns button.go{background:var(--ink);color:#fff;border-color:var(--ink)}
+.aprop{border:1px solid var(--line);border-radius:11px;padding:9px 11px;margin-bottom:7px}
+.aprop .apt{display:flex;justify-content:space-between;align-items:baseline}
+.aprop b{font-size:12px}.aprop .apm{font-size:10.5px;color:var(--mut);margin:3px 0 6px;line-height:1.35}
+.aprop .apbar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:6px}
+.aprop .apbar i{display:block;height:100%;border-radius:3px}
+.aprop .apk{font-size:10.5px;color:var(--mut)}.aprop .apk b{color:var(--ink)}
+.aprop button{margin-top:6px;width:100%;border:1px solid var(--ink);background:var(--card);border-radius:999px;padding:6px 0;font-size:11px;font-weight:700;cursor:pointer}
+.aprop.best{border-color:var(--acc);background:#FFF8F4}
+.aprop.best button{background:var(--acc);color:#fff;border-color:var(--acc)}
+.aprop .apbadge{font-size:8.5px;font-weight:700;color:var(--acc);letter-spacing:.04em}
+#autoOut{margin-top:10px;border-top:1px solid var(--line);padding-top:9px;display:none}
+#autoOut h3{font-size:11.5px;margin-bottom:5px}
+#autoOut ul{margin:0 0 6px 16px;font-size:10.5px;line-height:1.5;color:#3d3d3a}
+#autoOut .note{margin-top:6px}
+
+#ghost{position:fixed;pointer-events:none;z-index:100;opacity:.88;display:none;background:var(--card);border:2px solid var(--acc);border-radius:10px;padding:6px 12px;font-size:11.5px;font-weight:700;box-shadow:var(--sh)}
+#tip{position:fixed;z-index:99;background:var(--ink);color:#fff;font-size:11px;padding:5px 10px;border-radius:7px;pointer-events:none;display:none;white-space:nowrap}
+
+/* ── WIDOKI M2–M6 ── */
+#viewPane{position:absolute;inset:0;overflow:auto;padding:8px 16px 20px 4px;display:none;z-index:12;background:var(--bg)}
+.vcard{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:18px 20px;max-width:860px;margin:0 auto 14px}
+.vcard h2{font-size:15px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid var(--line)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.note{font-size:11px;color:var(--mut);margin-top:10px}
+.soon{max-width:520px;margin:60px auto;text-align:center;color:var(--mut)}
+.soon .big{font-size:40px;margin-bottom:10px}
+.chips{display:inline-flex;gap:4px}
+.chips button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--mut);cursor:pointer}
+.chips button:hover{border-color:var(--ink);color:var(--ink)}
+.chips button.act{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tiles3{display:flex;gap:10px;margin-bottom:14px}
+.t3{flex:1;background:var(--bg);border-radius:10px;padding:10px 14px}
+.t3 .v{font-size:22px;font-weight:300;letter-spacing:-.02em}
+.t3 .v small{font-size:11px;color:var(--mut);font-weight:600;margin-left:2px}
+.t3.hl{background:#FFF1EA}.t3.hl .v{color:var(--acc)}
+.slrow{display:grid;grid-template-columns:200px 1fr 110px;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.slrow:last-of-type{border:0}
+.slrow .lbl{font-size:11px}
+.slrow input[type=range]{width:100%;accent-color:var(--acc);cursor:pointer}
+.slrow .val{font-weight:700;text-align:right;font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.opexV{font-size:28px;font-weight:300;letter-spacing:-.02em}
+.opexV small{font-size:12px;color:var(--mut);font-weight:600;margin-left:4px}
+.stack{display:flex;gap:2px;height:14px;border-radius:7px;overflow:hidden;margin:12px 0 6px}
+.stack div{height:100%;min-width:3px}
+.leg{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)}
+.leg:last-of-type{border:0}
+.leg .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:8px}
+.leg b{font-variant-numeric:tabular-nums}
+
+/* ── widok: schemat procesu (M1) ── */
+.pchain{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
+.pchain:last-of-type{border:0}
+.pcard{border:1px solid var(--line);border-radius:12px;padding:8px 11px;min-width:128px;background:var(--card)}
+.pcard .pid{font-size:11.5px;font-weight:700}
+.pcard .pnm{font-size:9.5px;color:var(--mut);line-height:1.25;margin-top:1px;max-width:130px}
+.pcard .pim{height:34px;margin-top:4px}
+.pcard .pim svg{width:100%;height:100%}
+.pio{font-size:10.5px;font-weight:700;background:var(--bg);border-radius:999px;padding:5px 11px;white-space:nowrap}
+.pio.out{background:#EEF6EE;color:var(--ok)}
+.parw{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:56px}
+.parw i{font-style:normal;font-size:8.5px;color:var(--ink);font-weight:600;text-align:center;max-width:84px;line-height:1.2}
+.parw .ln{width:100%;height:0;border-top:2px solid #B9B6B0;position:relative}
+.parw .ln::after{content:"";position:absolute;right:-1px;top:-4px;border:3px solid transparent;border-left:5px solid #B9B6B0}
+.parw.ap .ln{border-top-style:dashed}
+.parw.ap i{color:var(--mut)}
+
+/* ── widok: zestawienie użytych kart ── */
+.zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:10px;margin-top:8px}
+.zsum{display:flex;gap:14px;font-size:11px;color:var(--mut);margin:6px 0 14px}
+.zsum b{color:var(--ink)}
+
+/* ── widok: 3D izometria ── */
+.isoWrap svg{width:100%;height:auto;display:block}
+
+/* ── widok: Karty urządzeń ── */
+.kwrap{max-width:1080px;margin:0 auto}
+.knav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.kchip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer;color:var(--ink)}
+.kchip:hover{box-shadow:var(--sh)}
+.kchip.act{box-shadow:0 0 0 1px currentColor}
+.kbody{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:20px 22px}
+.khd .ktag{display:inline-block;color:#fff;font-weight:700;padding:3px 9px;border-radius:7px;font-size:13px;vertical-align:2px}
+.khd .kttl{font-size:17px}
+.khd .kmeta{font-size:11.5px;color:var(--mut);margin-top:5px}
+.kopis{font-size:12.5px;line-height:1.55;color:#3d3d3a;margin:12px 0 14px;max-width:80ch}
+.kgrid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.kgrid4>div{background:var(--bg);border-radius:10px;padding:9px 12px}
+.kgrid4 b{display:block;font-size:13px;margin-top:2px}
+.ksecs{display:grid;grid-template-columns:1fr 1fr;gap:14px 24px}
+.ksec{min-width:0}
+.ksec h4{font-size:12px;margin-bottom:6px;padding-bottom:4px;border-bottom:2px solid var(--line)}
+.ksec table{font-size:11.5px}
+.ksec td{padding:5px 6px}
+.ksup{display:flex;gap:10px;align-items:baseline;padding:6px 0;font-size:12px}
+.ksup .lbl{flex:0 0 110px}
+.ksup a{color:var(--acc);text-decoration:none;font-weight:600}
+.ksup a:hover{text-decoration:underline}
+@media(max-width:820px){.kgrid4{grid-template-columns:repeat(2,1fr)}.ksecs{grid-template-columns:1fr}}
+
+/* ═══ STRONA STARTOWA (intro / preloader) ═══ */
+#intro{position:fixed;inset:0;z-index:90;background:var(--bg);overflow:hidden}
+#intro.bye{transition:opacity .45s ease;opacity:0;pointer-events:none}
+.splash{position:absolute;inset:0;z-index:60;pointer-events:none;overflow:hidden;animation:splashHide .3s ease forwards;animation-delay:1.35s}
+.splash-row{display:flex;width:100%;height:50%}
+.splash-box{width:20%;height:100%;background:var(--acc)}
+.splash-row-top .splash-box{animation:splashTop 1s cubic-bezier(.96,-.02,.38,1.01) forwards}
+.splash-row-bottom .splash-box{animation:splashBottom 1s cubic-bezier(.96,-.02,.38,1.01) forwards}
+.splash-box:nth-child(1){animation-delay:0s}.splash-box:nth-child(2){animation-delay:.05s}
+.splash-box:nth-child(3){animation-delay:.1s}.splash-box:nth-child(4){animation-delay:.15s}
+.splash-box:nth-child(5){animation-delay:.2s}
+@keyframes splashTop{from{transform:translateY(0)}to{transform:translateY(-100%)}}
+@keyframes splashBottom{from{transform:translateY(0)}to{transform:translateY(100%)}}
+@keyframes splashHide{to{opacity:0;visibility:hidden}}
+.intro-logo{position:absolute;top:26px;left:32px;z-index:20;display:flex;align-items:center;gap:10px}
+.intro-logo svg{width:34px;height:34px}
+.intro-logo b{font-size:16px;letter-spacing:.03em;color:var(--ink)}
+.intro-logo span{display:block;font-size:8px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase}
+.intro-big{position:absolute;bottom:-2vw;left:0;right:0;z-index:1;pointer-events:none;text-align:center}
+.intro-big h2{font-weight:600;color:#fff;line-height:80%;letter-spacing:-.04em;white-space:nowrap;font-size:clamp(180px,30vw,560px)}
+@keyframes heroImageIn{from{opacity:0;transform:scale(1.35) rotate(2deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+.intro-img{position:absolute;top:0;left:0;right:0;bottom:0;background-size:cover;background-repeat:no-repeat;background-position:center 65%;z-index:3}
+.intro-img.animate{animation:heroImageIn 1.2s cubic-bezier(.25,.46,.45,.94) forwards;animation-delay:.9s;opacity:0}
+#introReveal{z-index:4;pointer-events:none}
+#introCanvas{display:none;position:absolute;inset:0;pointer-events:none}
+@keyframes wordReveal{from{opacity:0;transform:translateY(10px);filter:blur(10px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+.word-reveal{opacity:0;display:inline-block;margin-right:.28em;animation:wordReveal .4s ease forwards}
+@keyframes slideUpScale{from{opacity:0;transform:translateY(60px) scale(.5)}to{opacity:1;transform:translateY(0) scale(1)}}
+.cta-animate{opacity:0;animation:slideUpScale .8s cubic-bezier(.25,.46,.45,.94) forwards;animation-delay:1.1s}
+.intro-content{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;justify-content:space-between;padding:110px 40px 34px;pointer-events:none}
+.intro-content>*{pointer-events:auto}
+.intro-head{font-size:26px;font-weight:600;line-height:125%;letter-spacing:-.02em;color:var(--ink);max-width:560px}
+.intro-btns{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.intro-btns button{border:1px solid var(--ink);background:var(--card);border-radius:999px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px}
+.intro-btns button:hover{background:var(--ink);color:#fff}
+.intro-small{font-size:10px;color:var(--mut);margin-top:10px;max-width:480px;line-height:1.5}
+.intro-bottom{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.intro-ctarow{display:flex;gap:14px;flex-wrap:wrap}
+.intro-continue{font-size:12px;color:var(--acc);font-weight:600;text-decoration:none}
+.intro-continue:hover{text-decoration:underline}
+.cta-btn{position:relative;overflow:hidden;display:flex;align-items:center;border:none;background:none;cursor:pointer;border-radius:9999px;padding:8px;gap:12px}
+.cta-btn-bg{position:absolute;top:5px;bottom:5px;left:8px;width:calc(100% - 16px - 54px - 12px);border-radius:9999px;background:#fff;z-index:0;transition:width .4s cubic-bezier(.25,.46,.45,.94);box-shadow:var(--sh)}
+.cta-btn:hover .cta-btn-bg{width:calc(100% - 16px)}
+.cta-btn-text{position:relative;z-index:1;color:var(--ink);font-weight:600;font-size:17px;padding:15px 38px;white-space:nowrap}
+.cta-btn-circle{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:50%;background:var(--acc);flex-shrink:0;transition:transform .4s cubic-bezier(.25,.46,.45,.94)}
+.cta-btn:hover .cta-btn-circle{transform:translateX(-7px)}
+.intro-credits{font-size:10px;color:var(--mut);letter-spacing:.04em}
+.intro-credits b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){
+  .splash{animation:splashHide .01s linear forwards}
+  .splash-box{animation:none!important}
+  .intro-img.animate,.word-reveal,.cta-animate{animation:none!important;opacity:1!important;transform:none!important;filter:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ STRONA STARTOWA ═══ -->
+<div id="intro">
+  <div class="splash">
+    <div class="splash-row splash-row-top"><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div></div>
+    <div class="splash-row splash-row-bottom"><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div><div class="splash-box"></div></div>
+  </div>
+  <div class="intro-big"><h2>KLAB</h2></div>
+  <div class="intro-img animate" id="introBase"></div>
+  <canvas id="introCanvas"></canvas>
+  <div class="intro-img" id="introReveal"></div>
+  <div class="intro-logo">
+    <svg viewBox="0 0 32 32"><rect x="6.7" y="6.7" width="18.6" height="18.6" rx="2.5" transform="rotate(45 16 16)" fill="#1A1A1A"/><rect x="11.5" y="11.5" width="9" height="9" rx="1.5" transform="rotate(45 16 16)" fill="#FF4D00"/></svg>
+    <div><b>KLAB</b><span>Symulator fabryki</span></div>
+  </div>
+  <div class="intro-content">
+    <div>
+      <h1 class="intro-head" id="introHead"></h1>
+      <p class="intro-small cta-animate" style="animation-delay:1.35s">Nowość: pełny katalog <b>23 kart procesowych KLAB</b> (A1–A8, B1–B14) z danych klienta (rev. 07.2026) — dostawcy, media, odpady, BHP. Przycisk <b>Autorozmieszczenie</b> stawia całą fabrykę wg planu referencyjnego 156×72 m.</p>
+    </div>
+    <div class="intro-bottom">
+      <div class="intro-ctarow">
+        <button class="cta-btn cta-animate" id="btnIntroImport" style="animation-delay:1.1s">
+          <span class="cta-btn-bg"></span>
+          <span class="cta-btn-text">Zaimportuj dane</span>
+          <span class="cta-btn-circle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L8 8m4-4 4 4M4 20h16" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </button>
+        <button class="cta-btn cta-animate" id="btnIntroZero" style="animation-delay:1.25s">
+          <span class="cta-btn-bg"></span>
+          <span class="cta-btn-text">Zacznij od zera</span>
+          <span class="cta-btn-circle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5v14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </button>
+      </div>
+      <p class="intro-small cta-animate" style="animation-delay:1.4s">Import przyjmuje plik projektu <b>.json</b> z eksportu „Zapisz projekt" (v0.1–v0.8): układ hali, strefy, ciągi, założenia. Rozpoznaje też starsze wersje. Formaty CSV/XLSX katalogu — po zatwierdzeniu schematu danych.</p>
+      <a href="#" id="introContinue" class="intro-continue cta-animate" style="animation-delay:1.5s;display:none">kontynuuj zapisany projekt →</a>
+      <p class="intro-credits cta-animate" style="animation-delay:1.6s">© 2026 <b>21 zmysłów LAB</b> · zaprojektowane i wykonane przez 21 zmysłów · wszystkie prawa zastrzeżone</p>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="logo" id="logoHome" title="Wróć do strony startowej">
+    <svg viewBox="0 0 32 32"><rect x="6.7" y="6.7" width="18.6" height="18.6" rx="2.5" transform="rotate(45 16 16)" fill="#1A1A1A"/><rect x="11.5" y="11.5" width="9" height="9" rx="1.5" transform="rotate(45 16 16)" fill="#FF4D00"/></svg>
+    <div class="tt"><b>KLAB</b><span>Symulator fabryki</span></div>
+  </div>
+  <nav id="nav">
+    <button data-v="proces" title="M1 · Schemat ciągu technologicznego + moduły funkcjonalne"><span class="mk">M1</span>Schemat ciągu</button>
+    <button data-v="m2" title="M2 · Bilans energii i mediów"><span class="mk">M2</span>Bilans mediów</button>
+    <button data-v="m3" title="M3 · Analiza źródeł energii"><span class="mk">M3</span>Źródła energii</button>
+    <button data-v="m4" title="M4 · Zatrudnienie i obłożenie stanowisk"><span class="mk">M4</span>Zatrudnienie</button>
+    <button data-v="layout" class="act" title="M5 · Program powierzchni i layout hali"><span class="mk">M5</span>Layout hali</button>
+    <button data-v="m6" title="M6 · Symulator kosztów eksploatacji"><span class="mk">M6</span>Koszty</button>
+  </nav>
+  <div class="tools">
+    <span class="wdraft" title="Dane urządzeń = placeholder (typ W-draft) do podmiany po review schematu przez Marcina">W-draft</span>
+    <button class="pillb" id="btnExport" title="Zapisz stan projektu do pliku JSON">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>
+      Zapisz projekt (JSON)</button>
+    <button class="iconb" id="kebab" title="Więcej"><svg viewBox="0 0 24 24" width="17" height="17"><circle cx="12" cy="5" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="19" r="1.7" fill="currentColor"/></svg></button>
+    <div id="menu">
+      <button id="btnImport">⭱ Wczytaj projekt (JSON)</button>
+      <button id="btnHRF">⭳ Eksport „Zadanie 3" (HRF, CSV)</button>
+      <button data-href="Symulator fabryki v0.9.html">Otwórz KLAB v0.9</button>
+      <button data-href="Symulator fabryki v0.8.html">Otwórz KLAB v0.8</button>
+      <button data-href="Symulator fabryki v0.7.html">Otwórz KLAB v0.7</button>
+      <button data-href="Symulator fabryki v0.6.html">Otwórz KLAB v0.6</button>
+      <button data-href="Symulator fabryki v0.5.html">Otwórz KLAB v0.5</button>
+      <button data-href="Symulator fabryki v0.4.html">Otwórz KLAB v0.4</button>
+      <button data-href="Symulator fabryki v0.3.html">Otwórz KLAB v0.3</button>
+      <button data-href="Symulator fabryki v0.2.html">Otwórz KLAB v0.2</button>
+      <button data-href="Symulator fabryki v0.1.html">Otwórz KLAB v0.1</button>
+    </div>
+  </div>
+</header>
+
+<div id="shell">
+  <aside id="rail">
+    <button data-v="layout" class="act" title="Układ hali (2D)"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+    <button data-v="proces" title="Schemat procesu"><svg class="ic" viewBox="0 0 24 24"><circle cx="4.7" cy="12" r="2.3"/><circle cx="12" cy="12" r="2.3"/><circle cx="19.3" cy="12" r="2.3"/><path d="M7 12h2.7M14.3 12H17"/></svg></button>
+    <button data-v="zestaw" title="Zestawienie modułów — wszystkie użyte karty"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6.5" rx="1.5"/><rect x="3" y="13.5" width="18" height="6.5" rx="1.5"/></svg></button>
+    <button data-v="iso" title="Widok 3D hali (izometria poglądowa)"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 12l9-5M12 12L3 7M12 12v10"/></svg></button>
+    <button data-v="karty" title="Karty urządzeń — pełne dane, dostawcy, BHP"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></button>
+  </aside>
+
+  <main id="stage">
+    <div id="kpis"></div>
+    <div id="stageBody">
+      <div id="canvasArea">
+        <div id="canvasWrap"><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+
+        <div class="fpanel" id="catalog">
+          <div class="chead">
+            <div class="tt"><h2>Katalog urządzeń</h2><button id="catX" title="Zwiń katalog"><svg class="ic" viewBox="0 0 24 24" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>
+            <div class="srch"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" placeholder="Szukaj urządzenia…"></div>
+            <div class="fchips">
+              <span class="f act" data-f="all">Wszystkie</span>
+              <span class="f" data-f="A"><span class="dot" style="background:var(--lineA)"></span>Linia A</span>
+              <span class="f" data-f="B"><span class="dot" style="background:var(--lineB)"></span>Linia B</span>
+            </div>
+          </div>
+          <div id="tiles"></div>
+          <div class="cfoot"><svg class="ic" viewBox="0 0 24 24" width="12" height="12"><circle cx="8" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="18" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>Przeciągnij urządzenie na plan</div>
+        </div>
+        <button id="catBtn"><svg class="ic" viewBox="0 0 24 24" width="14" height="14"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Katalog urządzeń</button>
+
+        <div class="fpanel" id="devCard"></div>
+
+        <div class="fpanel" id="toolRail">
+          <button id="undoB" title="Cofnij (Ctrl+Z)">↺</button>
+          <button id="redoB" title="Ponów (Ctrl+Y)">↻</button>
+          <hr>
+          <button id="gridBtn" title="Siatka — kliknij, aby zmienić"><svg class="ic" viewBox="0 0 24 24" width="15" height="15"><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span class="gv" id="gridV">0,5 m</span></button>
+          <hr>
+          <button id="zin" title="Przybliż">+</button>
+          <div id="zoomPct">100%</div>
+          <button id="zout" title="Oddal">−</button>
+          <button id="zfit" title="Dopasuj widok"><svg class="ic" viewBox="0 0 24 24" width="15" height="15"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></svg></button>
+          <hr>
+          <button id="tglMedia" class="on" title="Pokaż / ukryj media"><svg class="ic" viewBox="0 0 24 24" width="15" height="15"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></button>
+          <button id="tglSerw" class="on" title="Pokaż / ukryj strefy serwisowe"><svg class="ic" viewBox="0 0 24 24" width="15" height="15"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/></svg></button>
+        </div>
+
+        <div id="autoRow">
+          <button id="refBtn" title="Ustaw całą fabrykę wg planu referencyjnego z dokumentacji (156×72 m)"><svg class="ic" viewBox="0 0 24 24" width="14" height="14"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 3v18"/></svg>Autorozmieszczenie</button>
+          <button id="autoBtn"><svg class="ic" viewBox="0 0 24 24" width="14" height="14"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>Auto-układ</button>
+          <button id="optBtn" title="Zagęść obecny układ z zachowaniem kolejności procesu i dostępu do ciągów"><svg class="ic" viewBox="0 0 24 24" width="14" height="14"><path d="M4 4h7v7H4zM13 13h7v7h-7z"/><path d="M13 4h7v4h-7zM4 16h7v4H4z"/></svg>Optymalizuj</button>
+        </div>
+        <button id="growBtn" title="Powiększ halę, aby program się zmieścił">⤢ Powiększ halę</button>
+        <div class="fpanel" id="autoPanel">
+          <div id="autoHead"><h2>Auto-układ — rozstawienie urządzeń</h2><button id="autoX" style="border:0;background:none;cursor:pointer;color:var(--mut);font-size:14px;padding:2px 6px" title="Zamknij">✕</button></div>
+          <p class="opis">Model pasmowy lean / SLP: każdy rząd urządzeń przylega do ciągu komunikacyjnego, ciągi tylko poziome w przerwach (bez nakładek), strefy w osobnym paśmie (maszyny nie wchodzą na strefy). Wybierz jedną z 3 propozycji albo użyj przycisku „Optymalizuj" u góry.</p>
+          <div class="arow"><span>Ciąg główny (dwukierunkowy, wózki) [m]</span><input id="aGl" type="number" step="0.5" min="2" max="8" value="4"></div>
+          <div class="arow"><span>Ciąg boczny (jednokierunkowy) [m]</span><input id="aBo" type="number" step="0.5" min="1.5" max="6" value="3"></div>
+          <div class="arow"><span>Ciąg pieszy (przy ścianie) [m]</span><input id="aPi" type="number" step="0.1" min="0.75" max="3" value="1.2"></div>
+          <label class="achk"><input id="aUzup" type="checkbox">uzupełnij plan o brakujące urządzenia z katalogu (po 1 szt.)</label>
+          <label class="achk"><input id="aStrefy" type="checkbox" checked><b>program powierzchni:</b>&nbsp;generuj strefy (magazyny, technika, socjal) + pętlę obwodową z dokami</label>
+          <div id="aAreas" style="border:1px solid var(--line);border-radius:11px;padding:4px 10px;margin-bottom:6px">
+            ${'' /* wypełniane skryptem */}
+          </div>
+          <div class="abtns"><button class="go" id="autoGo">Pokaż 3 propozycje układu</button><button id="autoClr">Wyczyść ciągi i strefy</button></div>
+          <div id="autoOut"></div>
+        </div>
+        <div id="collChip"></div>
+        <div class="hint"><b>klik</b> = karta · <b>R</b> = obrót · <b>Del</b> = usuń</div>
+      </div>
+      <div id="bottomStrip"></div>
+      <div id="viewPane"></div>
+    </div>
+  </main>
+</div>
+
+<div id="halaPanel">
+  <h2>Wymiary hali — edycja ręczna</h2>
+  <div class="arow"><span>Długość [m]</span><input id="hDl" type="number" step="2" min="20" max="400"></div>
+  <div class="arow"><span>Szerokość [m]</span><input id="hSz" type="number" step="2" min="20" max="300"></div>
+  <p class="note">Wymiar roboczy — do potwierdzenia z klientem. Jeśli po pomniejszeniu coś wystaje poza obrys, chip kolizji zaproponuje powiększenie.</p>
+  <div class="abtns"><button class="go" id="hOk">Zastosuj</button><button id="hNo">Anuluj</button></div>
+</div>
+
+<div id="ghost"></div>
+<div id="tip"></div>
+<input type="file" id="fileIn" accept=".json" style="display:none">
+
+<script>
+/* ═══ DANE — placeholder do podmiany po review Marcina (typ źródła: W-draft) ═══ */
+const HALA={dl:156,szer:72,siatka:.5};
+const MEDIA_KOL={energia:"#F97316",woda:"#3B82F6",n2:"#9CA3AF",kwas:"#8B5CF6"};
+const MEDIA_NAZ={energia:"energia",woda:"woda",n2:"azot",kwas:"kwas"};
+const MEDIA_LIT={energia:"E",woda:"W",n2:"N",kwas:"KW"};
+const DEVICES=[{"id": "A1", "nazwa": "Przyjęcie i identyfikacja", "linia": "A", "modul": "Przyjęcie", "dl": 23, "szer": 15, "serw": 0.25, "kW": 20, "kWsr": 20, "n2": 0, "woda": 0, "os": 4, "capex": 890000, "media": ["energia"], "we": "Złom LAB 20 t/d", "wy": "Wsad zidentyf. → A2", "gfx": "montaz", "m2": 400, "tryb": "1–2 zm", "przepust": "20 t/d", "strefa": "Pb", "badge": "", "ref": {"x": 131, "y": 2, "dl": 23, "szer": 15}, "karta": {"opis": "Rozładunek dostaw zużytych LAB, ważenie, identyfikacja partii (MES/LIMS), selekcja typów, wstępne rozładowanie elektryczne akumulatorów z odzyskiem energii do sieci wewnętrznej. Start genealogii partii.", "tryb": "1–2 zmiany (8,9 h/d po optymalizacji breakera)", "wyd": "20 t/d wsadu (opt. do 30 t/d)", "czas": "takt ciągły przyjęć", "surowce": [["Zużyte akumulatory LAB (zakup, ~2,6 zł/kg)", "20 t/d", "rynek złomu / kontrakty"], ["Ogniwa odrzucone z produkcji", "wg jakości", "zawrót z B13/B14"]], "wyjscia": [["Wsad zidentyfikowany, rozładowany", "20 t/d", "→ A2"], ["Energia z rozładowania", "odzysk (−)", "sieć wewnętrzna"]], "urzadzenia": [["Stanowiska rozładunku palet + tace ociekowe", "2", "moduły najazdowe, PP/PE"], ["Przenośniki rolkowe MDR/ZPA", "~30 mb", "strefowe, 24 V"], ["Waga mostowa 60 t + wagi platformowe IP65", "1+2", "legalizacja CE/OIML"], ["Skanery 1D/2D + etykieciarki chemoodporne", "4+2", "IP67, etykiety PP"], ["Stacja rozładowania elektrycznego", "8–12 kanałów", "dwukierunkowa, 15–30 kW/kanał, rekuperacja"], ["Wanny retencyjne", "kpl.", "≥110% największego zbiornika"]], "media": [["Energia elektryczna", "15–25 kWh/h ⚠", "częściowo odzysk z rozładowania (−)"], ["Sprężone powietrze", "5–10 Nm³/h ⚠", "siłowniki, czyszczenie"], ["Woda", "sporadycznie", "mycie posadzki"]], "odpady": [["Uszkodzone obudowy / wycieki elektrolitu", "16 06 01* ⚠", "do A2/A3 — obieg wewnętrzny"], ["Palety, folie, opakowania", "15 01 xx", "recykling zewnętrzny"], ["Czyściwa zanieczyszczone", "15 02 02*", "odbiór uprawniony"]], "bhp": [["Kontakt z H₂SO₄ (nieszczelne akumulatory)", "odzież kwasoodporna, oczomyjki, tace ociekowe"], ["Energia resztkowa / zwarcia", "procedura LOTO, narzędzia izolowane, stacja rozładowania"], ["Transport wewnętrzny, upadek ładunku", "strefy wygrodzone, obuwie S3, kaski"], ["Pary kwasu przy uszkodzonych szt.", "wentylacja nawiewno-wywiewna, monitoring"]], "pow": "400", "obsada": "2 os./zm. × 2 zm. = 4", "dostEU": [{"n": "Damon", "u": "https://damonglobal.com"}, {"n": "Interroll", "u": "https://www.interroll.com"}, {"n": "Europa Systems (PL)", "u": "https://www.europasystems.pl"}, {"n": "RADWAG (PL)", "u": "https://radwag.com"}, {"n": "Zebra", "u": "https://www.zebra.com"}, {"n": "ITECH", "u": "https://www.itechate.com"}], "dostCN": [{"n": "Damon (CN)", "u": "https://damonglobal.com"}, {"n": "Newland, HPRT (CN)", "u": "https://www.newland-id.com"}, {"n": "ITECH Nanjing (CN)", "u": "https://www.itechate.com"}, {"n": "Chroma ATE (TW)", "u": "https://www.chromaate.com"}]}}, {"id": "A2", "nazwa": "Breakowanie + separacja", "linia": "A", "modul": "Recykling mech.", "dl": 23, "szer": 15, "serw": 0.25, "kW": 150, "kWsr": 150, "n2": 0, "woda": 3, "os": 6, "capex": 2089999, "media": ["energia", "woda"], "we": "Wsad 20 t/d", "wy": "Pb·pasta·PP·kwas", "gfx": "kruszarka", "m2": 350, "tryb": "1 zm + rezerwa", "przepust": "2,25 t/h", "strefa": "Pb", "badge": "waskie", "ref": {"x": 106, "y": 2, "dl": 23, "szer": 15}, "karta": {"opis": "Kruszenie akumulatorów i rozdział na frakcje: metaliczną Pb, pastę, PP i elektrolit. Separacja gęstościowa sink-float, odsiew pasty, odwadnianie. Serce strony recyklingowej.", "tryb": "1 zmiana + rezerwa (opt. 2,25 t/h)", "wyd": "20 t/d → 4 frakcje", "czas": "8,9 h/d (bazowo 14,8)", "surowce": [["Wsad z przyjęcia", "20 t/d", "← A1"], ["Woda obiegu separacji", "uzupełnienia", "obieg zamknięty"]], "wyjscia": [["Elektrolit H₂SO₄ surowy", "2,4 t/d (2,0–2,8)", "→ A3"], ["Frakcja metaliczna Pb", "~6,5 t/d", "→ A4"], ["Pasta Pb (odwodniona)", "~7,0 t/d (6,4–7,6)", "→ A5"], ["Polipropylen (obudowy)", "2,4 t/d (2,0–2,8)", "→ A6"], ["Balast (separatory, ebonit)", "~1,7 t/d ⚠", "odpad 19 12 12"]], "urzadzenia": [["Breaker / kruszarka młotkowa", "1", "2,25 t/h (opt.), obudowa dźwiękochłonna ≤85 dB"], ["Separator sink-float", "1", "regulowana gęstość cieczy"], ["Przesiewacz wibracyjny 2-pokładowy", "1", "odsiew pasty"], ["Wirówka pasty (dekanter)", "1", "odwodnienie do transportu"], ["Zbiornik pasty z mieszadłem", "1", "5–10 m³, PP/FRP"], ["Pompy chemoodporne", "6–8", "PP/PVDF, napęd magnetyczny"], ["PLC/SCADA węzła", "1", "integracja MES"]], "media": [["Energia elektryczna", "120–180 kWh/h pracy ⚠", "kruszenie + separacja"], ["Woda procesowa (obieg zamknięty)", "2–4 m³/h uzupełnienia ⚠", "separacja mokra"], ["Sprężone powietrze", "15–25 Nm³/h ⚠"]], "odpady": [["Frakcje produktowe (Pb, pasta, PP, kwas)", "—", "obieg wewnętrzny → A3–A6"], ["Separatory / ebonit / zanieczyszczenia", "19 12 12 ⚠", "frakcja balastowa — odbiór"], ["Ścieki z obiegu separacji", "—", "do A7 (oczyszczalnia)"]], "bhp": [["Pył ołowiu — NDS Pb ⚠ weryfikuj rozporządzenie", "hermetyzacja, odciągi, monitoring stanowisk, monitoring biologiczny Pb we krwi"], ["Aerozol H₂SO₄", "wentylacja, odzież kwasoodporna, oczomyjki"], ["Hałas (kruszenie)", "obudowy dźwiękochłonne, ochronniki słuchu"], ["Elementy wirujące / pochwycenie", "osłony stałe, LOTO, wyłączniki linkowe"]], "pow": "350", "obsada": "3 os./zm. × 2 zm. = 6", "dostEU": [{"n": "STC srl (IT)", "u": "https://www.stcsrl.net"}, {"n": "Engitec (IT)", "u": "https://www.engitec.com"}, {"n": "Sovema (IT)", "u": "https://www.sovemagroup.com"}], "dostCN": [{"n": "SUNY Group (Zhengzhou)", "u": "https://www.sunymachine.com"}, {"n": "San Lan / M&X (Jiangxi, EPC)", "u": null}, {"n": "Henan Reliable", "u": null}, {"n": "Gomine", "u": null}]}}, {"id": "A3", "nazwa": "Gospodarka elektrolitem H₂SO₄", "linia": "A", "modul": "Chemia kwasu", "dl": 23, "szer": 10, "serw": 0.25, "kW": 12, "kWsr": 12, "n2": 0, "woda": 0, "os": 2, "capex": 740000, "media": ["energia", "kwas", "woda"], "we": "Elektrolit surowy ← A2", "wy": "H₂SO₄ 15–38% → B7/B12", "gfx": "reaktor", "m2": 150, "tryb": "przerywana", "przepust": "2,4 t/d", "strefa": "Pb", "badge": "", "ref": {"x": 131, "y": 19, "dl": 23, "szer": 10}, "karta": {"opis": "Odbiór elektrolitu z A2, filtracja (klarowanie z resztek pasty), magazynowanie buforowe, korekta stężenia do 15–38% i dystrybucja do past (B7) i zalewania (B12). Zamknięcie obiegu kwasu.", "tryb": "praca przerywana + recyrkulacja ciągła", "wyd": "2,4 t/d kwasu (2,0–2,8)", "czas": "~2 h/d efektywnie", "surowce": [["Elektrolit surowy", "2,4 t/d", "← A2"], ["Woda demi (korekta stężenia)", "0,5–1,5 m³/d ⚠", "instalacja demi"]], "wyjscia": [["H₂SO₄ battery-grade 15–38%", "~2,2 t/d", "→ B7 (pasty), → B12 (zalewanie)"], ["Placek filtracyjny (resztki pasty)", "śladowo", "zawrót → A5"], ["Nadwyżka kwasu", "bilansowo", "sprzedaż / korekta"]], "urzadzenia": [["Układ filtracji świecowej", "1", "5–15 m³/h"], ["Zbiorniki buforowe dwuściankowe", "3–4", "PE-HD/PP, łącznie ≥30 m³, detekcja przecieku"], ["Pompy magnetyczne", "4", "PP/PVDF"], ["Węzeł korekty stężenia", "1", "dozowanie wody + mieszacz statyczny"], ["Skid neutralizacji awaryjnej", "1", "NaOH/Na₂CO₃"], ["Aparatura pH/gęstość/poziom", "kpl.", "monitoring on-line"]], "media": [["Energia elektryczna", "8–15 kWh/h pracy ⚠"], ["Woda zdemineralizowana", "0,5–1,5 m³/d ⚠", "korekta stężenia"], ["Na₂CO₃/NaOH awaryjnie", "wg zdarzeń", "neutralizacja"]], "odpady": [["Placek filtracyjny (resztki pasty)", "—", "zawrót do A5"], ["Kwas pozaklasowy", "06 01 01*", "neutralizacja → A7"], ["Zużyte świece filtracyjne", "15 02 02*", "odbiór uprawniony"]], "bhp": [["H₂SO₄ stężony — poparzenia chemiczne", "odzież kwasoodporna, przyłbice, oczomyjki + prysznic bezp."], ["Rozszczelnienie zbiorników/rurociągów", "podwójne ścianki, detekcja, retencje 110%"], ["Reakcja egzotermiczna przy rozcieńczaniu", "zawsze kwas do wody, mieszacz statyczny, blokady"]], "pow": "150", "obsada": "1 os./zm. × 2 zm. = 2", "dostEU": [{"n": "Amargo (PL — zbiorniki)", "u": "https://amargo.pl"}, {"n": "Iwaki", "u": "https://www.iwakipumps.jp"}, {"n": "ProMinent", "u": "https://www.prominent.com"}, {"n": "EnviroChemie", "u": "https://www.envirochemie.com"}], "dostCN": [{"n": "Shandong Yasheng", "u": null}, {"n": "SUNY Group (w pakiecie EPC)", "u": "https://www.sunymachine.com"}]}}, {"id": "A4", "nazwa": "Piec topielny + hot-to-product", "linia": "A", "modul": "Obróbka termiczna", "dl": 23, "szer": 12, "serw": 0.25, "kW": 40, "kWsr": 40, "n2": 0, "woda": 4, "os": 6, "capex": 2610000, "media": ["energia", "n2", "woda"], "we": "Frakcja Pb ← A2", "wy": "Pb battery-grade 6,2 t/d", "gfx": "piec", "m2": 300, "tryb": "2 zm", "przepust": "6,2 t/d Pb", "strefa": "Pb", "badge": "", "ref": {"x": 106, "y": 19, "dl": 23, "szer": 12}, "karta": {"opis": "A4 · WYTAPIANIE NISKO-T FRAKCJI PB + HOT-TO-PRODUCT", "tryb": "2 zmiany (12,4 h/d)", "wyd": "6,2 t/d Pb (5,6–6,8)", "czas": "0,5 t/h", "surowce": [["Frakcja metaliczna Pb", "~6,5 t/d", "← A2"]], "wyjscia": [["Pb battery-grade: taśma / siatka / konektory", "łącznie 6,2 t/d (5,6–6,8)", "→ B5 (anody ~2,5), → B6 (~2,0), → B9 (~1,3) ⚠ rozdział wg B+R"], ["Nadmiar Pb", "bilansowo", "sprzedaż (przychód uboczny)"], ["Żużle i zgary", "~0,3 t/d ⚠", "częściowy zawrót / odbiór"]], "urzadzenia": [["Węzeł przygotowania wsadu", "1", "odsączanie, suszenie"], ["Piec topielny elektryczny/indukcyjny", "1", "0,5 t/h, stabilizacja ±3 °C"], ["Kocioł rafinacyjny", "1", "opcja, utrzymanie czystości"], ["Linia hot-to-product", "1", "formowanie taśmy/siatki/konektorów — projekt własny"], ["Odpylanie + mycie gazów pieca", "1", "≤10 mg/Nm³ (BAT)"], ["PLC/SCADA + bezpieczeństwo pieca", "1"]], "media": [["Energia elektryczna", "60–90 kWh/t Pb ⚠", "topienie + straty"], ["Woda chłodząca (obieg zamknięty)", "3–6 m³/h ⚠", "krystalizatory hot-to-product"], ["Sprężone powietrze / N₂ osłonowy", "10–20 Nm³/h ⚠"]], "odpady": [["Żużle i zgary z topienia Pb", "10 04 01* ⚠", "zawrót częściowy / odbiór uprawniony"], ["Pyły z odpylania", "10 04 04* ⚠", "zawrót do wsadu / odbiór"], ["Szlamy z mycia gazów", "—", "do A7"]], "bhp": [["Ciekły Pb 350–450 °C — poparzenia, rozprysk", "odzież żaroodporna, przyłbice, suchy wsad (ryzyko eksplozji pary!)"], ["Dymy i pyły Pb — NDS ⚠", "odciągi miejscowe, monitoring stanowisk i biologiczny"], ["Promieniowanie cieplne", "ekrany, rotacja obsady"], ["Pożar / wysoka temperatura", "strefy p.poż, detekcja, gaśnice do metali"]], "pow": "300", "obsada": "3 os./zm. × 2 zm. = 6", "dostEU": [{"n": "SECO/WARWICK (PL)", "u": "https://www.secowarwick.com"}, {"n": "Inductotherm", "u": "https://www.inductotherm.com"}, {"n": "ABP", "u": "https://abpinduction.com"}, {"n": "Wirtz (know-how odlewu)", "u": "https://www.wirtzusa.com"}], "dostCN": [{"n": "San Lan (rotary/refining w EPC)", "u": null}, {"n": "SUNY Group", "u": "https://www.sunymachine.com"}]}, "custom": true}, {"id": "A5", "nazwa": "Hydrometalurgia pasty → PbO", "linia": "A", "modul": "Hydrometalurgia", "dl": 22, "szer": 27, "serw": 0.25, "kW": 200, "kWsr": 200, "n2": 0, "woda": 8, "os": 9, "capex": 3350000, "media": ["energia", "woda"], "we": "Pasta ← A2", "wy": "PbO α/β + Na₂SO₄", "gfx": "reaktor", "m2": 500, "tryb": "ciągła 24/7", "przepust": "7,0 t/d", "strefa": "Pb", "badge": "waskie", "ref": {"x": 82, "y": 2, "dl": 22, "szer": 27}, "karta": {"opis": "A5 · HYDROMETALURGIA PASTY — ŁUGOWANIE I SYNTEZA PBO", "tryb": "ciągła 24/7 (limituje kalendarz; opt. N+1 → 330 d/rok)", "wyd": "7,0 t/d pasty → PbO α/β", "czas": "szarże 4–6 h ⚠", "surowce": [["Pasta Pb", "~7,0 t/d", "← A2 (+ placek z A3, zwroty past z B7/B8)"], ["Na₂CO₃ (soda kalcynowana)", "~0,15–0,25 t/t pasty → 1,2–1,7 t/d ⚠", "zakup (big-bag)"], ["Woda procesowa / demi", "5–10 m³/d ⚠", "obieg + uzupełnienia"]], "wyjscia": [["PbO α/β battery-grade", "~6,5 t/d ⚠", "→ A8 → B7"], ["Na₂SO₄ krystaliczny (produkt uboczny)", "~1,6 t/d ⚠", "sprzedaż"], ["Frakcja nieroztwarzalna", "śladowo", "odpad"]], "urzadzenia": [["Reaktory ługowania (opt. N+1)", "3+1", "1–3 m³, PP/FRP, mieszadła, pH/ORP"], ["Stacja dozowania Na₂CO₃", "1", "big-bag + rozpuszczanie"], ["Filtracja stało-ciekła + płukanie", "1", "prasa/filtr taśmowy"], ["Suszarka osadu", "1", "próżniowa/horyzontalna"], ["Piec kalcynacji PbO", "1", "350 °C, kontrola α/β"], ["Krystalizator Na₂SO₄ + wirówka", "1"], ["Bufor pasty (opt.)", "1", "~50 m³ — odsprzęgnięcie od A2"]], "media": [["Energia elektryczna", "150–250 kW śr. ⚠", "grzanie reaktorów + kalcynacja"], ["Na₂CO₃", "~0,15–0,25 t/t pasty → 1,2–1,7 t/d ⚠", "stechiometria na PbSO₄ w paście"], ["Woda procesowa/demi", "5–10 m³/d ⚠", "płukanie tortu, obieg"], ["Para / olej grzewczy", "wg bilansu ⚠", "suszenie"]], "odpady": [["Na₂SO₄ krystaliczny", "06 03 14 ⚠", "PRODUKT uboczny — sprzedaż"], ["Filtraty i popłuczyny", "—", "obieg + zrzut przez A7"], ["Frakcja nieroztwarzalna", "19 12 12 ⚠", "odbiór uprawniony"]], "bhp": [["Pyły Pb/PbO — najwyższe narażenie w zakładzie", "hermetyzacja pełna, odciągi, PPE P3, monitoring biologiczny"], ["Gorące media 40–90 °C + żrące roztwory", "izolacje, odzież chemoodporna"], ["Piec kalcynacji — wysoka temperatura", "osłony, blokady, procedury"], ["Praca zmianowa nocna", "procedury samotnej pracy, monitoring"]], "pow": "500", "obsada": "3 os./zm. × 3 zm. = 9", "dostEU": [{"n": "ANDRITZ (filtracja)", "u": "https://www.andritz.com"}, {"n": "Flottweg/GEA", "u": "https://www.flottweg.com"}, {"n": "Nabertherm (piec)", "u": "https://www.nabertherm.com"}, {"n": "Amargo (PL)", "u": "https://amargo.pl"}, {"n": "EKATO", "u": "https://www.ekato.com"}], "dostCN": [{"n": "San Lan (desulfuryzacja w EPC)", "u": null}, {"n": "SUNY Group — węzeł kalcynacji α/β walidować osobno", "u": "https://www.sunymachine.com"}]}}, {"id": "A6", "nazwa": "Mycie + regranulacja PP", "linia": "A", "modul": "Tworzywa", "dl": 16, "szer": 12, "serw": 0.25, "kW": 110, "kWsr": 110, "n2": 0, "woda": 2, "os": 2, "capex": 1190000, "media": ["energia", "woda"], "we": "PP ← A2", "wy": "Regranulat PP 2,2 t/d", "gfx": "ekstruder", "m2": 300, "tryb": "1 zm", "przepust": "2,4 t/d", "strefa": "Pb", "badge": "", "ref": {"x": 64, "y": 18, "dl": 16, "szer": 12}, "karta": {"opis": "Rozdrobnienie obudów PP, mycie tarciowe z flotacją (usunięcie pasty i kwasu), suszenie, ekstruzja z odgazowaniem i filtracją stopu, regranulacja. Regranulat → obudowy ogniw KLAB lub sprzedaż.", "tryb": "1 zmiana (8 h/d)", "wyd": "2,4 t/d (0,3 t/h)", "czas": "linia ciągła", "surowce": [["PP z separacji", "2,4 t/d", "← A2"]], "wyjscia": [["Regranulat PP", "~2,2 t/d", "obudowy ogniw (wtrysk u podwykonawcy ⚠) / sprzedaż"], ["Odsiew flotacji (PE, separatory)", "~0,2 t/d ⚠", "recykling zewn."]], "urzadzenia": [["Granulator nożowy + podajnik", "1", "0,3–0,4 t/h"], ["Myjka tarciowa + flotacja/hydrocyklony", "1"], ["Wirówka odwadniająca + suszenie", "1"], ["Ekstruder z odgazowaniem", "1", "filtracja stopu, regranulacja"], ["Detekcja metali + MFI on-line", "1"], ["Silosy / big-bag", "2–3"]], "media": [["Energia elektryczna", "90–130 kWh/h pracy ⚠", "ekstruzja dominuje"], ["Woda (obieg zamknięty)", "1–2 m³/h uzupełnienia ⚠", "mycie/flotacja"], ["Sprężone powietrze", "10 Nm³/h ⚠"]], "odpady": [["Ścieki z mycia (kwaśne, Pb śladowe)", "—", "do A7"], ["Odsiew flotacji (separatory, PE)", "19 12 04 ⚠", "odbiór/recykling zewn."], ["Odpady z filtracji stopu", "19 12 12 ⚠", "odbiór"]], "bhp": [["Hałas granulatora", "obudowa, ochronniki słuchu"], ["Gorący stop PP (ekstruder ~230 °C)", "osłony, rękawice termiczne"], ["Noże granulatora — serwis", "LOTO, procedury wymiany"], ["Śladowy Pb w ściekach mycia", "szczelny obieg, badania wody"]], "pow": "300", "obsada": "2 os./zm. × 1 zm. = 2", "dostEU": [{"n": "Herbold Meckesheim", "u": "https://www.herbold.com"}, {"n": "Lindner Washtech", "u": "https://www.lindner.com"}, {"n": "EREMA", "u": "https://www.erema.com"}, {"n": "Starlinger", "u": "https://www.starlinger.com"}], "dostCN": [{"n": "Genox (Guangzhou)", "u": null}, {"n": "Aceretech (Suzhou)", "u": "https://www.aceretech.com"}, {"n": "POLYSTAR (TW, Tainan)", "u": "https://www.polystarco.com"}, {"n": "Retech/Mooge (Zhangjiagang)", "u": null}]}}, {"id": "A7", "nazwa": "Oczyszczanie mediów i emisji (EHS)", "linia": "A", "modul": "EHS", "dl": 16, "szer": 14, "serw": 0.25, "kW": 55, "kWsr": 55, "n2": 0, "woda": 0, "os": 2, "capex": 1640000, "media": ["energia", "woda"], "we": "Gazy/ścieki zakładu", "wy": "Powietrze/woda oczyszcz.", "gfx": "wanna", "m2": 250, "tryb": "ciągła", "przepust": "wg strumieni", "strefa": "Pb", "badge": "", "ref": {"x": 64, "y": 2, "dl": 16, "szer": 14}, "karta": {"opis": "Centralny węzeł ochrony środowiska: odpylanie gazów, absorpcja aerozoli H₂SO₄, filtry węglowe (polishing), oczyszczalnia ścieków (neutralizacja + koagulacja/flokulacja), odwadnianie osadów, monitoring emisji on-line. Warunek pozwolenia zintegrowanego (IPPC).", "tryb": "ciągła — nadąża za instalacjami", "wyd": "wg strumieni zakładu", "czas": "—", "surowce": [["Gazy procesowe (A2/A4/A5, B4/B5/B13)", "wg strumieni", "← instalacje"], ["Ścieki technologiczne", "wg strumieni", "← instalacje"], ["NaOH / Ca(OH)₂ / flokulanty", "wg ładunku ⚠", "zakup"]], "wyjscia": [["Powietrze oczyszczone", "≤10 mg/Nm³", "emitor (wg pozwolenia)"], ["Woda oczyszczona", "obieg / zrzut", "wg pozwolenia wodnoprawnego"], ["Osady z Pb (odwodnione)", "~0,1–0,3 t/d ⚠", "zawrót Pb → A5 / odbiór"]], "urzadzenia": [["Cyklon + filtr workowy", "2 ciągi", "≤10 mg/Nm³"], ["Płuczka/absorber H₂SO₄", "1"], ["Filtry węglowe", "1", "polishing"], ["Oczyszczalnia: neutralizacja + flokulacja", "1", "zrzut wg pozwolenia"], ["Prasa/wirówka osadów", "1"], ["Monitoring emisji on-line", "kpl.", "pył, SO₂, Pb ⚠ zakres wg decyzji"]], "media": [["Energia elektryczna", "40–70 kW śr. ⚠", "wentylatory dominują"], ["NaOH / Ca(OH)₂ / flokulanty", "wg ładunku ⚠", "neutralizacja i strącanie"], ["Woda", "obieg"]], "odpady": [["Osady pofiltracyjne z Pb", "19 08 13* ⚠", "odbiór uprawniony / zawrót Pb do A5"], ["Zużyty węgiel aktywny", "06 13 02* ⚠", "regeneracja/odbiór"], ["Zużyte rękawy filtracyjne", "15 02 02*", "odbiór"]], "bhp": [["Prace na wysokości (filtry, kominy)", "zabezpieczenia, szelki, zezwolenia"], ["Chemikalia neutralizacji", "PPE chemiczne, oczomyjki"], ["Przestrzenie zamknięte (zbiorniki)", "procedura wejść, detekcja gazów, asekuracja"]], "pow": "250", "obsada": "1 os./zm. × 2 zm. = 2", "dostEU": [{"n": "Nederman MikroPul", "u": "https://www.nederman.com"}, {"n": "Donaldson", "u": "https://www.donaldson.com"}, {"n": "Körting", "u": "https://www.koerting.de"}, {"n": "Veolia WT", "u": "https://www.veoliawatertechnologies.com"}, {"n": "EnviroChemie", "u": "https://www.envirochemie.com"}], "dostCN": [{"n": "SUNY Group (air pollution) — zgodność BAT/IED udowodnić przed zakupem", "u": "https://www.sunymachine.com"}]}}, {"id": "A8", "nazwa": "Kontrola jakości + magazyn surowców", "linia": "A", "modul": "QA / magazyn", "dl": 40, "szer": 9, "serw": 0.25, "kW": 20, "kWsr": 20, "n2": 0, "woda": 0, "os": 5, "capex": 1790000, "media": ["energia", "n2"], "we": "Pb·PbO·H₂SO₄·PP", "wy": "Surowce zwolnione → B", "gfx": "montaz", "m2": 400, "tryb": "2 zm", "przepust": "partie", "strefa": "Pb", "badge": "krytyczne", "ref": {"x": 64, "y": 32, "dl": 40, "szer": 9}, "karta": {"opis": "Laboratoryjne potwierdzenie battery-grade (Pb: ICP-OES; PbO: XRD α/β, BET, granulometria; H₂SO₄; PP: MFI) i buforowe magazynowanie surowców. Punkt zwolnienia partii do linii B — pojedynczy punkt krytyczny topologii (dublować kluczową aparaturę).", "tryb": "2 zmiany, lab na bieżąco", "wyd": "wszystkie strumienie", "czas": "partie", "surowce": [["Pb, PbO, H₂SO₄, regranulat PP", "wszystkie strumienie", "← A3–A6"]], "wyjscia": [["Surowce zwolnione battery-grade", "wg bilansu", "→ B5/B6/B7/B9/B11/B12 (brama do linii B)"], ["Partie zatrzymane", "wg jakości", "zawrót do korekty"]], "urzadzenia": [["ICP-OES + przygotowanie prób", "1", "czystość Pb, domieszki"], ["XRD", "1", "fazy α/β PbO"], ["Analizator BET", "1", "powierzchnia właściwa"], ["Granulometr laserowy", "1", "D10/D50/D90"], ["Silosy PbO / strefy Pb / zbiorniki H₂SO₄", "kpl.", "retencje, atesty"], ["Integracja MES/LIMS", "1", "zwolnienia partii"]], "media": [["Energia elektryczna", "15–25 kW śr. ⚠", "lab + wentylacja"], ["Gazy techniczne (Ar do ICP, N₂)", "Ar ~15 l/min pracy ⚠"], ["Woda demi", "0,2 m³/d ⚠"]], "odpady": [["Odczynniki i próbki laboratoryjne", "16 05 06* ⚠", "odbiór uprawniony"], ["Opakowania po odczynnikach", "15 01 10*", "odbiór"]], "bhp": [["Odczynniki laboratoryjne (kwasy, roztwory Pb)", "dygestoria, PPE, procedury"], ["Pył PbO przy próbkowaniu", "próbkowanie hermetyczne, P3"], ["Butle gazowe", "mocowanie, wentylacja, detekcja"]], "pow": "400", "obsada": "2–3 os./zm. × 2 zm. = 5", "dostEU": [{"n": "Agilent", "u": "https://www.agilent.com"}, {"n": "Thermo", "u": "https://www.thermofisher.com"}, {"n": "Malvern Panalytical", "u": "https://www.malvernpanalytical.com"}, {"n": "Bruker", "u": "https://www.bruker.com"}, {"n": "Anton Paar (dystr. PL: MS Spektrum, Spectro-Lab)", "u": "https://www.anton-paar.com"}], "dostCN": [{"n": "— (serwis EU kluczowy dla aparatury analitycznej)", "u": null}]}}, {"id": "B1", "nazwa": "Magazyn wejściowy linii B", "linia": "B", "modul": "Magazyn", "dl": 49, "szer": 9, "serw": 0.25, "kW": 15, "kWsr": 15, "n2": 3, "woda": 0, "os": 2, "capex": 1120000, "media": ["energia", "n2"], "we": "Surowce B (zakup + A8)", "wy": "→ B2/B3/B7/B10/B12", "gfx": "montaz", "m2": 400, "tryb": "2 zm", "przepust": "1455 kWh/d", "strefa": "ATEX", "badge": "", "ref": {"x": 106, "y": 32, "dl": 49, "szer": 9}, "karta": {"opis": "Przyjęcie i składowanie surowców linii B: pianki PU, żywice, etanol (strefa ATEX), H₂SO₄, dodatki past, separatory, obudowy. Zasilanie stanowisk przez AGV wg zleceń MES.", "tryb": "2 zmiany", "wyd": "obsługa 1 455 kWh/d", "czas": "—", "surowce": [["Pianka PU (taśmy/rolki)", "wg bilansu B+R ⚠", "zakup zewn."], ["Żywice + etanol (uzupełnienia)", "EtOH: 3–6% obiegu ⚠", "zakup zewn."], ["Separatory PE/AGM, dodatki past, SiO₂", "wg receptur ⚠", "zakup zewn."], ["Surowce z recyklingu", "wg bilansu", "← A8"]], "wyjscia": [["Surowce skompletowane wg zleceń", "—", "→ B2/B3/B7/B10/B12 (AGV)"]], "urzadzenia": [["Regały / miniload AS/RS", "kpl.", "integracja WMS"], ["Przenośniki MDR/ZPA", "~40 mb"], ["Zbiorniki dwupłaszczowe EtOH (ATEX) i H₂SO₄", "2+2", "detekcja przecieków"], ["Pompy magnetyczne + rurociągi DWT", "kpl."], ["Wagi + skanery", "kpl."]], "media": [["Energia elektryczna", "10–20 kW śr. ⚠"], ["Azot (inertyzacja EtOH)", "2–5 Nm³/h ⚠", "poduszka zbiorników"]], "odpady": [["Opakowania (big-bag, beczki, folie)", "15 01 xx", "recykling zewn."], ["Opakowania po chemii", "15 01 10*", "odbiór uprawniony"]], "bhp": [["Strefa ATEX (pary EtOH)", "urządzenia Ex, uziemienia, detekcja LEL"], ["Transport AGV / wózki", "strefy ruchu, skanery bezpieczeństwa"], ["Składowanie chemikaliów", "segregacja, retencje, karty SDS"]], "pow": "400", "obsada": "1 os./zm. × 2 zm. = 2", "dostEU": [{"n": "TGW", "u": "https://www.tgw-group.com"}, {"n": "SSI Schäfer", "u": "https://www.ssi-schaefer.com"}, {"n": "Kardex", "u": "https://www.kardex.com"}, {"n": "Jungheinrich", "u": "https://www.jungheinrich.com"}, {"n": "Amargo (PL)", "u": "https://amargo.pl"}], "dostCN": [{"n": "Hikrobot (AS/RS + iWMS)", "u": "https://www.hikrobotics.com"}, {"n": "Geek+ (Geekplus Europe)", "u": "https://www.geekplus.com"}, {"n": "Damon", "u": "https://damonglobal.com"}]}}, {"id": "B2", "nazwa": "Przygotowanie żywic (ATEX)", "linia": "B", "modul": "Elektroda", "dl": 12, "szer": 13, "serw": 0.25, "kW": 40, "kWsr": 40, "n2": 7, "woda": 0, "os": 2, "capex": 1040000, "media": ["energia", "n2", "woda"], "we": "Żywice + EtOH ← B1", "wy": "Roztwór impregn. → B3", "gfx": "reaktor", "m2": 150, "tryb": "szarże 2–4 h", "przepust": "wg B3", "strefa": "ATEX", "badge": "", "ref": {"x": 143, "y": 44, "dl": 12, "szer": 13}, "karta": {"opis": "Mieszanie roztworów żywic (nośnik węgla po pirolizie) w etanolu, w reaktorach z płaszczem i inertyzacją N₂. Rektyfikacja odzyskanego etanolu z suszarni B3 — zamknięty obieg rozpuszczalnika.", "tryb": "szarże 2–4 h, równolegle do B3", "wyd": "wg zapotrzebowania B3", "czas": "2–4 h/szarża", "surowce": [["Żywice + dodatki", "wg receptury ⚠", "← B1"], ["Etanol świeży + odzyskany", "obieg zamknięty", "← B1 / ← B3 (kondensat)"]], "wyjscia": [["Roztwór impregnacyjny", "wg zapotrzebowania B3", "→ B3"], ["EtOH zrektyfikowany", "zawrót", "→ obieg B2/B3"], ["Pozostałość podestylacyjna", "śladowo", "odpad 07 01 08*"]], "urzadzenia": [["Reaktory mieszające ATEX z płaszczem", "2", "dozowanie masowe"], ["Kolumna rektyfikacyjna EtOH + skraplacze", "1", "odzysk z B3"], ["Filtry świecowe", "2"], ["Wentylacja Ex + detekcja LEL", "kpl."], ["SCADA węzła", "1"]], "media": [["Energia elektryczna", "30–50 kW śr. ⚠", "grzanie/chłodzenie, rektyfikacja"], ["Etanol — uzupełnienie strat", "3–6% obiegu ⚠", "reszta w obiegu zamkniętym"], ["Azot", "5–10 Nm³/h ⚠", "inertyzacja"], ["Woda chłodząca", "obieg", "skraplacze"]], "odpady": [["Pozostałość podestylacyjna (smoły żywiczne)", "07 01 08* ⚠", "odbiór uprawniony"], ["Zużyte świece filtracyjne", "15 02 02*", "odbiór"]], "bhp": [["Atmosfera wybuchowa EtOH — strefy Ex", "inertyzacja N₂, urządzenia Ex, uziemienia, detekcja LEL + blokady"], ["Kontakt z żywicami/rozpuszczalnikiem", "PPE chemiczne, wentylacja"], ["Gorące powierzchnie kolumny", "izolacje, osłony"]], "pow": "150", "obsada": "1 os./zm. × 2 zm. = 2", "dostEU": [{"n": "De Dietrich", "u": "https://www.dedietrich.com"}, {"n": "EKATO", "u": "https://www.ekato.com"}, {"n": "NORMAG/Iludest", "u": null}, {"n": "integrator PL", "u": null}], "dostCN": [{"n": "— (ATEX/PED: rekomendacja EU)", "u": null}]}}, {"id": "B3", "nazwa": "Impregnacja pianki PU (roll-to-roll)", "linia": "B", "modul": "Elektroda", "dl": 26, "szer": 12, "serw": 0.25, "kW": 80, "kWsr": 80, "n2": 15, "woda": 0, "os": 4, "capex": 1940000, "media": ["energia", "n2"], "we": "Pianka PU ← B1", "wy": "Formatki → B4", "gfx": "rollline", "m2": 350, "tryb": "ciągła", "przepust": "1455 kWh/d", "strefa": "ATEX", "badge": "", "ref": {"x": 128, "y": 59, "dl": 26, "szer": 12}, "karta": {"opis": "Rozwijanie taśmy pianki PU (200–500 m), impregnacja roztworem żywicy (wałki dozująco-dociskowe serwo), przedmuch, suszenie IR/konwekcja 140 °C z pełnym odzyskiem etanolu do B2, cięcie na formatki. Maszyna projektowana od zera (rdzeń IP).", "tryb": "ciągła, sprzężona z B4", "wyd": "ekwiwalent 1 455 kWh/d", "czas": "0,75 h przejścia", "surowce": [["Pianka PU (taśma 200–500 m)", "wg bilansu B+R ⚠", "← B1"], ["Roztwór impregnacyjny", "wg receptury", "← B2"]], "wyjscia": [["Formatki impregnowane i wysuszone", "ekwiwalent 1 455 kWh/d", "→ bufor WIP → B4"], ["Kondensat EtOH", "odzysk ~95% ⚠", "→ B2 (rektyfikacja)"], ["Ścinki taśmy", "śladowo", "odpad / zawrót"]], "urzadzenia": [["Rozwijak + stół tnący/zszywanie taśmy", "1"], ["Wanna impregnacyjna z wałkami serwo", "1", "PP/SS"], ["Tunel przedmuchu", "1"], ["Suszarka IR/konwekcyjna 140 °C", "1", "odzysk EtOH → B2"], ["Gilotyna serwo (formatki)", "1", "format docelowy 25×50 cm"], ["Obudowa ATEX całości", "1"]], "media": [["Energia elektryczna", "60–100 kW śr. ⚠", "suszenie dominuje (część z rekuperacji B4)"], ["Roztwór żywicy (z B2)", "wg receptury ⚠"], ["Azot / powietrze Ex", "10–20 Nm³/h ⚠"]], "odpady": [["Ścinki i odrzuty pianki impregnowanej", "07 02 13 ⚠", "częściowy zawrót / odbiór"], ["Kondensat EtOH zanieczyszczony", "07 01 04* ⚠", "rektyfikacja w B2"]], "bhp": [["ATEX — pary EtOH w suszarce", "stężenie <25% DGW, detekcja, blokady, Ex"], ["Wałki i gilotyna — pochwycenie/przecięcie", "osłony, kurtyny świetlne, LOTO"], ["Gorące strefy suszarki", "osłony, izolacje"]], "pow": "350", "obsada": "2 os./zm. × 2 zm. = 4", "dostEU": [{"n": "Integrator maszyn specjalnych PL (AIUT, ZAP-Robotyka, Improve) + Heraeus (IR)", "u": "https://www.heraeus.com"}], "dostCN": [{"n": "tylko komponenty — integracja i IP w PL/EU", "u": null}]}, "custom": true}, {"id": "B4", "nazwa": "Piroliza LT + HT (24/7)", "linia": "B", "modul": "Obróbka termiczna", "dl": 18, "szer": 27, "serw": 0.25, "kW": 325, "kWsr": 325, "n2": 55, "woda": 3, "os": 6, "capex": 3130000, "media": ["energia", "n2", "woda"], "we": "Formatki ← B3", "wy": "Siatki węglowe → B5", "gfx": "piec", "m2": 450, "tryb": "24/7", "przepust": "1455 kWh/d", "strefa": "czysta", "badge": "waskie", "ref": {"x": 108, "y": 44, "dl": 18, "szer": 27}, "karta": {"opis": "Dwustopniowa karbonizacja formatek: strefa LT 250–900 °C (kontrolowane odgazowanie żywic/PU — ryzyko pęknięć) i strefa HT 1200–1400 °C w N₂ (przewodność szkieletu). Katalityczne dopalanie syngazów, rekuperacja ciepła do suszarni B3. Mufla sekcyjna, bufory WIP 8–12 h z obu stron.", "tryb": "24/7 (dyktuje takt; postój 1 h = −4,2% doby)", "wyd": "ekwiwalent 1 455 kWh/d (+20% zapasu mufli)", "czas": "4,5 h (LT 2–4 + HT 1–2)", "surowce": [["Formatki impregnowane", "ekwiwalent 1 455 kWh/d", "← B3 (bufor 8–12 h)"], ["Azot 99,999%", "30–80 Nm³/h ⚠", "zakup / generator"]], "wyjscia": [["Siatki węglowe (szkielety elektrod)", "ubytek masy ~60–70% ⚠", "→ bufor WIP → B5"], ["Gazy pirolityczne → dopalacz", "—", "→ rekuperacja ciepła → B3"], ["Odrzuty (pęknięcia)", "cel <3% ⚠", "zawrót węgla / odpad"]], "urzadzenia": [["Piec ciągły LT (przepychowy)", "1", "250–900 °C, odbiór pirolizatów"], ["Piec ciągły HT (mufla grafitowa)", "1", "1200–1400 °C, N₂, szer. +20%"], ["Stacje za-/rozładunku + stojaki", "kpl."], ["Dopalacz katalityczny + filtracja", "1", "strumień ustalony"], ["Wymienniki rekuperacji", "1", "→ B3"], ["Sterowanie SIL + bufory WIP", "kpl.", "8–12 h przed/za"]], "media": [["Energia elektryczna", "250–400 kW śr. ⚠", "największy odbiornik zakładu"], ["Azot 99,999%", "30–80 Nm³/h ⚠", "O₂ <50 ppm w komorze"], ["Woda chłodząca", "obieg", "strefy wyjściowe"], ["Gaz/energia dopalacza", "autotermicznie po rozruchu ⚠"]], "odpady": [["Gazy pirolityczne", "—", "dopalanie katalityczne → emisja wg pozwolenia"], ["Smoły ze strefy LT", "05 06 03*/07 01 08* ⚠", "odbiór uprawniony"], ["Odrzuty formatek (pęknięcia)", "19 12 12 ⚠", "częściowy zawrót węgla"]], "bhp": [["Ekstremalne temperatury 1200–1400 °C", "osłony, blokady stref, PPE żaroodporne"], ["CO i syngazy — zatrucie", "detekcja CO, wentylacja, procedury awaryjne"], ["Azot — niedotlenienie w strefach", "detekcja O₂, wentylacja, procedura wejść"], ["Praca 24/7 — zmęczenie nocne", "rotacja, monitoring samotnej pracy"]], "pow": "450", "obsada": "2 os./zm. × 3 zm. = 6", "dostEU": [{"n": "ONEJOON", "u": "https://www.onejoon.com"}, {"n": "Harper International", "u": "https://www.harperintl.com"}, {"n": "Nabertherm", "u": "https://www.nabertherm.com"}, {"n": "SECO/WARWICK (PL)", "u": "https://www.secowarwick.com"}], "dostCN": [{"n": "ACME (Changsha)", "u": null}, {"n": "Wuxi Fuan (N₂ 99,999%, O₂<50 ppm)", "u": null}, {"n": "Henan Sante", "u": null}]}}, {"id": "B5", "nazwa": "Galwaniczna metalizacja Pb", "linia": "B", "modul": "Elektroda", "dl": 13, "szer": 13, "serw": 0.25, "kW": 110, "kWsr": 110, "n2": 0, "woda": 4, "os": 4, "capex": 1340000, "media": ["energia", "kwas", "woda"], "we": "Siatki ← B4 · anody ← A4", "wy": "Elektrody Pb ~100 µm → B6", "gfx": "wanna", "m2": 300, "tryb": "2,5 zm", "przepust": "1455 kWh/d", "strefa": "czysta", "badge": "", "ref": {"x": 90, "y": 44, "dl": 13, "szer": 13}, "karta": {"opis": "Elektrolityczne osadzanie ciągłej powłoki Pb na szkieletach węglowych (kasety). Przygotowanie powierzchni, kąpiel główna z filtracją i odświeżaniem, płukania kaskadowe, suszenie. Anody z Pb z A4.", "tryb": "2,5 zmiany (18 h/d)", "wyd": "ekwiwalent 1 455 kWh/d", "czas": "1,5 h (~100 µm @ 2–3 A/dm²)", "surowce": [["Siatki węglowe", "ekwiwalent 1 455 kWh/d", "← B4"], ["Anody Pb (rozpuszczalne)", "~2,5 t/d ⚠", "← A4/A8"], ["Chemia kąpieli + woda demi", "2–5 m³/d ⚠", "zakup / demi"]], "wyjscia": [["Elektrody metalizowane Pb (~100 µm)", "ekwiwalent 1 455 kWh/d", "→ B6"], ["Szlamy anodowe", "śladowo", "zawrót Pb → A4"]], "urzadzenia": [["Linia galwaniczna wannowa", "1", "PP/PVDF, transporter kaset"], ["Prostowniki wieloobwodowe", "kpl.", "sterowanie profilem prądu"], ["Filtracja i odświeżanie kąpieli", "1"], ["Płukania kaskadowe + odzysk", "1"], ["Suszarka", "1"]], "media": [["Energia elektryczna", "80–140 kW śr. ⚠", "prostowniki"], ["Woda demi", "2–5 m³/d ⚠", "płukania (kaskada ogranicza)"], ["Chemia kąpieli (Pb, dodatki)", "wg zużycia ⚠", "anody rozpuszczalne z A4"], ["Wentylacja wyciągowa", "ciągła"]], "odpady": [["Zużyte kąpiele i elektrolity", "11 01 05*/06* ⚠", "regeneracja / odbiór"], ["Ścieki popłuczne z Pb", "19 08 13* ⚠", "strącanie w A7, zawrót Pb"], ["Szlamy anodowe", "11 01 09* ⚠", "zawrót Pb do A4"]], "bhp": [["Elektrolity Pb — kontakt/aerozole", "odciągi krawędziowe, PPE chemiczne, monitoring Pb"], ["Prąd stały dużej mocy", "izolacje, LOTO, uprawnienia SEP"], ["Kwasy/ługi przygotowania powierzchni", "oczomyjki, prysznice, wentylacja"]], "pow": "300", "obsada": "2 os./zm. × 2 zm. = 4", "dostEU": [{"n": "Galvatek (FI)", "u": "https://www.galvatek.com"}, {"n": "Schlötter", "u": "https://www.schloetter.de"}, {"n": "prostowniki: KraftPowercon, Munk", "u": "https://www.kraftpowercon.com"}, {"n": "chemia: Atotech", "u": "https://www.atotech.com"}], "dostCN": [{"n": "AUTECH/plcmachine", "u": "https://mac-eng.com"}, {"n": "Xingyi (Wuxi)", "u": null}, {"n": "Guangzhou Gaohui (prostowniki)", "u": null}]}}, {"id": "B6", "nazwa": "Szkielet i kontakty Pb", "linia": "B", "modul": "Montaż płyt", "dl": 13, "szer": 13, "serw": 0.25, "kW": 45, "kWsr": 45, "n2": 5, "woda": 2, "os": 4, "capex": 1490000, "media": ["energia", "n2", "woda"], "we": "Elektrody ← B5 · Pb ← A4", "wy": "Elektrody z kontaktami → B8", "gfx": "pastownica", "m2": 200, "tryb": "1,5–2 zm", "przepust": "takt 1–2 min", "strefa": "czysta", "badge": "", "ref": {"x": 90, "y": 58, "dl": 13, "szer": 13}, "karta": {"opis": "Nadanie elektrodzie sztywności i ścieżek prądowych: druk/odlew beleczek Pb na zmetalizowanym szkielecie + monolityczne wtapianie wyprowadzeń (integralne kontaktowanie — filar IP). Dwie ścieżki B+R: depozycja addytywna lub mini-odlew w formach krawędziowych.", "tryb": "1,5–2 zmiany", "wyd": "takt 1–2 min/szt.", "czas": "0,3 h/partia", "surowce": [["Elektrody metalizowane", "ekwiwalent 1 455 kWh/d", "← B5"], ["Pb na beleczki i wyprowadzenia", "~2,0 t/d ⚠", "← A4/A8"]], "wyjscia": [["Elektrody ze szkieletem i kontaktami", "ekwiwalent 1 455 kWh/d", "→ B8"], ["Zgary Pb", "śladowo", "zawrót → A4"]], "urzadzenia": [["Stanowisko druku Pb LUB mini-odlewnia", "1", "decyzja po B+R"], ["Pozycjonowanie wizyjne", "1", "Cognex/Keyence"], ["Zgrzewanie/napawanie kontaktów", "1"], ["Chłodzenie + odpylanie", "1"]], "media": [["Energia elektryczna", "30–60 kW śr. ⚠", "topielnie lokalne Pb"], ["Azot osłonowy", "5–10 Nm³/h ⚠"], ["Woda chłodząca", "obieg"]], "odpady": [["Zgary i odpady Pb", "10 04 01* ⚠", "zawrót do A4"], ["Odrzuty elektrod", "—", "zawrót Pb/węgiel wg frakcji"]], "bhp": [["Ciekły Pb w topielniach lokalnych", "jak A4: PPE żaroodporne, suchość form"], ["Dymy Pb przy zgrzewaniu/napawaniu", "odciągi punktowe, monitoring"], ["Roboty w ruchu", "wygrodzenia, skanery stref"]], "pow": "200", "obsada": "2 os./zm. × 2 zm. = 4", "dostEU": [{"n": "Projekt własny + Wirtz (formy)", "u": "https://www.wirtzusa.com"}, {"n": "FANUC/KUKA", "u": "https://www.fanuc.eu"}, {"n": "Cognex/Keyence", "u": "https://www.cognex.com"}], "dostCN": [{"n": "— (rdzeń IP — nie zlecać)", "u": null}]}, "custom": true}, {"id": "B7", "nazwa": "Przygotowanie past elektrodowych", "linia": "B", "modul": "Montaż płyt", "dl": 13, "szer": 7, "serw": 0.25, "kW": 30, "kWsr": 30, "n2": 0, "woda": 2, "os": 2, "capex": 1120000, "media": ["energia", "kwas", "woda"], "we": "PbO ← A5 · H₂SO₄ ← A3", "wy": "Pasty ± → B8", "gfx": "reaktor", "m2": 150, "tryb": "2–3 szarże/d", "przepust": "~7 t past/d", "strefa": "czysta", "badge": "", "ref": {"x": 75, "y": 44, "dl": 13, "szer": 7}, "karta": {"opis": "Mieszanie past dodatniej i ujemnej: PbO (z A5) + H₂SO₄ (z A3) + woda + dodatki (ekspandery, włókna). Kontrola gęstości, penetracji i temperatury szarży. Mieszalniki zamknięte z odpylaniem HEPA i myciem CIP.", "tryb": "2–3 szarże/d (3 h/d)", "wyd": "~7 t past/d", "czas": "0,75–1 h/szarża", "surowce": [["PbO α/β", "~6,5 t/d", "← A5/A8"], ["H₂SO₄ rozcieńczony", "wg receptury", "← A3/A8"], ["Woda demi + dodatki (ekspandery, włókna)", "wg receptur ⚠", "← B1 / demi"]], "wyjscia": [["Pasta dodatnia i ujemna", "~7,5 t/d ⚠", "→ B8 (na bieżąco, szarże)"], ["Popłuczyny CIP", "śladowo", "→ A7 (zawrót Pb)"]], "urzadzenia": [["Mieszalniki past (＋ i −)", "2", "zamknięte, płaszcz chłodzący"], ["Dozowniki PbO / kwasu / dodatków", "kpl.", "wagowe"], ["Odpylanie HEPA", "1"], ["Mycie CIP", "1"]], "media": [["Energia elektryczna", "20–40 kWh/szarża ⚠"], ["PbO", "~6,5 t/d ⚠", "z A5"], ["H₂SO₄ rozc.", "wg receptury", "z A3"], ["Woda demi + chłodząca", "1–2 m³/d ⚠", "egzotermia szarży"]], "odpady": [["Popłuczyny CIP z Pb", "19 08 13* ⚠", "do A7, zawrót Pb"], ["Resztki past", "—", "zawrót do A5"]], "bhp": [["Pył PbO przy załadunku — wysokie narażenie", "hermetyczny transfer z silosów, HEPA, PPE P3, monitoring"], ["Egzotermia pasty (kwas)", "chłodzenie płaszczowe, kontrola T"], ["Mieszadła — pochwycenie", "blokady pokryw, LOTO"]], "pow": "150", "obsada": "1 os./zm. × 2 zm. = 2", "dostEU": [{"n": "EIRICH", "u": "https://www.eirich.com"}, {"n": "OAK (Wirtz)", "u": "https://www.wirtzusa.com"}, {"n": "Sovema", "u": "https://www.sovemagroup.com"}], "dostCN": [{"n": "Xinxu Group", "u": null}, {"n": "Wuxi Huanfan", "u": null}, {"n": "Tai'an Shuanglong", "u": null}]}}, {"id": "B8", "nazwa": "Pastowanie dwustronne", "linia": "B", "modul": "Montaż płyt", "dl": 13, "szer": 14, "serw": 0.25, "kW": 22, "kWsr": 22, "n2": 0, "woda": 1, "os": 4, "capex": 1120000, "media": ["energia", "woda"], "we": "Elektrody ← B6 · pasty ← B7", "wy": "Płyty pastowane → B8b", "gfx": "pastownica", "m2": 250, "tryb": "1,5 zm", "przepust": "takt sek.", "strefa": "czysta", "badge": "", "ref": {"x": 75, "y": 52, "dl": 13, "szer": 14}, "karta": {"opis": "Obustronne naniesienie pasty na delikatną siatkę kompozytową przy obniżonym nacisku (podparcia próżniowe), laserowa kontrola grubości i gramatury. Adaptacja rozwiązań rynkowych do elektrody KLAB.", "tryb": "1,5 zmiany (załadunek)", "wyd": "takt sekundowy", "czas": "0,25 h/partia", "surowce": [["Elektrody ze szkieletem", "ekwiwalent 1 455 kWh/d", "← B6"], ["Pasty ＋/−", "~7,5 t/d", "← B7"]], "wyjscia": [["Płyty pastowane (mokre)", "ekwiwalent 1 455 kWh/d", "→ B8b"], ["Zwroty pasty", "śladowo", "zawrót → B7/A5"]], "urzadzenia": [["Pastownica dwustronna (custom)", "1", "obniżony nacisk, serwo"], ["Laserowa kontrola grubości", "1", "100% sztuk"], ["Podparcia próżniowe", "kpl."], ["Stacja mycia narzędzi", "1"]], "media": [["Energia elektryczna", "15–30 kW śr. ⚠"], ["Podciśnienie/sprężone powietrze", "15 Nm³/h ⚠"], ["Woda mycia", "0,5 m³/d ⚠"]], "odpady": [["Zwroty pasty i popłuczyny", "19 08 13* ⚠", "zawrót/A7"], ["Odrzuty płyt", "—", "zawrót do A5"]], "bhp": [["Aerozol/pył pasty Pb", "obudowa, odciągi, PPE, monitoring"], ["Elementy w ruchu (walce, podajniki)", "osłony, kurtyny świetlne"]], "pow": "250", "obsada": "2 os./zm. × 2 zm. = 4", "dostEU": [{"n": "Wirtz", "u": "https://www.wirtzusa.com"}, {"n": "MAC Engineering", "u": "https://mac-eng.com"}, {"n": "Sovema (baza do adaptacji)", "u": "https://www.sovemagroup.com"}], "dostCN": [{"n": "Xinxu (double side pasting — do adaptacji pod siatkę kompozytową)", "u": null}]}, "custom": true}, {"id": "B8b", "nazwa": "Curing / drying (fast-cure)", "linia": "B", "modul": "Formacja", "dl": 14, "szer": 14, "serw": 0.25, "kW": 55, "kWsr": 55, "n2": 0, "woda": 2, "os": 2, "capex": 970000, "media": ["energia", "woda"], "we": "Płyty mokre ← B8", "wy": "Płyty dojrzałe → B9", "gfx": "formacja", "m2": 350, "tryb": "w tle 24/7", "przepust": "WIP 0,9× d.", "strefa": "czysta", "badge": "", "ref": {"x": 59, "y": 44, "dl": 14, "szer": 14}, "karta": {"opis": "B8b · CURING / DRYING — KOMORY DOJRZEWANIA (FAST-CURE)", "tryb": "proces w tle 24/7, obsługa 2 zm.", "wyd": "WIP ≈ 0,9× produkcji dobowej płyt", "czas": "22 h (16–28) po optymalizacji", "surowce": [["Płyty pastowane mokre", "ekwiwalent 1 455 kWh/d", "← B8"], ["Woda demi (para nawilżania)", "1–2 m³/d ⚠", "demi"]], "wyjscia": [["Płyty dojrzałe i wysuszone", "WIP ~0,9× prod. dobowej", "→ B9"], ["Kondensaty", "śladowo", "→ A7"]], "urzadzenia": [["Komory curing z kontrolą T/RH", "4–6 ⚠", "profil fast-cure"], ["Transport wieszakowy / stojaki", "kpl."], ["Nawilżanie + grzanie komór", "kpl."]], "media": [["Energia elektryczna", "40–70 kW śr. ⚠", "grzanie + nawilżanie"], ["Woda demi (para nawilżania)", "1–2 m³/d ⚠"]], "odpady": [["Kondensaty z komór", "—", "do A7"], ["Odrzuty po curingu", "—", "zawrót do A5"]], "bhp": [["Gorąco-wilgotna atmosfera komór", "procedura wejść, wychłodzenie przed serwisem"], ["Transport wieszakowy nad głową", "strefy, kaski, przeglądy zawiesi"]], "pow": "350", "obsada": "1 os./zm. × 2 zm. = 2", "dostEU": [{"n": "Sovema", "u": "https://www.sovemagroup.com"}, {"n": "MAC Engineering", "u": "https://mac-eng.com"}, {"n": "Wirtz", "u": "https://www.wirtzusa.com"}], "dostCN": [{"n": "Suzhou CMT (komory GH)", "u": null}, {"n": "Xinxu", "u": null}, {"n": "Better Tech", "u": null}]}}, {"id": "B9", "nazwa": "Odlewanie strapów (COS)", "linia": "B", "modul": "Montaż ogniw", "dl": 7, "szer": 11, "serw": 0.25, "kW": 35, "kWsr": 35, "n2": 0, "woda": 0, "os": 2, "capex": 890000, "media": ["energia", "woda"], "we": "Płyty ← B8b · Pb ← A4", "wy": "Grupy z mostkami → B10", "gfx": "montaz", "m2": 150, "tryb": "1,5 zm", "przepust": "takt min.", "strefa": "czysta", "badge": "", "ref": {"x": 59, "y": 60, "dl": 7, "szer": 11}, "karta": {"opis": "Cast-on-strap: łączenie chorągiewek płyt w grupy przez zalanie ciekłym Pb w formach precyzyjnych; odlew mostków i wyprowadzeń zgodnych z architekturą bipolarną.", "tryb": "1,5 zmiany", "wyd": "takt minutowy", "czas": "0,25 h/partia", "surowce": [["Płyty dojrzałe", "ekwiwalent 1 455 kWh/d", "← B8b"], ["Pb strapowy", "~1,3 t/d ⚠", "← A4/A8"]], "wyjscia": [["Grupy płyt z mostkami (COS)", "ekwiwalent 1 455 kWh/d", "→ B10"], ["Dross Pb", "śladowo", "zawrót → A4"]], "urzadzenia": [["Maszyna COS z topielnią Pb", "1", "kontrola T"], ["Formy precyzyjne", "kpl.", "chłodzone"], ["Odpylanie + odzysk drossu", "1"]], "media": [["Energia elektryczna", "25–45 kW śr. ⚠", "topielnia"], ["Woda chłodząca", "obieg", "formy"], ["Topniki", "śladowo ⚠"]], "odpady": [["Dross/zgary Pb", "10 04 01* ⚠", "zawrót do A4"], ["Odrzuty grup", "—", "zawrót"]], "bhp": [["Ciekły Pb — rozprysk przy zalewaniu", "osłony, PPE żaroodporne, suche formy"], ["Dymy Pb i topników", "odciągi punktowe, monitoring"]], "pow": "150", "obsada": "1 os./zm. × 2 zm. = 2", "dostEU": [{"n": "TBS Engineering", "u": "https://www.tbseng.co.uk"}, {"n": "Wirtz", "u": "https://www.wirtzusa.com"}, {"n": "MAC", "u": "https://mac-eng.com"}], "dostCN": [{"n": "Xinxu (COS)", "u": null}, {"n": "Wuxi Huanfan", "u": null}, {"n": "Suzhou CMT (ZHX200)", "u": null}]}}, {"id": "B10", "nazwa": "Kopertowanie i grupy płyt", "linia": "B", "modul": "Montaż ogniw", "dl": 7, "szer": 11, "serw": 0.25, "kW": 12, "kWsr": 12, "n2": 0, "woda": 0, "os": 2, "capex": 670000, "media": ["energia"], "we": "Grupy ← B9 · separatory", "wy": "Grupy kopertowane → B11", "gfx": "montaz", "m2": 150, "tryb": "1,5 zm", "przepust": "takt sek.", "strefa": "czysta", "badge": "", "ref": {"x": 67, "y": 60, "dl": 7, "szer": 11}, "karta": {"opis": "Owijanie płyt separatorami (koperty PE/AGM), układanie naprzemienne w grupy, kontrola wizyjna kompletności i polaryzacji przed COS/montażem.", "tryb": "1,5 zmiany", "wyd": "takt sekundowo-minutowy", "czas": "0,25 h/partia", "surowce": [["Grupy płyt", "ekwiwalent 1 455 kWh/d", "← B9"], ["Separatory PE/AGM", "wg formatu ⚠", "← B1 (zakup zewn.)"]], "wyjscia": [["Grupy kopertowane, zweryfikowane wizyjnie", "ekwiwalent 1 455 kWh/d", "→ B11"], ["Ścinki separatorów", "śladowo", "recykling zewn."]], "urzadzenia": [["Kopertownica", "1", "PE/AGM"], ["Układarka grup + pozycjonery", "1"], ["Kontrola wizyjna", "1", "100% grup"]], "media": [["Energia elektryczna", "8–15 kW śr. ⚠"], ["Sprężone powietrze", "10 Nm³/h ⚠"]], "odpady": [["Ścinki separatorów", "07 02 13 ⚠", "recykling zewn."], ["Odrzuty wizyjne", "—", "zawrót elementów"]], "bhp": [["Pył z cięcia separatorów", "odciągi"], ["Elementy w ruchu", "osłony, kurtyny"]], "pow": "150", "obsada": "1 os./zm. × 2 zm. = 2", "dostEU": [{"n": "BM Rosendahl", "u": "https://rosendahlnextrom.com/bm/"}, {"n": "TBS Engineering", "u": "https://www.tbseng.co.uk"}, {"n": "TEKMAX", "u": null}], "dostCN": [{"n": "Xinxu (separatory PE/AGM/PVC)", "u": null}, {"n": "Better Tech", "u": null}]}}, {"id": "B11", "nazwa": "Jar assembly — montaż ogniw", "linia": "B", "modul": "Montaż ogniw", "dl": 9, "szer": 11, "serw": 0.25, "kW": 16, "kWsr": 16, "n2": 0, "woda": 0, "os": 2, "capex": 1040000, "media": ["energia"], "we": "Grupy ← B10 · obudowy PP", "wy": "Ogniwa suche → B12", "gfx": "montaz", "m2": 100, "tryb": "1,5 zm", "przepust": "takt min.", "strefa": "czysta", "badge": "", "ref": {"x": 48, "y": 60, "dl": 9, "szer": 11}, "karta": {"opis": "Wkładanie grup do obudów (regranulat PP z A6), zgrzewanie międzyogniwowe i wieczek (ultradźwiękowo/na gorąco) zgodnie z architekturą bipolarną ≥4 V, test szczelności każdej sztuki.", "tryb": "1,5 zmiany", "wyd": "takt minutowy", "czas": "0,25 h/partia", "surowce": [["Grupy kopertowane", "ekwiwalent 1 455 kWh/d", "← B10"], ["Obudowy i wieczka PP", "wg formatu", "z regranulatu A6 (wtrysk u podwykonawcy ⚠)"]], "wyjscia": [["Ogniwa suche (zmontowane, szczelne)", "ekwiwalent 1 455 kWh/d", "→ B12"], ["Odrzuty obudów", "śladowo", "zawrót → A6"]], "urzadzenia": [["Linia wkładania grup", "1"], ["Zgrzewarki ultradźwiękowe / lustrzane", "2"], ["Tester szczelności in-line", "1", "100% sztuk"]], "media": [["Energia elektryczna", "12–20 kW śr. ⚠"], ["Sprężone powietrze", "15 Nm³/h ⚠", "testy szczelności"]], "odpady": [["Odrzuty obudów PP", "19 12 04 ⚠", "zawrót do A6"], ["Nieszczelne moduły", "—", "demontaż, zawrót frakcji"]], "bhp": [["Ultradźwięki / gorące lustra", "osłony, PPE, izolacje"], ["Hałas zgrzewania", "ochronniki"]], "pow": "100", "obsada": "1 os./zm. × 2 zm. = 2", "dostEU": [{"n": "TBS", "u": "https://www.tbseng.co.uk"}, {"n": "BM Rosendahl", "u": "https://rosendahlnextrom.com/bm/"}, {"n": "Herrmann Ultraschall", "u": "https://www.herrmannultrasonics.com"}, {"n": "Emerson/Branson", "u": "https://www.emerson.com"}, {"n": "ATEQ (testery)", "u": "https://www.ateq.com"}], "dostCN": [{"n": "Xinxu (group welding)", "u": null}, {"n": "Suzhou CMT", "u": null}]}}, {"id": "B12", "nazwa": "Zalewanie / żelowanie elektrolitu", "linia": "B", "modul": "Formacja", "dl": 9, "szer": 8, "serw": 0.25, "kW": 12, "kWsr": 12, "n2": 0, "woda": 0, "os": 2, "capex": 820000, "media": ["energia", "kwas"], "we": "Ogniwa ← B11 · H₂SO₄ ← A3", "wy": "Ogniwa zalane → B13", "gfx": "wanna", "m2": 150, "tryb": "1,5 zm", "przepust": "takt min.", "strefa": "czysta", "badge": "", "ref": {"x": 48, "y": 44, "dl": 9, "szer": 8}, "karta": {"opis": "Dozowanie elektrolitu (H₂SO₄ z A3, wariant żelowy z krzemionką) do ogniw pod próżnią (pełna penetracja AGM/żelu). Stabilizacja żelu przeniesiona do bufora kolejki przed formacją (optymalizacja #6).", "tryb": "1,5 zmiany", "wyd": "takt minutowy", "czas": "0,5 h + stabilizacja w buforze", "surowce": [["Ogniwa suche", "ekwiwalent 1 455 kWh/d", "← B11"], ["H₂SO₄ battery-grade", "~2,0 t/d ⚠", "← A3/A8"], ["Krzemionka pirogeniczna (wariant żelowy)", "wg receptury ⚠", "← B1"]], "wyjscia": [["Ogniwa zalane / zażelowane", "ekwiwalent 1 455 kWh/d", "→ bufor stabilizacji → B13"]], "urzadzenia": [["Stacja dozowania próżniowego", "1", "objętościowa, kubki pomiarowe"], ["Węzeł przygotowania żelu (SiO₂)", "1"], ["Rurociągi double-containment + retencje", "kpl."], ["Neutralizacja awaryjna", "1"]], "media": [["Energia elektryczna", "8–15 kW śr. ⚠"], ["H₂SO₄ battery-grade", "~2 t/d ⚠", "z A3"], ["Krzemionka pirogeniczna", "wg receptury ⚠", "wariant żelowy"], ["Próżnia", "kpl."]], "odpady": [["Rozlewy i popłuczyny kwaśne", "06 01 01* ⚠", "neutralizacja → A7"], ["Opakowania po SiO₂", "15 01 xx", "recykling"]], "bhp": [["H₂SO₄ — dozowanie pod ciśnieniem/próżnią", "osłony stacji, PPE kwasoodporne, oczomyjki + prysznic"], ["Aerozol kwasu", "odciągi krawędziowe, wentylacja"]], "pow": "150", "obsada": "1 os./zm. × 2 zm. = 2", "dostEU": [{"n": "BM Rosendahl (acid filling)", "u": "https://rosendahlnextrom.com/bm/"}, {"n": "TBS", "u": "https://www.tbseng.co.uk"}, {"n": "Amargo (PL — instalacje)", "u": "https://amargo.pl"}], "dostCN": [{"n": "Jiangsu Jinfan (vacuum acid filling AGM)", "u": null}, {"n": "Xinxu", "u": null}]}}, {"id": "B13", "nazwa": "Formacja z recyrkulacją", "linia": "B", "modul": "Formacja", "dl": 23, "szer": 27, "serw": 0.25, "kW": 100, "kWsr": 100, "n2": 0, "woda": 6, "os": 6, "capex": 2980000, "media": ["energia", "woda"], "we": "Ogniwa ← B12", "wy": "Ogniwa sformowane → B14", "gfx": "formacja", "m2": 700, "tryb": "obwody 24/7", "przepust": "1455 kWh/d", "strefa": "czysta", "badge": "waskie", "ref": {"x": 2, "y": 44, "dl": 23, "szer": 27}, "karta": {"opis": "Pierwsze ładowanie (formowanie mas aktywnych) prądowymi profilami IUI z recyrkulacją elektrolitu i chłodzeniem (technologia Inbatec-class): −42% czasu, +50–70% zdolności wanien, −25–30% energii. Magazyn czasu nr 2. Rejestracja SoC/SoH/T każdego ogniwa.", "tryb": "obwody 24/7, obsługa 3 zm.", "wyd": "1 455 kWh/d; wanny ≥1,0× prod. dobowej", "czas": "14 h (12–16) po optymalizacji", "surowce": [["Ogniwa zalane (po stabilizacji)", "ekwiwalent 1 455 kWh/d", "← B12 (bufor kolejki)"], ["Energia formacji", "2,0–2,6 MWh/d ⚠", "sieć + OZE"]], "wyjscia": [["Ogniwa sformowane z rekordem SoC/SoH", "1 455 kWh/d", "→ B14"], ["Elektrolit poformacyjny", "korekty", "zawrót → A3"], ["Odrzuty formacji", "cel <2% ⚠", "zawrót → A1"]], "urzadzenia": [["Wanny formacyjne AISI 316L + obieg chłodzenia", "kpl.", "≥1,0× prod. dobowej"], ["System recyrkulacji elektrolitu", "1", "pompy, wymienniki, filtracja"], ["Prostowniki wieloobwodowe IGBT", "kpl.", "profile IUI, rejestracja"], ["Kaptury odciągowe + skruber", "kpl.", "aerozole i H₂"]], "media": [["Energia elektryczna", "~1,4–1,8 kWh/kWh ogniwa ⚠ → 2,0–2,6 MWh/d", "największy koszt zmienny B"], ["Woda chłodząca", "obieg + wieża ⚠"], ["H₂SO₄ korekty", "śladowo"]], "odpady": [["Aerozole kwasu i wodór", "—", "skruber + rozcieńczenie wentylacją"], ["Elektrolit poformacyjny", "06 01 01* ⚠", "zawrót do A3/korekta"], ["Ogniwa odrzucone", "16 06 01*", "zawrót do A1 (pełny obieg!)"]], "bhp": [["WODÓR — atmosfera wybuchowa nad wannami", "wentylacja dedykowana <25% DGW, detekcja H₂, urządzenia Ex nad lustrem, zakaz iskrzenia"], ["Aerozol H₂SO₄", "kaptury odciągowe, skruber, PPE"], ["Prąd DC dużej mocy", "izolacje, LOTO, SEP"], ["Praca nocna 24/7", "rotacja, monitoring"]], "pow": "700", "obsada": "2 os./zm. × 3 zm. = 6", "dostEU": [{"n": "INBATEC", "u": "https://www.inbatec.de"}, {"n": "BM Rosendahl", "u": "https://rosendahlnextrom.com/bm/"}, {"n": "Digatron", "u": "https://www.digatron.com"}, {"n": "Bitrode", "u": "https://www.bitrode.com"}, {"n": "wanny: wykonawca PL 316L", "u": null}], "dostCN": [{"n": "Jiangsu Jinfan (IGBT, >60% rynku CN)", "u": null}, {"n": "Xinxu (waterbath)", "u": null}, {"n": "Wuxi Huanfan", "u": null}]}}, {"id": "B14", "nazwa": "Testy EoL, starzenie, pakowanie", "linia": "B", "modul": "Montaż ogniw", "dl": 22, "szer": 14, "serw": 0.25, "kW": 30, "kWsr": 30, "n2": 0, "woda": 0, "os": 4, "capex": 1040000, "media": ["energia"], "we": "Ogniwa ← B13", "wy": "OGNIWA KLAB (wyrób)", "gfx": "montaz", "m2": 300, "tryb": "1 zm", "przepust": "1455 kWh/d", "strefa": "czysta", "badge": "", "ref": {"x": 16, "y": 2, "dl": 22, "szer": 14}, "karta": {"opis": "Testy elektryczne EoL (pojemność, rezystancja wewnętrzna, OCV), test szczelności, starzenie kontrolne próbek, kalibracja monitoringu SoC/SoH, etykietowanie (print&apply, genealogia) i pakowanie wysyłkowe.", "tryb": "1 zmiana", "wyd": "1 455 kWh/d", "czas": "3 h + starzenie kontrolne", "surowce": [["Ogniwa sformowane", "1 455 kWh/d", "← B13"], ["Opakowania wysyłkowe", "wg zamówień", "zakup"]], "wyjscia": [["OGNIWA KLAB — wyrób gotowy", "1 455 kWh/d (454→481 MWh/rok)", "magazyn wyrobów / klient"], ["Odrzuty EoL", "cel <1% ⚠", "zawrót → A1 (pełne domknięcie GOZ)"]], "urzadzenia": [["Testery elektryczne EoL", "kpl.", "100% sztuk"], ["Stanowiska starzenia kontrolnego", "kpl.", "próbki partii"], ["Print&apply + kontrola etykiet", "1"], ["Robot paletyzujący + owijarka", "1"]], "media": [["Energia elektryczna", "20–40 kW śr. ⚠", "testy z rekuperacją (−)"], ["Sprężone powietrze", "10 Nm³/h ⚠"]], "odpady": [["Ogniwa odrzucone", "16 06 01*", "zawrót do A1"], ["Opakowania", "15 01 xx", "recykling"]], "bhp": [["Prąd testowy / energia zgromadzona", "procedury, izolacje, PPE"], ["Paletyzacja robotem", "wygrodzenia, skanery"], ["Manipulacja ciężkimi ogniwami", "podnośniki, ergonomia"]], "pow": "300", "obsada": "2 os./zm. × 2 zm. = 4", "dostEU": [{"n": "Digatron", "u": "https://www.digatron.com"}, {"n": "Domino/Videojet", "u": "https://www.videojet.com"}, {"n": "FANUC + integrator", "u": "https://www.fanuc.eu"}], "dostCN": [{"n": "Chroma ATE (TW — testery klasy światowej)", "u": "https://www.chromaate.com"}, {"n": "Jiangsu Jinfan", "u": null}]}}];
+const MOD_IC={"Przyjęcie":"🚚","Recykling mech.":"♻","Chemia kwasu":"🧪","Obróbka termiczna":"🔥","Hydrometalurgia":"⚗","Tworzywa":"⬡","EHS":"🌱","QA / magazyn":"🔬","Magazyn":"📦","Elektroda":"▤","Montaż płyt":"🔧","Formacja":"🔋","Montaż ogniw":"📦"};
+/* dane zbiorcze z dokumentacji klienta (rev. 07.2026) — do KPI/M6, wartości ⚠ = do walidacji B+R */
+const DOK={wsad_td:20, kWh_d:1455, MWh_rok:454, MWh_rok_opt:481, Pb_kg_kWh:8.1, leadtime_h:75, leadtime_opt_h:49,
+  capex_AB_mln:35, capex_opt_mln:2.85, hala_dl:156, hala_szer:72, hala_m2:11232, proces_m2:6800, osProc:84, osZakl:94,
+  pv_MWp:1.0, cieplo_odzysk_kW:[250,450], chlod_kW:[170,300]};
+
+/* ═══ GRAFIKI URZĄDZEŃ — schematy side-view (placeholder do podmiany na docelowe ilustracje) ═══ */
+const S='stroke="#B9B6B0" stroke-width="1.4" stroke-linecap="round"', F='fill="#EFEDEA"', W='fill="#FFFFFF"';
+const GFX={
+kruszarka:`<svg viewBox="0 0 94 52"><path d="M32 6h30l-7 14H39z" ${F} ${S}/><rect x="30" y="20" width="34" height="18" rx="3" ${W} ${S}/><circle cx="41" cy="29" r="4.2" ${F} ${S}/><circle cx="53" cy="29" r="4.2" ${F} ${S}/><rect x="24" y="40" width="46" height="5" rx="2" ${F} ${S}/></svg>`,
+piec:`<svg viewBox="0 0 94 52"><rect x="20" y="14" width="50" height="26" rx="4" ${W} ${S}/><rect x="58" y="4" width="7" height="12" rx="1.5" ${F} ${S}/><rect x="27" y="21" width="20" height="12" rx="2" ${F} ${S}/><path d="M54 22c1.5 2 1.5 4 0 6M60 22c1.5 2 1.5 4 0 6" fill="none" ${S}/><rect x="18" y="42" width="8" height="4" ${F} ${S}/><rect x="64" y="42" width="8" height="4" ${F} ${S}/></svg>`,
+reaktor:`<svg viewBox="0 0 94 52"><rect x="24" y="10" width="17" height="28" rx="8" ${W} ${S}/><rect x="52" y="10" width="17" height="28" rx="8" ${W} ${S}/><path d="M41 20h11" fill="none" ${S}/><path d="M32 38v8M60 38v8" fill="none" ${S}/><circle cx="32" cy="16" r="2" ${F} ${S}/><circle cx="60" cy="16" r="2" ${F} ${S}/></svg>`,
+ekstruder:`<svg viewBox="0 0 94 52"><path d="M28 8h14l-3 10h-8z" ${F} ${S}/><rect x="18" y="18" width="52" height="13" rx="4" ${W} ${S}/><path d="M25 24h38" stroke="#DDD9D3" stroke-width="2" stroke-dasharray="3 3" fill="none"/><rect x="70" y="21" width="8" height="7" rx="1.5" ${F} ${S}/><rect x="22" y="34" width="8" height="10" ${F} ${S}/><rect x="58" y="34" width="8" height="10" ${F} ${S}/></svg>`,
+rollline:`<svg viewBox="0 0 94 52"><circle cx="20" cy="20" r="9" ${W} ${S}/><circle cx="20" cy="20" r="3" ${F} ${S}/><rect x="32" y="24" width="46" height="11" rx="3" ${W} ${S}/><path d="M29 20h49" fill="none" ${S}/><rect x="36" y="38" width="6" height="8" ${F} ${S}/><rect x="68" y="38" width="6" height="8" ${F} ${S}/></svg>`,
+wanna:`<svg viewBox="0 0 94 52"><path d="M22 18v18a4 4 0 004 4h42a4 4 0 004-4V18" ${W} ${S}/><path d="M18 18h58" fill="none" ${S}/><path d="M34 12v14M47 12v16M60 12v14" fill="none" ${S}/><rect x="30" y="26" width="8" height="8" ${F} ${S}/><rect x="43" y="28" width="8" height="8" ${F} ${S}/><rect x="56" y="26" width="8" height="8" ${F} ${S}/></svg>`,
+pastownica:`<svg viewBox="0 0 94 52"><circle cx="47" cy="15" r="8" ${W} ${S}/><circle cx="47" cy="37" r="8" ${W} ${S}/><path d="M14 26h66" fill="none" ${S}/><rect x="16" y="22" width="14" height="8" rx="1.5" ${F} ${S}/><rect x="64" y="22" width="14" height="8" rx="1.5" ${F} ${S}/></svg>`,
+formacja:`<svg viewBox="0 0 94 52"><rect x="20" y="8" width="54" height="38" rx="3" ${W} ${S}/><path d="M20 21h54M20 34h54M38 8v38M56 8v38" fill="none" ${S}/><rect x="25" y="12" width="9" height="5" ${F}/><rect x="43" y="25" width="9" height="5" ${F}/><rect x="61" y="38" width="9" height="5" ${F}/></svg>`,
+montaz:`<svg viewBox="0 0 94 52"><path d="M14 34h66" fill="none" ${S}/><circle cx="22" cy="40" r="3.5" ${W} ${S}/><circle cx="47" cy="40" r="3.5" ${W} ${S}/><circle cx="72" cy="40" r="3.5" ${W} ${S}/><rect x="24" y="22" width="13" height="12" rx="2" ${W} ${S}/><rect x="44" y="18" width="13" height="16" rx="2" ${F} ${S}/><rect x="64" y="22" width="13" height="12" rx="2" ${W} ${S}/></svg>`,
+ph:`<svg viewBox="0 0 94 52"><rect x="14" y="8" width="66" height="36" rx="5" fill="none" stroke="#DDD9D3" stroke-width="1.6" stroke-dasharray="5 4"/><text x="47" y="30" font-size="9" fill="#B9B6B0" text-anchor="middle">grafika wkrótce</text></svg>`
+};
+const DEV=Object.fromEntries(DEVICES.map(d=>[d.id,d]));
+const GFXIN=g=>(GFX[g]||GFX.ph).replace(/^<svg[^>]*>/,"").replace(/<\/svg>$/,"");
+const LHEX=l=>l==="A"?"#FF4D00":"#7C3AED";
+
+/* ═══ ILUSTRACJE-RENDERY do kart katalogu (szarość, styl referencji Movara) —
+   placeholder do podmiany na zdjęcia/rendery od dostawców z pakietów RFQ (prawa!) ═══ */
+const C1="#ECEAE6",C2="#DBD8D2",C3="#C6C3BD",C4="#A9A6A0",CS="rgba(0,0,0,.07)";
+const GFX2={
+kruszarka:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="34" ry="3.5" fill="${CS}"/><path d="M40 6h40l-9 18H49z" fill="${C2}" stroke="${C4}" stroke-width="1"/><path d="M44 6h10l-6 18h-5z" fill="${C1}"/><rect x="42" y="24" width="38" height="22" rx="3" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="45" y="27" width="32" height="16" rx="2" fill="#fff"/><circle cx="54" cy="35" r="6" fill="${C3}"/><circle cx="68" cy="35" r="6" fill="${C3}"/><circle cx="54" cy="35" r="2" fill="${C4}"/><circle cx="68" cy="35" r="2" fill="${C4}"/><path d="M52 46h18l-5 10h-8z" fill="${C2}" stroke="${C4}" stroke-width="1"/><rect x="44" y="46" width="4" height="11" fill="${C3}"/><rect x="74" y="46" width="4" height="11" fill="${C3}"/></svg>`,
+piec:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="38" ry="3.5" fill="${CS}"/><rect x="76" y="4" width="8" height="18" rx="2" fill="${C3}"/><rect x="22" y="18" width="76" height="30" rx="15" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="22" y="18" width="76" height="12" rx="6" fill="#fff" opacity=".6"/><circle cx="42" cy="33" r="9" fill="${C2}" stroke="${C4}" stroke-width="1"/><circle cx="42" cy="33" r="4.5" fill="${C3}"/><rect x="60" y="27" width="26" height="12" rx="2" fill="${C2}"/><path d="M64 30c1.5 2 1.5 4 0 6M70 30c1.5 2 1.5 4 0 6M76 30c1.5 2 1.5 4 0 6" stroke="${C4}" stroke-width="1.2" fill="none"/><rect x="30" y="48" width="6" height="9" fill="${C3}"/><rect x="84" y="48" width="6" height="9" fill="${C3}"/></svg>`,
+reaktor:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="36" ry="3.5" fill="${CS}"/><rect x="42" y="4" width="8" height="8" rx="1.5" fill="${C3}"/><rect x="74" y="4" width="8" height="8" rx="1.5" fill="${C3}"/><rect x="32" y="12" width="28" height="36" rx="12" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="64" y="12" width="28" height="36" rx="12" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="36" y="14" width="8" height="32" rx="4" fill="#fff" opacity=".7"/><rect x="68" y="14" width="8" height="32" rx="4" fill="#fff" opacity=".7"/><rect x="58" y="26" width="8" height="4" fill="${C3}"/><circle cx="46" cy="52" r="2.5" fill="${C4}"/><circle cx="78" cy="52" r="2.5" fill="${C4}"/><rect x="42" y="48" width="4" height="8" fill="${C3}"/><rect x="76" y="48" width="4" height="8" fill="${C3}"/></svg>`,
+ekstruder:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="42" ry="3.5" fill="${CS}"/><path d="M32 4h14l-4 12h-6z" fill="${C2}" stroke="${C4}" stroke-width="1"/><rect x="12" y="14" width="14" height="20" rx="2" fill="${C3}"/><rect x="24" y="16" width="72" height="16" rx="8" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="24" y="16" width="72" height="6" rx="3" fill="#fff" opacity=".6"/><path d="M36 16v16M50 16v16M64 16v16M78 16v16" stroke="${C3}" stroke-width="1"/><rect x="96" y="19" width="12" height="10" rx="2" fill="${C2}" stroke="${C4}" stroke-width="1"/><rect x="18" y="38" width="84" height="6" rx="2" fill="${C2}"/><rect x="26" y="44" width="5" height="12" fill="${C3}"/><rect x="88" y="44" width="5" height="12" fill="${C3}"/></svg>`,
+rollline:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="44" ry="3.5" fill="${CS}"/><circle cx="20" cy="22" r="12" fill="${C1}" stroke="${C4}" stroke-width="1"/><circle cx="20" cy="22" r="4" fill="${C3}"/><circle cx="102" cy="22" r="9" fill="${C1}" stroke="${C4}" stroke-width="1"/><circle cx="102" cy="22" r="3" fill="${C3}"/><path d="M30 16h64" stroke="${C4}" stroke-width="1.4"/><rect x="46" y="28" width="28" height="12" rx="2" fill="${C2}" stroke="${C4}" stroke-width="1"/><rect x="49" y="31" width="22" height="6" rx="1" fill="${C1}"/><circle cx="53" cy="24" r="4" fill="${C3}"/><circle cx="67" cy="24" r="4" fill="${C3}"/><rect x="16" y="40" width="5" height="16" fill="${C3}"/><rect x="58" y="44" width="5" height="12" fill="${C3}"/><rect x="98" y="36" width="5" height="20" fill="${C3}"/></svg>`,
+wanna:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="42" ry="3.5" fill="${CS}"/><path d="M18 10h84" stroke="${C4}" stroke-width="1.6"/><path d="M34 10v12M48 10v14M62 10v12M76 10v14M90 10v12" stroke="${C4}" stroke-width="1"/><rect x="30" y="20" width="8" height="12" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="44" y="22" width="8" height="12" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="58" y="20" width="8" height="12" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="72" y="22" width="8" height="12" fill="${C2}" stroke="${C4}" stroke-width=".8"/><path d="M22 26v20a5 5 0 005 5h66a5 5 0 005-5V26" fill="${C1}" stroke="${C4}" stroke-width="1"/><rect x="26" y="36" width="68" height="11" rx="2" fill="${C2}"/><rect x="104" y="34" width="9" height="14" rx="2" fill="${C3}"/></svg>`,
+pastownica:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="40" ry="3.5" fill="${CS}"/><rect x="38" y="6" width="44" height="44" rx="5" fill="${C1}" stroke="${C4}" stroke-width="1"/><circle cx="60" cy="20" r="10" fill="${C2}" stroke="${C4}" stroke-width="1"/><circle cx="60" cy="40" r="10" fill="${C2}" stroke="${C4}" stroke-width="1"/><circle cx="60" cy="20" r="3.5" fill="${C4}"/><circle cx="60" cy="40" r="3.5" fill="${C4}"/><path d="M10 30h28M82 30h28" stroke="${C4}" stroke-width="1.4"/><rect x="12" y="26" width="18" height="8" rx="1.5" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="90" y="26" width="18" height="8" rx="1.5" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="42" y="50" width="5" height="7" fill="${C3}"/><rect x="73" y="50" width="5" height="7" fill="${C3}"/></svg>`,
+formacja:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="40" ry="3.5" fill="${CS}"/><rect x="24" y="6" width="60" height="48" rx="3" fill="${C1}" stroke="${C4}" stroke-width="1"/><path d="M24 22h60M24 38h60" stroke="${C4}" stroke-width="1"/>${[0,1,2].map(r=>[0,1,2,3].map(c=>`<rect x="${29+c*14}" y="${10+r*16}" width="10" height="8" rx="1" fill="${C2}" stroke="${C4}" stroke-width=".6"/>`).join("")).join("")}<rect x="88" y="10" width="14" height="44" rx="2" fill="${C2}" stroke="${C4}" stroke-width="1"/><circle cx="95" cy="18" r="2.5" fill="${C4}"/><path d="M91 26h8M91 31h8M91 36h8" stroke="${C4}" stroke-width="1"/></svg>`,
+montaz:`<svg viewBox="0 0 120 64"><ellipse cx="60" cy="58" rx="44" ry="3.5" fill="${CS}"/><path d="M30 8h12v10" fill="none" stroke="${C4}" stroke-width="1.4"/><path d="M42 18l6 6" stroke="${C4}" stroke-width="1.4"/><circle cx="49" cy="25" r="3" fill="${C3}"/><rect x="14" y="34" width="92" height="9" rx="4.5" fill="${C1}" stroke="${C4}" stroke-width="1"/><circle cx="24" cy="47" r="3.5" fill="${C3}"/><circle cx="48" cy="47" r="3.5" fill="${C3}"/><circle cx="72" cy="47" r="3.5" fill="${C3}"/><circle cx="96" cy="47" r="3.5" fill="${C3}"/><rect x="28" y="24" width="13" height="10" rx="1.5" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="60" y="22" width="13" height="12" rx="1.5" fill="${C2}" stroke="${C4}" stroke-width=".8"/><rect x="86" y="24" width="13" height="10" rx="1.5" fill="${C2}" stroke="${C4}" stroke-width=".8"/></svg>`,
+};
+
+/* ═══ STAN ═══ */
+let placed=[];    // {uid,dev,x,y,rot}
+let ciagi=[];     // ciągi komunikacyjne {x,y,w,h,nazwa,pion?} — generowane przez Auto-układ
+let strefy=[];    // strefy programu powierzchni {zid,typ,x,y,w,h} — przesuwalne, wymiary edytowalne
+let zidN=1;
+let preview=null; // podgląd urządzenia podczas przeciągania z katalogu
+let uidN=1, selUid=null, selDev=null, selZone=null, view="layout";
+/* program powierzchni — strefy (metraże domyślne = W-draft, edytowalne w panelu Auto-układu) */
+const STREFY_DEF=[
+  ["surowiec","Przyjęcie + magazyn surowca (złom LAB)",300,"#F59E0B"],
+  ["wyroby","Magazyn wyrobów + wysyłka",250,"#16A34A"],
+  ["socjal","Socjal + śluzy higieniczne Pb",150,"#7C3AED"],
+  ["qaur","Laboratorium QA + warsztat UR",120,"#0EA5E9"],
+  ["technika","Technika: trafo · sprężarki · woda/ścieki",200,"#2563EB"],
+  ["chemia","Strefa kwasów (wanny wychwytowe)",100,"#8B5CF6"],
+];
+const STREFA=Object.fromEntries(STREFY_DEF.map(z=>[z[0],{nazwa:z[1],m2:z[2],kol:z[3]}]));
+function fitVB(){return{x:-4.5,y:-4,w:HALA.dl+8,h:HALA.szer+6.5};}
+let vb=fitVB();
+let showMedia=true, showSerw=true, filtr="all", q="";
+const GRIDS=[[0.5,"0,5 m"],[1,"1 m"],[0.25,"0,25 m"],[0,"wył."]];let gridI=0;
+/* założenia M4/M6 — wartości robocze do kalibracji, wszystkie edytowalne w UI */
+let zalozenia={
+  zmiany:{},          // id urządzenia -> 1|2|3 (domyślnie 3 = ruch ciągły, założenie robocze)
+  dniRobocze:250,     // dni pracy / rok
+  cenaEnergii:0.75,   // zł/kWh
+  cenaWody:15,        // zł/m³ (woda + ścieki)
+  cenaN2:0.80,        // zł/m³
+  stawkaOs:10000,     // zł/mies. — całkowity koszt pracodawcy
+  urPct:3,            // utrzymanie ruchu, % CAPEX / rok
+};
+try{const s=localStorage.getItem("klab_sym_v02")||localStorage.getItem("klab_sym_v01");
+  if(s){const j=JSON.parse(s);placed=(j.placed||[]).filter(p=>DEV[p.dev]);uidN=j.uidN||placed.length+1;
+    ciagi=j.ciagi||[];strefy=(j.strefy||[]).filter(z=>STREFA[z.typ]);zidN=Math.max(0,...strefy.map(z=>z.zid))+1;
+    if(j.hala&&j.hala.dl&&j.hala.szer){HALA.dl=+j.hala.dl;HALA.szer=+j.hala.szer;vb=fitVB();}
+    if(j.zalozenia)zalozenia={...zalozenia,...j.zalozenia,zmiany:{...(j.zalozenia.zmiany||{})}};}}catch(e){}
+const zmianyDev=id=>zalozenia.zmiany[id]||3;
+const hRokDev=id=>zmianyDev(id)*8*zalozenia.dniRobocze; // godziny pracy / rok
+
+const svg=document.getElementById("svg"), wrap=document.getElementById("canvasWrap");
+const fmtZl=n=>n>=1e6?(n/1e6).toLocaleString("pl-PL",{maximumFractionDigits:2})+" mln":Math.round(n/1e3)+" tys.";
+
+/* ═══ HISTORIA (undo/redo) ═══ */
+let hist=[],histI=-1;
+function snap(){hist=hist.slice(0,histI+1);hist.push(JSON.stringify({p:placed,c:ciagi,s:strefy,h:{dl:HALA.dl,szer:HALA.szer}}));if(hist.length>60)hist.shift();histI=hist.length-1;updUR();}
+function restore(i){histI=i;const j=JSON.parse(hist[i]);placed=j.p||[];ciagi=j.c||[];strefy=j.s||[];
+  if(j.h){HALA.dl=j.h.dl;HALA.szer=j.h.szer;}
+  selUid=null;selZone=null;render();renderTiles();renderRight();updUR();}
+function undo(){if(histI>0)restore(histI-1);}
+function redo(){if(histI<hist.length-1)restore(histI+1);}
+function updUR(){document.getElementById("undoB").disabled=histI<=0;document.getElementById("redoB").disabled=histI>=hist.length-1;}
+
+/* footprint incl. strefa serwisowa */
+function foot(p){const d=DEV[p.dev];const L=(p.rot%180?d.szer:d.dl)+2*d.serw, S=(p.rot%180?d.dl:d.szer)+2*d.serw;return{x:p.x-L/2,y:p.y-S/2,w:L,h:S};}
+function collisions(){const bad=new Set();const ov=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
+for(let i=0;i<placed.length;i++)for(let j=i+1;j<placed.length;j++){const a=foot(placed[i]),b=foot(placed[j]);if(ov(a,b)){bad.add(placed[i].uid);bad.add(placed[j].uid);}}
+// maszyna nie może wchodzić na strefę (margines serwisowy pomijamy dla stref — liczymy sam korpus)
+placed.forEach(p=>{const d=DEV[p.dev],r=p.rot%180,L=r?d.szer:d.dl,S=r?d.dl:d.szer;const body={x:p.x-L/2,y:p.y-S/2,w:L,h:S};strefy.forEach(z=>{if(ov(body,{x:z.x,y:z.y,w:z.w,h:z.h}))bad.add(p.uid);});});
+placed.forEach(p=>{const f=foot(p);if(f.x<0||f.y<0||f.x+f.w>HALA.dl||f.y+f.h>HALA.szer)bad.add(p.uid);});return bad;}
+
+/* ═══ RENDER CANVAS ═══ */
+function render(){
+  svg.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  const bad=collisions();
+  let s="";
+  // hala: obrys architektoniczny (podwójna ściana)
+  s+=`<rect x="-0.5" y="-0.5" width="${HALA.dl+1}" height="${HALA.szer+1}" fill="#FBFAF8" stroke="#9B9891" stroke-width="0.22" rx="0.3"/>`;
+  s+=`<rect x="0" y="0" width="${HALA.dl}" height="${HALA.szer}" fill="none" stroke="#B9B6B0" stroke-width="0.1"/>`;
+  // siatka
+  s+=`<g stroke="#ECEAE6" stroke-width="0.03">`;
+  for(let x=2;x<HALA.dl;x+=2)s+=`<line x1="${x}" y1="0" x2="${x}" y2="${HALA.szer}"/>`;
+  for(let y=2;y<HALA.szer;y+=2)s+=`<line x1="0" y1="${y}" x2="${HALA.dl}" y2="${y}"/>`;
+  s+=`</g>`;
+  // linijki wymiarowe
+  s+=`<g fill="#8A8A85" font-size="1.05">`;
+  for(let x=0;x<=HALA.dl;x+=5){const mj=x%10===0;s+=`<line x1="${x}" y1="${mj?-1.5:-1.15}" x2="${x}" y2="-0.8" stroke="#C9C6C0" stroke-width="0.06"/>`;if(mj)s+=`<text x="${x}" y="-2" text-anchor="middle">${x}</text>`;}
+  for(let y=0;y<=HALA.szer;y+=5){const mj=y%10===0;s+=`<line x1="${mj?-1.5:-1.15}" y1="${y}" x2="-0.8" y2="${y}" stroke="#C9C6C0" stroke-width="0.06"/>`;if(mj)s+=`<text x="-2" y="${y+0.38}" text-anchor="end">${y}</text>`;}
+  s+=`<text x="${HALA.dl+1}" y="-2">m</text>`;
+  s+=`</g>`;
+  // strefy programu powierzchni (przesuwalne)
+  strefy.forEach(z=>{
+    const zd=STREFA[z.typ],sel=z.zid===selZone;
+    s+=`<g class="zone${sel?" sel":""}" data-zid="${z.zid}">`;
+    s+=`<rect class="zr" x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" rx="0.4" fill="${zd.kol}" fill-opacity="0.08" stroke="${zd.kol}" stroke-width="0.1" stroke-dasharray="0.9 0.5"/>`;
+    const pion=z.h>z.w*1.4;
+    const fit=Math.max(6,Math.floor(((pion?z.h:z.w)-1.6)/0.46));
+    const nm=zd.nazwa.length>fit?zd.nazwa.slice(0,fit-1)+"…":zd.nazwa;
+    const lbl=`${nm} · ${Math.round(z.w*z.h)} m²`;
+    if(pion)s+=`<text transform="rotate(90 ${z.x+1.1} ${z.y+1})" x="${z.x+1.1}" y="${z.y+1}" font-size="0.85" font-weight="600" fill="${zd.kol}">${lbl}</text>`;
+    else s+=`<text x="${z.x+0.8}" y="${z.y+1.3}" font-size="0.85" font-weight="600" fill="${zd.kol}">${lbl}</text>`;
+    // doki na ścianie przy strefach przyjęcia/wysyłki
+    if(z.typ==="surowiec"||z.typ==="wyroby"){
+      const lewa=z.typ==="surowiec",wx=lewa?-0.45:HALA.dl-0.25;
+      [0.33,0.66].forEach(f=>{s+=`<rect x="${wx}" y="${z.y+z.h*f-1.5}" width="0.7" height="3" rx="0.15" fill="${zd.kol}"/>`;});
+      const tx=lewa?-1.3:HALA.dl+2.1;
+      s+=`<text transform="rotate(90 ${tx} ${z.y+z.h*0.33+2})" x="${tx}" y="${z.y+z.h*0.33+2}" font-size="0.7" fill="${zd.kol}">doki ${lewa?"przyjęcia":"wysyłki"}</text>`;
+    }
+    s+=`</g>`;
+  });
+  // ciągi komunikacyjne (z Auto-układu)
+  ciagi.forEach(c=>{
+    s+=`<g><rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="0.3" fill="#8A8A85" opacity="0.06"/><rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="0.3" fill="none" stroke="#B9B6B0" stroke-width="0.06" stroke-dasharray="0.9 0.55"/>`;
+    if(c.pion)s+=`<text transform="rotate(90 ${c.x+c.w/2+0.28} ${c.y+1})" x="${c.x+c.w/2+0.28}" y="${c.y+1}" font-size="0.8" fill="#9B9891">${c.nazwa}</text>`;
+    else s+=`<text x="${c.x+0.9}" y="${c.y+c.h/2+0.3}" font-size="0.8" fill="#9B9891">${c.nazwa}</text>`;
+    s+=`</g>`;
+  });
+  // magistrale mediów (wewnątrz hali, przy dolnej ścianie)
+  const rails=[["energia",HALA.szer-5.4],["woda",HALA.szer-4.3],["n2",HALA.szer-3.2],["kwas",HALA.szer-2.1]];
+  if(showMedia){
+    rails.forEach(([m,y])=>{
+      const k=MEDIA_KOL[m],lit=MEDIA_LIT[m],lw=lit.length>1?2:1.3;
+      s+=`<rect x="1.2" y="${y-0.62}" width="${lw}" height="1.24" rx="0.25" fill="${k}"/><text x="${1.2+lw/2}" y="${y+0.32}" font-size="0.8" font-weight="700" fill="#fff" text-anchor="middle">${lit}</text>`;
+      s+=`<text x="${1.6+lw}" y="${y+0.3}" font-size="0.85" fill="${k}">${MEDIA_NAZ[m]}</text>`;
+      s+=`<line x1="7.5" y1="${y}" x2="${HALA.dl-1.5}" y2="${y}" stroke="${k}" stroke-width="0.13" opacity="0.55"/><circle cx="${HALA.dl-1.5}" cy="${y}" r="0.22" fill="${k}"/>`;
+    });
+    s+=`<g class="mconn">`; // podpięcia urządzeń do magistral — krycie 25%
+    placed.forEach(p=>{const d=DEV[p.dev];d.media.forEach(m=>{const r=rails.find(r=>r[0]===m);const k=MEDIA_KOL[m];
+      s+=`<path class="mline" stroke="${k}" d="M ${p.x} ${p.y} V ${r[1]}"/><circle cx="${p.x}" cy="${r[1]}" r="0.2" fill="${k}"/>`;});});
+    s+=`</g>`;
+  }
+  // urządzenia
+  placed.forEach(p=>{
+    const d=DEV[p.dev], rot=p.rot%180, L=rot?d.szer:d.dl, Sz=rot?d.dl:d.szer;
+    const cls="dev"+(p.uid===selUid?" sel":"")+(bad.has(p.uid)?" coll":"");
+    const col=LHEX(d.linia);
+    s+=`<g class="${cls}" data-uid="${p.uid}">`;
+    if(showSerw){
+      s+=`<rect class="serw" stroke="${col}" x="${p.x-L/2-d.serw}" y="${p.y-Sz/2-d.serw}" width="${L+2*d.serw}" height="${Sz+2*d.serw}" rx="0.4"/>`;
+      s+=`<rect x="${p.x-L/2-d.serw}" y="${p.y+Sz/2+d.serw-1.15}" width="1.15" height="1.15" rx="0.2" fill="#fff" stroke="${col}" stroke-width="0.07"/><text x="${p.x-L/2-d.serw+0.575}" y="${p.y+Sz/2+d.serw-0.32}" font-size="0.68" font-weight="700" text-anchor="middle" fill="${col}">S</text>`;
+    }
+    s+=`<rect class="body" x="${p.x-L/2}" y="${p.y-Sz/2}" width="${L}" height="${Sz}" rx="0.35"/>`;
+    if(p.uid===selUid){ // narożne uchwyty zaznaczenia
+      [[-L/2,-Sz/2],[L/2,-Sz/2],[-L/2,Sz/2],[L/2,Sz/2]].forEach(([dx,dy])=>{
+        s+=`<rect x="${p.x+dx-0.3}" y="${p.y+dy-0.3}" width="0.6" height="0.6" fill="#fff" stroke="var(--acc)" stroke-width="0.09"/>`;});
+    }
+    if(d.custom)s+=`<circle cx="${p.x+L/2-0.85}" cy="${p.y-Sz/2+0.85}" r="0.3" fill="#FF4D00"/>`;
+    const mx=Math.max(4,Math.floor((L-1.2)/0.36));
+    const nm=d.nazwa.length>mx?d.nazwa.slice(0,mx-1)+"…":d.nazwa;
+    s+=`<text x="${p.x-L/2+0.7}" y="${p.y-Sz/2+1.25}" font-size="0.9" font-weight="700" fill="${col}">${d.id}</text>`;
+    s+=`<text x="${p.x-L/2+0.7}" y="${p.y-Sz/2+2.2}" font-size="0.62" fill="#5c5c58">${nm}</text>`;
+    const ih=Sz-3.4;
+    if(ih>1.2)s+=`<svg x="${p.x-L/2+0.6}" y="${p.y-Sz/2+2.7}" width="${L-1.2}" height="${ih}" viewBox="0 0 94 52" preserveAspectRatio="xMidYMid meet" opacity="0.92">${GFXIN(d.gfx)}</svg>`;
+    else if(Sz>=4)s+=`<text x="${p.x+L/2-0.7}" y="${p.y+Sz/2-0.5}" font-size="0.58" fill="#8A8A85" text-anchor="end">${d.kW} kW · ${d.os} os.</text>`;
+    s+=`</g>`;
+  });
+  // podgląd urządzenia przeciąganego z katalogu
+  if(preview){
+    const d=DEV[preview.dev],L=d.dl,Sz=d.szer;
+    s+=`<g class="preview">`;
+    s+=`<rect x="${preview.x-L/2-d.serw}" y="${preview.y-Sz/2-d.serw}" width="${L+2*d.serw}" height="${Sz+2*d.serw}" rx="0.4" fill="none" stroke="${LHEX(d.linia)}" stroke-width="0.09" stroke-dasharray="0.55 0.4"/>`;
+    s+=`<rect class="pbody" x="${preview.x-L/2}" y="${preview.y-Sz/2}" width="${L}" height="${Sz}" rx="0.35"/>`;
+    s+=`<text x="${preview.x-L/2+0.7}" y="${preview.y-Sz/2+1.25}" font-size="0.9" font-weight="700" fill="${LHEX(d.linia)}">${d.id}</text>`;
+    const ih=Sz-3.4;
+    if(ih>1.2)s+=`<svg x="${preview.x-L/2+0.6}" y="${preview.y-Sz/2+2.7}" width="${L-1.2}" height="${ih}" viewBox="0 0 94 52" preserveAspectRatio="xMidYMid meet">${GFXIN(d.gfx)}</svg>`;
+    s+=`</g>`;
+  }
+  svg.innerHTML=s;
+  // chip kolizji (+ monit powiększenia hali, gdy coś wystaje poza obrys)
+  const chip=document.getElementById("collChip"),n=bad.size;
+  let poza=false;placed.forEach(p=>{const f=foot(p);if(f.x<0||f.y<0||f.x+f.w>HALA.dl||f.y+f.h>HALA.szer)poza=true;});
+  chip.style.display=n?"block":"none";
+  if(n)chip.innerHTML=`⚠ ${n} ${n===1?"kolizja":(n%10>=2&&n%10<=4&&(n%100<12||n%100>14))?"kolizje":"kolizji"} (nakładki / poza halą / maszyna na strefie)`;
+  // centralny przycisk „Powiększ halę" — gdy coś wystaje poza obrys hali
+  const gb=document.getElementById("growBtn");if(gb)gb.style.display=poza?"block":"none";
+  updZoom();renderKPI();renderStrip();save();
+}
+function updZoom(){document.getElementById("zoomPct").textContent=Math.round((HALA.dl+8)/vb.w*100)+"%";}
+
+/* ═══ KPI ═══ */
+const IC={
+grid:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+bolt:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>',
+drop:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>',
+user:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+area:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/></svg>',
+coin:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
+hall:'<svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M3 10l9-6 9 6v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 10h18"/></svg>'};
+function renderKPI(){
+  const P=placed.map(p=>DEV[p.dev]);
+  const kW=P.reduce((a,d)=>a+d.kW,0), kWsr=P.reduce((a,d)=>a+d.kWsr,0);
+  const n2=P.reduce((a,d)=>a+d.n2,0), woda=P.reduce((a,d)=>a+d.woda,0);
+  const os=P.reduce((a,d)=>a+d.os,0), capex=P.reduce((a,d)=>a+d.capex,0);
+  const b=bilansPow();
+  const powPct=Math.round(100*(b.prod+b.str+b.kom)/b.hala);
+  const mw=v=>v>=1000?[(v/1000).toLocaleString("pl-PL",{maximumFractionDigits:2}),"MW"]:[v.toLocaleString("pl-PL"),"kW"];
+  const n=placed.length;
+  const uPl=n===1?"urządzenie":(n%10>=2&&n%10<=4&&(n%100<12||n%100>14))?"urządzenia":"urządzeń";
+  const [mv,mu]=mw(kWsr),[zv,zu]=mw(kW);
+  const items=[
+    [IC.grid,n,"",uPl+" na hali",""],
+    [IC.bolt,mv,mu,"Moc średnia",`zainstalowana ${zv} ${zu}`],
+    [IC.drop,(woda+n2).toLocaleString("pl-PL"),"m³/h",`Media (woda ${woda} · N₂ ${n2})`,""],
+    [IC.user,os,"os./zm.","Personel / zmianę",""],
+    [IC.hall,`${HALA.dl} × ${HALA.szer}`,"m",`Hala robocza · ${b.hala.toLocaleString("pl-PL")} m²`,"Kliknij, aby ręcznie zmienić wymiary hali (założenie robocze — do potwierdzenia z klientem)","hala"],
+    [IC.area,powPct,"%",`Zabudowa: prod. ${Math.round(100*b.prod/b.hala)} · strefy ${Math.round(100*b.str/b.hala)} · ciągi ${Math.round(100*b.kom/b.hala)}%`,`${Math.round(b.prod+b.str+b.kom).toLocaleString("pl-PL")} / ${b.hala.toLocaleString("pl-PL")} m²`],
+    [IC.coin,fmtZl(capex),"zł","CAPEX (dane robocze)",""],
+  ];
+  document.getElementById("kpis").innerHTML=items.map(([ic,v,u,l,tt,ed])=>
+    `<div class="kpi${ed?" edit":""}"${ed?` data-edit="${ed}"`:""}${tt?` title="${tt}"`:""}><span class="kic">${ic}</span><div><div class="v">${v}<small>${u}</small></div><div class="kl">${l}</div></div></div>`).join("");
+}
+
+/* ═══ KATALOG (pływający) ═══ */
+function renderTiles(){
+  const list=DEVICES.filter(d=>(filtr==="all"||d.linia===filtr)&&(!q||(d.id+d.nazwa+d.modul).toLowerCase().includes(q)));
+  document.getElementById("tiles").innerHTML=list.map(d=>{
+    const n=placed.filter(p=>p.dev===d.id).length;
+    const col=LHEX(d.linia);
+    const load=Math.round(100*d.kWsr/d.kW);
+    return `<div class="tile l${d.linia.toLowerCase()}${d.id===selDev?" sel":""}" data-id="${d.id}" title="${d.nazwa}${n?` — na planie ${n}×`:""}">
+      ${n?`<span class="tcnt" style="background:${col}">${n}</span>`:""}
+      <div class="th">
+        <div class="tt"><span class="tid mono">${d.id}</span><div class="tnm">${d.nazwa}</div></div>
+        <div class="timg">${GFX2[d.gfx]||GFX.ph}${d.custom?'<span class="badge custom cb">B+R</span>':""}</div>
+      </div>
+      <div class="route"><span>${d.we}</span><span>${d.wy}</span></div>
+      <div class="rbar"><div class="trk"></div><div class="fill" style="width:${load}%;background:${col}"></div><div class="dotL" style="background:${col}"></div><div class="ring"></div><div class="hnd" style="left:calc(${load}% - 12px);background:${col}"></div></div>
+      <div class="rsub"><span>obc. ${load}%</span><span>${d.modul}</span></div>
+      <div class="tstats"><span>⚡ ${d.kW} kW</span><span>▭ ${String(d.dl).replace(".",",")}×${String(d.szer).replace(".",",")} m</span><span>👤 ${d.os}</span></div>
+    </div>`;}).join("")||'<div style="font-size:11px;color:var(--mut);padding:10px 4px">Brak wyników.</div>';
+}
+
+/* ═══ KARTA URZĄDZENIA (pływająca, prawa) ═══ */
+function renderRight(){
+  const el=document.getElementById("devCard");
+  const z=strefy.find(x=>x.zid===selZone);
+  if(z){const zd=STREFA[z.typ];
+    el.innerHTML=`
+      <span class="lbl">Wybrana strefa</span>
+      <div class="hd"><span class="tid" style="color:${zd.kol}">● ${z.typ.toUpperCase()}</span><span class="badge off">strefa M5</span></div>
+      <h3>${zd.nazwa}</h3>
+      <div class="prow"><span class="k"><span class="pic">▢</span>Powierzchnia</span><b>${Math.round(z.w*z.h)} m²</b></div>
+      <div class="arow"><span>Szerokość [m]</span><input id="zW" type="number" step="0.5" min="2" value="${z.w}"></div>
+      <div class="arow"><span>Głębokość [m]</span><input id="zH" type="number" step="0.5" min="2" value="${z.h}"></div>
+      <div class="acts"><button id="zDel" class="del">Usuń strefę</button></div>
+      <p class="rnote">Strefa = rezerwacja powierzchni do programu M5 (metraż roboczy do kalibracji — np. z danych o 20 t/d przyjęcia). Przeciągnij strefę na planie, wymiary zmienisz tutaj.</p>`;
+    const upd=()=>{z.w=Math.max(2,+document.getElementById("zW").value||z.w);z.h=Math.max(2,+document.getElementById("zH").value||z.h);snap();render();renderRight();};
+    document.getElementById("zW").onchange=upd;document.getElementById("zH").onchange=upd;
+    document.getElementById("zDel").onclick=()=>{strefy=strefy.filter(x=>x.zid!==selZone);selZone=null;snap();render();renderRight();};
+    return;}
+  const p=placed.find(x=>x.uid===selUid);
+  const d=p?DEV[p.dev]:DEV[selDev];
+  if(!d){el.innerHTML=`<span class="lbl">Wybrana karta urządzenia</span><div class="empty"><div class="big">◱</div><p style="font-size:11px;line-height:1.5">Kliknij urządzenie na hali albo w katalogu, żeby zobaczyć szczegóły.</p></div>`;return;}
+  const n=placed.filter(x=>x.dev===d.id).length;
+  const col=LHEX(d.linia);
+  const load=Math.round(100*d.kWsr/d.kW);
+  const media=d.media.map(m=>m==="n2"?"N₂":MEDIA_NAZ[m]).join(", ");
+  el.innerHTML=`
+    <span class="lbl">Wybrana karta urządzenia</span>
+    <div class="hd"><span class="tid mono" style="color:${col}">${d.id}</span>
+      ${p?'<span class="badge on">● Na planie</span>':n?`<span class="badge on">● Na planie ${n}×</span>`:'<span class="badge off">W katalogu</span>'}</div>
+    <h3>${d.nazwa}${d.custom?' <span class="badge custom">CUSTOM · B+R</span>':""}</h3>
+    <div class="big-img">${GFX2[d.gfx]||GFX.ph}</div>
+    <div class="prow"><span class="k"><span class="pic">▭</span>Wymiary (dł. × szer.)</span><b>${String(d.dl).replace(".",",")} × ${String(d.szer).replace(".",",")} m</b></div>
+    <div class="prow"><span class="k"><span class="pic">▦</span>Strefa serwisowa</span><b>+ ${String(d.serw).replace(".",",")} m</b></div>
+    <div class="prow"><span class="k"><span class="pic">⚡</span>Moc zainst. / śr.</span><b>${d.kW} / ${d.kWsr} kW</b></div>
+    <div class="prow"><span class="k"><span class="pic">◍</span>Media</span><b>${media}</b></div>
+    ${d.woda?`<div class="prow"><span class="k"><span class="pic">💧</span>Woda</span><b>${d.woda} m³/h</b></div>`:""}
+    ${d.n2?`<div class="prow"><span class="k"><span class="pic">N₂</span>Azot</span><b>${d.n2} m³/h</b></div>`:""}
+    <div class="prow"><span class="k"><span class="pic">👤</span>Personel / zmianę</span><b>${d.os} os.</b></div>
+    <div class="prow"><span class="k"><span class="pic">zł</span>CAPEX (robocze)</span><b>${fmtZl(d.capex)} zł</b></div>
+    <div class="prow"><span class="k"><span class="pic">→</span>Przepływ</span><b style="font-size:10.5px">${d.we} → ${d.wy}</b></div>
+    ${d.karta&&d.karta.dostEU.length?`<div class="prow" style="align-items:flex-start"><span class="k"><span class="pic">🏭</span>Dostawcy</span><b style="font-size:10px;text-align:right">${d.karta.dostEU.slice(0,2).map(s=>s.u?`<a href="${s.u}" target="_blank" rel="noopener" style="color:var(--acc);text-decoration:none">${s.n.split("(")[0].trim()}</a>`:s.n.split("(")[0].trim()).join(", ")}…</b></div>`:""}
+    <div class="ld" style="margin-top:9px"><span class="lbl">Obciążenie</span><div class="tr"><div class="fi" style="width:${load}%;background:${col}"></div></div><b>${load}%</b></div>
+    <button id="rFull" style="width:100%;margin-top:9px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 0;font-size:11px;font-weight:600;cursor:pointer">📋 Pełna karta procesowa →</button>
+    ${p?`<div class="acts"><button id="rRot">↻ Obróć</button><button id="rDup">⧉ Duplikuj</button><button id="rDel" class="del">Usuń</button></div>`
+       :`<div class="acts"><button disabled style="opacity:.55;cursor:default">Przeciągnij kafelek na plan, aby umieścić</button></div>`}
+    <p class="rnote">Dane z kart procesowych KLAB (rev. 07.2026). Moc i CAPEX = oszacowania robocze (W-draft) do RFQ. Pełne dane, media, odpady, BHP i dostawcy — w zakładce „Karty urządzeń".</p>`;
+  document.getElementById("rFull").onclick=()=>{kartaSel=d.id;view="karty";renderView();};
+  if(p){
+    document.getElementById("rRot").onclick=()=>{p.rot=(p.rot+90)%360;snap();render();};
+    document.getElementById("rDup").onclick=()=>{const c={uid:uidN++,dev:p.dev,x:snapV(p.x+2),y:snapV(p.y+2),rot:p.rot};placed.push(c);selUid=c.uid;snap();render();renderTiles();renderRight();};
+    document.getElementById("rDel").onclick=()=>{placed=placed.filter(x=>x.uid!==selUid);selUid=null;snap();render();renderTiles();renderRight();};
+  }
+}
+
+/* ═══ DOLNY PASEK: moduły funkcjonalne na planie ═══ */
+function renderStrip(){
+  const el=document.getElementById("bottomStrip");
+  const mod={};placed.forEach(p=>{const d=DEV[p.dev];mod[d.modul]=(mod[d.modul]||0)+1;});
+  const cards=Object.entries(mod).map(([m,n])=>
+    `<div class="mcard" data-mod="${m}" title="Pokaż w katalogu"><span class="mi">${MOD_IC[m]||"▦"}</span><span class="mn">${m}</span><span class="mc">${n} urz.</span></div>`).join("");
+  el.innerHTML=(cards||`<div class="mstrip-empty">Moduły funkcjonalne pojawią się tu wraz z urządzeniami na planie.</div>`)+
+    `<div id="legend">${Object.keys(MEDIA_KOL).map(m=>`<span><i style="background:${MEDIA_KOL[m]}"></i>${MEDIA_NAZ[m]}</span>`).join("")}</div>`;
+  document.getElementById("legend").style.visibility=showMedia?"visible":"hidden";
+}
+document.getElementById("bottomStrip").addEventListener("click",e=>{
+  const c=e.target.closest(".mcard");if(!c)return;
+  const inp=document.getElementById("q");inp.value=c.dataset.mod;q=c.dataset.mod.toLowerCase();
+  document.getElementById("catalog").style.display="flex";document.getElementById("catBtn").style.display="none";
+  renderTiles();
+});
+
+/* ═══ INTERAKCJE ═══ */
+function toSVG(e){const r=svg.getBoundingClientRect();return{x:vb.x+(e.clientX-r.left)/r.width*vb.w,y:vb.y+(e.clientY-r.top)/r.height*vb.h};}
+const snapV=v=>HALA.siatka?Math.round(v/HALA.siatka)*HALA.siatka:Math.round(v*100)/100;
+
+// drag z katalogu (klik bez ruchu = wybór karty)
+let ghostDev=null,ghostStart=null,ghostOn=false;const ghost=document.getElementById("ghost");
+document.getElementById("tiles").addEventListener("pointerdown",e=>{
+  const t=e.target.closest(".tile");if(!t)return;
+  ghostDev=t.dataset.id;ghostStart={x:e.clientX,y:e.clientY};ghostOn=false;e.preventDefault();
+});
+function moveGhost(e){ghost.style.left=(e.clientX+12)+"px";ghost.style.top=(e.clientY+12)+"px";}
+function overCanvas(e){
+  const r=wrap.getBoundingClientRect();
+  return view==="layout"&&!(e.target.closest&&e.target.closest(".fpanel"))
+    &&e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;
+}
+window.addEventListener("pointermove",e=>{
+  if(!ghostDev)return;
+  if(!ghostOn&&Math.hypot(e.clientX-ghostStart.x,e.clientY-ghostStart.y)>6){
+    ghostOn=true;const d=DEV[ghostDev];ghost.textContent=d.id+" · "+d.nazwa;}
+  if(ghostOn){
+    if(overCanvas(e)){ // nad kanwą: podgląd urządzenia zamiast etykiety
+      ghost.style.display="none";
+      const c=toSVG(e);preview={dev:ghostDev,x:snapV(c.x),y:snapV(c.y)};render();
+    }else{
+      ghost.style.display="block";moveGhost(e);
+      if(preview){preview=null;render();}
+    }
+  }
+});
+window.addEventListener("pointerup",e=>{
+  if(!ghostDev)return;
+  ghost.style.display="none";
+  if(!ghostOn){selDev=ghostDev;selUid=null;renderTiles();renderRight();render();}
+  else{
+    if(overCanvas(e)){
+      const c=toSVG(e);placed.push({uid:uidN++,dev:ghostDev,x:snapV(c.x),y:snapV(c.y),rot:0});
+      selUid=placed[placed.length-1].uid;selDev=null;preview=null;snap();render();renderTiles();renderRight();
+    }else if(preview){preview=null;render();}
+  }
+  ghostDev=null;ghostOn=false;
+});
+
+// drag / select na kanwie + pan (urządzenia i strefy)
+let dragP=null,dragZ=null,panning=null,moved=false;
+svg.addEventListener("pointerdown",e=>{
+  const g=e.target.closest(".dev");moved=false;
+  if(g){const uid=+g.dataset.uid;const p=placed.find(x=>x.uid===uid);const c=toSVG(e);dragP={p,dx:c.x-p.x,dy:c.y-p.y};selUid=uid;selDev=null;selZone=null;render();renderTiles();renderRight();return;}
+  const zg=e.target.closest(".zone");
+  if(zg){const zid=+zg.dataset.zid;const z=strefy.find(x=>x.zid===zid);const c=toSVG(e);dragZ={z,dx:c.x-z.x,dy:c.y-z.y};selZone=zid;selUid=null;selDev=null;render();renderRight();return;}
+  panning={x:e.clientX,y:e.clientY,vb:{...vb}};wrap.classList.add("drag");
+});
+window.addEventListener("pointermove",e=>{
+  if(dragP){const c=toSVG(e);dragP.p.x=snapV(c.x-dragP.dx);dragP.p.y=snapV(c.y-dragP.dy);moved=true;render();}
+  else if(dragZ){const c=toSVG(e);dragZ.z.x=snapV(c.x-dragZ.dx);dragZ.z.y=snapV(c.y-dragZ.dy);moved=true;render();}
+  else if(panning){const r=svg.getBoundingClientRect();vb.x=panning.vb.x-(e.clientX-panning.x)/r.width*vb.w;vb.y=panning.vb.y-(e.clientY-panning.y)/r.height*vb.h;svg.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);}
+});
+window.addEventListener("pointerup",e=>{
+  if((dragP||dragZ)&&moved)snap();
+  if(panning&&Math.hypot(e.clientX-panning.x,e.clientY-panning.y)<4){selUid=null;selZone=null;render();renderRight();}
+  dragP=null;dragZ=null;panning=null;wrap.classList.remove("drag");
+});
+// zoom
+function zoom(f,cx,cy){const c=cx!==undefined?{x:cx,y:cy}:{x:vb.x+vb.w/2,y:vb.y+vb.h/2};vb={x:c.x-(c.x-vb.x)*f,y:c.y-(c.y-vb.y)*f,w:vb.w*f,h:vb.h*f};svg.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);updZoom();}
+document.getElementById("zin").onclick=()=>zoom(.8);
+document.getElementById("zout").onclick=()=>zoom(1.25);
+document.getElementById("zfit").onclick=()=>{vb=fitVB();render();};
+wrap.addEventListener("wheel",e=>{e.preventDefault();const c=toSVG(e);zoom(e.deltaY>0?1.12:0.89,c.x,c.y);},{passive:false});
+// klawisze
+window.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT")return;
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();e.shiftKey?redo():undo();return;}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){e.preventDefault();redo();return;}
+  if(e.key==="Escape"){selUid=null;selDev=null;selZone=null;render();renderTiles();renderRight();return;}
+  if((e.key==="Delete"||e.key==="Backspace")&&selZone!==null){strefy=strefy.filter(z=>z.zid!==selZone);selZone=null;snap();render();renderRight();return;}
+  const p=placed.find(x=>x.uid===selUid);if(!p)return;
+  if(e.key==="r"||e.key==="R"){p.rot=(p.rot+90)%360;snap();render();}
+  if(e.key==="Delete"||e.key==="Backspace"){placed=placed.filter(x=>x.uid!==selUid);selUid=null;snap();render();renderTiles();renderRight();}
+});
+document.getElementById("undoB").onclick=undo;
+document.getElementById("redoB").onclick=redo;
+document.getElementById("gridBtn").onclick=()=>{gridI=(gridI+1)%GRIDS.length;HALA.siatka=GRIDS[gridI][0];document.getElementById("gridV").textContent=GRIDS[gridI][1];};
+// katalog zwijany
+document.getElementById("catX").onclick=()=>{document.getElementById("catalog").style.display="none";document.getElementById("catBtn").style.display="flex";};
+document.getElementById("catBtn").onclick=()=>{document.getElementById("catalog").style.display="flex";document.getElementById("catBtn").style.display="none";};
+// menu ⋮
+const menu=document.getElementById("menu");
+document.getElementById("kebab").onclick=e=>{e.stopPropagation();menu.style.display=menu.style.display==="block"?"none":"block";};
+window.addEventListener("click",e=>{if(!e.target.closest("#menu")&&!e.target.closest("#kebab"))menu.style.display="none";});
+menu.querySelectorAll("[data-href]").forEach(b=>b.onclick=()=>location.href=encodeURI(b.dataset.href));
+
+/* ═══ WIDOKI M2–M6 ═══ */
+const pane=document.getElementById("viewPane");
+const PUSTO='<tr><td colspan="9" style="color:var(--mut)">Przeciągnij urządzenia na halę w widoku Układ hali — widok liczy się z planu.</td></tr>';
+function renderView(){
+  document.querySelectorAll("#nav button,#rail button").forEach(b=>b.classList.toggle("act",b.dataset.v===view));
+  if(view==="layout"){pane.style.display="none";return;}
+  pane.style.display="block";
+  if(view==="m2")renderM2();
+  else if(view==="m4")renderM4();
+  else if(view==="m6")renderM6();
+  else if(view==="proces")renderProces();
+  else if(view==="zestaw")renderZestaw();
+  else if(view==="iso")renderIso();
+  else if(view==="karty")renderKarty();
+  else if(view==="m3")renderM3();
+  else pane.innerHTML="";
+}
+
+/* ═══ M3 — pierwsza realna wersja z danych dokumentacji (odzysk ciepła, PV, BESS) ═══ */
+function renderM3(){
+  const [o0,o1]=DOK.cieplo_odzysk_kW,[c0,c1]=DOK.chlod_kW;
+  pane.innerHTML=`
+  <div class="vcard"><h2>Analiza źródeł energii i ciepła (M3)</h2>
+    <p class="note" style="margin-bottom:12px">Dane z dokumentacji klienta (rzuty + bilans ciepła, rev. 07.2026). Scenariusze i CAPEX/OPEX per wariant — do rozwinięcia po ustaleniu taryf i doborze urządzeń (RFQ).</p>
+    <table>
+      <tr><th>Źródło / element</th><th>Parametr</th><th>Uwaga</th></tr>
+      <tr><td><b>Dach PV</b></td><td class="num">~${DOK.pv_MWp.toLocaleString("pl-PL")} MWp</td><td>autokonsumpcja + BESS (bufor PV/formacji)</td></tr>
+      <tr><td><b>Odzysk ciepła odpadowego</b></td><td class="num">${o0}–${o1} kW śr.</td><td>≈ 1,6–2,6 GWh/rok · 0,5–0,9 mln zł/rok oszczędności ⚠</td></tr>
+      <tr><td>— piroliza B4 (spaliny 400–700 °C)</td><td class="num">100–180 kW</td><td>→ suszarnia B3 + CO hali</td></tr>
+      <tr><td>— formacja B13 / galwanika B5 (30–45 °C)</td><td class="num">60–120 kW</td><td>→ pompa ciepła COP 4–5 → curing B8b 65–85 °C</td></tr>
+      <tr><td>— kondensacja EtOH B2/B3</td><td class="num">20–40 kW</td><td>→ CWU / podgrzew wstępny</td></tr>
+      <tr><td><b>Zapotrzebowanie na chłód</b></td><td class="num">${c0}–${c1} kW szczyt</td><td>chłodnie wentylatorowe + free-cooling ~6 mies./rok</td></tr>
+      <tr><td><b>Magazyn ciepła PCM/M-TES</b></td><td>nadwyżka B4</td><td>technologia własna 21 zmysłów — szczyt zimowy CO (~280–390 kW)</td></tr>
+    </table>
+    <p class="note">Wniosek z dokumentu: zakład <b>netto dodatni cieplnie</b> poza szczytem zimowym; ciepło dokupowane tylko zimą. „100% OZE" = deklaracja klienta z dokumentacji — tak ją opisujemy, nie walidujemy.</p>
+  </div>`;
+}
+
+/* ═══ Autorozmieszczenie — plan referencyjny z dokumentacji (156×72) ═══ */
+function autoReferencyjny(){
+  if(placed.length||strefy.length||ciagi.length){
+    if(!confirm("Autorozmieszczenie ustawi całą fabrykę wg planu referencyjnego (156×72 m, wszystkie 23 urządzenia + strefy). Bieżący układ zostanie zastąpiony. Kontynuować?"))return;
+  }
+  HALA.dl=156;HALA.szer=72;
+  placed=[];uidN=1;
+  DEVICES.forEach(d=>{const r=d.ref;placed.push({uid:uidN++,dev:d.id,x:r.x+r.dl/2,y:r.y+r.szer/2,rot:0});});
+  // strefy zaplecza/magazynów/socjalu wg planu (metraże robocze)
+  strefy=[];zidN=1;
+  const Z=(typ,x,y,w,h)=>strefy.push({zid:zidN++,typ,x,y,w,h});
+  Z("wyroby",1,2,14,28);          // ekspedycja + magazyn wyrobów (W)
+  Z("technika",40,2,22,28);       // zaplecze techniczne
+  Z("surowiec",1,44,0.1,0.1);     // placeholder — surowiec jest w A8 (magazyn+CQ)
+  strefy.pop();                   // usuń placeholder
+  Z("socjal",25,44,22,27);        // korytarz/śluza + socjal (czysto↔formacja)
+  Z("qaur",128,2,27,15);          // rezerwa/technika E — róg
+  strefy.pop();
+  // ciąg: poziomy kręgosłup AGV w przerwie między pasmem linii A (góra) a B (dół) — bez pionowych, żeby nic się nie krzyżowało
+  ciagi=[
+    {x:1,y:41.4,w:154,h:2.2,nazwa:"korytarz AGV/AMR — kręgosłup intralogistyki (MES/LIMS)"},
+  ];
+  selUid=null;selZone=null;vb=fitVB();snap();render();renderTiles();renderRight();
+  // raport
+  const b=bilansPow(),pc=v=>Math.round(100*v/b.hala);
+  const out=document.getElementById("autoOut");
+  autoPanel.style.display="block";out.style.display="block";
+  out.innerHTML=`<h3>Plan referencyjny wczytany</h3>
+    <p class="note">Ustawiono halę 156×72 m (11 232 m²), wszystkie 23 urządzenia procesowe wg dokumentacji klienta (rev. 07.2026), strefy zaplecza i korytarz AGV.</p>
+    <table style="font-size:11px">
+      <tr><td>Produkcja (urządzenia)</td><td class="num"><b>${Math.round(b.prod).toLocaleString("pl-PL")} m²</b> · ${pc(b.prod)}%</td></tr>
+      <tr><td>Strefy zaplecza</td><td class="num"><b>${Math.round(b.str).toLocaleString("pl-PL")} m²</b> · ${pc(b.str)}%</td></tr>
+      <tr><td>Komunikacja</td><td class="num"><b>${Math.round(b.kom).toLocaleString("pl-PL")} m²</b> · ${pc(b.kom)}%</td></tr>
+    </table>
+    <p class="note">Układ = odwzorowanie planu z dokumentacji (przepływ przyjęcie E → wysyłka W, linia A góra, linia B dół, brama A8). Możesz go dalej edytować ręcznie. Cofniesz przez Ctrl+Z.</p>`;
+}
+
+/* ═══ Widok: KARTY URZĄDZEŃ — pełne dane procesowe ═══ */
+let kartaSel=null;
+function renderKarty(){
+  const list=DEVICES;
+  const nav=list.map(d=>`<button class="kchip${d.id===kartaSel?" act":""}" data-k="${d.id}" style="border-color:${d.id===kartaSel?LHEX(d.linia):"var(--line)"}"><b style="color:${LHEX(d.linia)}">${d.id}</b> ${d.nazwa}</button>`).join("");
+  const d=DEV[kartaSel]||list[0];
+  pane.innerHTML=`<div class="kwrap">
+    <div class="knav">${nav}</div>
+    <div class="kbody" id="kbody">${kartaHTML(d)}</div>
+  </div>`;
+  pane.querySelectorAll(".kchip").forEach(b=>b.onclick=()=>{kartaSel=b.dataset.k;renderKarty();});
+}
+function supList(arr){
+  return arr.map(s=>s.u?`<a href="${s.u}" target="_blank" rel="noopener">${s.n}</a>`:`<span title="brak zweryfikowanego linku">${s.n}</span>`).join(" · ");
+}
+function kartaHTML(d){
+  const k=d.karta,col=LHEX(d.linia),n=placed.filter(p=>p.dev===d.id).length;
+  const tab=(rows,cols)=>`<table><tr>${cols.map(c=>`<th${c[1]?' class="num"':''}>${c[0]}</th>`).join("")}</tr>${rows}</table>`;
+  const io=(a)=>a.map(r=>`<tr><td>${r[0]||""}</td><td>${r[1]||""}</td><td style="color:var(--mut)">${r[2]||""}</td></tr>`).join("");
+  const urz=k.urzadzenia.map(r=>`<tr><td>${r[0]||""}</td><td class="num">${r[1]||""}</td><td style="color:var(--mut)">${r[2]||""}</td></tr>`).join("");
+  const med=k.media.map(r=>`<tr><td>${r[0]||""}</td><td>${r[1]||""}</td><td style="color:var(--mut)">${r[2]||""}</td></tr>`).join("");
+  const odp=k.odpady.map(r=>`<tr><td>${r[0]||""}</td><td class="mono">${r[1]||""}</td><td style="color:var(--mut)">${r[2]||""}</td></tr>`).join("");
+  const bhp=k.bhp.map(r=>`<tr><td>${r[0]||""}</td><td>${r[1]||""}</td></tr>`).join("");
+  const badge=d.badge==="waskie"?'<span class="badge" style="background:#FEF2F2;color:var(--bad)">wąskie gardło</span>':d.badge==="krytyczne"?'<span class="badge" style="background:#FFF7ED;color:#B45309">punkt krytyczny</span>':"";
+  return `
+  <div class="khd"><div><span class="ktag mono" style="background:${col}">${d.id}</span> <b class="kttl">${k.opis?d.nazwa:d.nazwa}</b> ${d.custom?'<span class="badge custom">CUSTOM · B+R</span>':""} ${badge} ${d.strefa==="ATEX"?'<span class="badge" style="background:#FEF9C3;color:#854D0E">ATEX</span>':""}</div>
+    <div class="kmeta">${d.linia==="A"?"Linia A · recykling":"Linia B · ogniwa"} · ${d.modul} · ${n?`na planie ${n}×`:"w katalogu"}</div></div>
+  <p class="kopis">${k.opis}</p>
+  <div class="kgrid4">
+    <div><span class="lbl">Tryb pracy</span><b>${k.tryb||d.tryb}</b></div>
+    <div><span class="lbl">Wydajność</span><b>${k.wyd||d.przepust}</b></div>
+    <div><span class="lbl">Czas procesu</span><b>${k.czas||"—"}</b></div>
+    <div><span class="lbl">Powierzchnia · obsada</span><b>${k.pow||d.m2} m² · ${k.obsada||d.os}</b></div>
+    <div><span class="lbl">Moc śr. (D-szac ⚠)</span><b>${d.kW} kW</b></div>
+    <div><span class="lbl">Media</span><b>${d.media.map(m=>m==="n2"?"N₂":MEDIA_NAZ[m]).join(", ")}</b></div>
+    <div><span class="lbl">Strefa</span><b>${d.strefa}</b></div>
+    <div><span class="lbl">CAPEX (W-draft → RFQ)</span><b>${fmtZl(d.capex)} zł</b></div>
+  </div>
+  <div class="ksecs">
+    <div class="ksec"><h4>Surowce i wejścia</h4>${tab(io(k.surowce),[["Materiał"],["Ilość ⚠"],["Źródło"]])}</div>
+    <div class="ksec"><h4>Półprodukty i wyjścia</h4>${tab(io(k.wyjscia),[["Produkt"],["Ilość ⚠"],["Odbiorca"]])}</div>
+    <div class="ksec"><h4>Urządzenia</h4>${tab(urz,[["Urządzenie"],["Ilość",1],["Specyfikacja"]])}</div>
+    <div class="ksec"><h4>Media</h4>${tab(med,[["Medium"],["Zużycie ⚠"],["Uwagi"]])}</div>
+    <div class="ksec"><h4>Odpady i emisje</h4>${tab(odp,[["Strumień"],["Kod ⚠"],["Zagospodarowanie"]])}</div>
+    <div class="ksec"><h4>Zagrożenia BHP</h4>${tab(bhp,[["Zagrożenie"],["Środki ochrony"]])}</div>
+  </div>
+  <div class="ksec"><h4>Dostawcy maszyn <span class="lbl" style="text-transform:none">— research 07.2026, ≥3 oferty do RFQ</span></h4>
+    <div class="ksup"><span class="lbl">Europa / PL</span><div>${supList(k.dostEU)||"—"}</div></div>
+    <div class="ksup"><span class="lbl">Chiny / Tajwan</span><div>${supList(k.dostCN)||"—"}</div></div>
+  </div>
+  <p class="note">Dane z kart procesowych KLAB (rev. 07.2026). ⚠ = wartość szacunkowa do walidacji w B+R / kody odpadów do potwierdzenia z katalogiem odpadów i decyzją środowiskową. Moc i CAPEX = oszacowania robocze (W-draft) do zastąpienia ofertami z RFQ.</p>`;
+}
+
+/* ── widok: schemat procesu (M1) — wyprowadzony z pól we→wy katalogu ── */
+function lineChains(linia){
+  const list=DEVICES.filter(d=>d.linia===linia);
+  const N=s=>s.trim().toLowerCase();
+  const M=(a,b)=>{a=N(a);b=N(b);if(a===b)return 2;if(a.slice(0,4)===b.slice(0,4))return 1;return 0;};
+  const nextOf={},hasIn=new Set();
+  list.forEach(x=>{let best=null,bs=0;list.forEach(y=>{if(x!==y){const s=M(x.wy,y.we);if(s>bs){bs=s;best=y;}}});if(best){nextOf[x.id]={to:best.id,s:bs};hasIn.add(best.id);}});
+  const chains=[],used=new Set();
+  list.filter(d=>!hasIn.has(d.id)).forEach(st=>{const ch=[];let cur=st;while(cur&&!used.has(cur.id)){used.add(cur.id);ch.push(cur);const nx=nextOf[cur.id];cur=nx&&!used.has(nx.to)?DEV[nx.to]:null;}if(ch.length)chains.push(ch);});
+  list.filter(d=>!used.has(d.id)).forEach(d=>chains.push([d]));
+  return{chains,nextOf};
+}
+function pcardHTML(d){const n=placed.filter(p=>p.dev===d.id).length;
+  return `<div class="pcard" style="border-color:${d.linia==="A"?"#FFDCCB":"#E5DBF8"}">
+    <span class="pid mono" style="color:${LHEX(d.linia)}">${d.id}</span>${n?`<span class="tpill" style="color:${LHEX(d.linia)}">${n}×</span>`:""}
+    <div class="pnm">${d.nazwa}</div><div class="pim">${GFX2[d.gfx]||GFX.ph}</div></div>`;}
+function renderProces(){
+  const sekcja=linia=>{
+    const {chains,nextOf}=lineChains(linia);
+    return chains.map(ch=>{
+      let h=`<div class="pchain"><span class="pio">${ch[0].we}</span><span class="parw"><div class="ln"></div></span>`;
+      ch.forEach((d,i)=>{
+        h+=pcardHTML(d);
+        const nx=i<ch.length-1?nextOf[d.id]:null;
+        if(nx)h+=`<span class="parw${nx.s===1?" ap":""}" title="${nx.s===1?"dopasowanie przybliżone pól we→wy":"dopasowanie dokładne pól we→wy"}"><i>${d.wy}</i><div class="ln"></div></span>`;
+      });
+      h+=`<span class="parw"><div class="ln"></div></span><span class="pio out">${ch[ch.length-1].wy}</span></div>`;
+      return h;}).join("");
+  };
+  const mody={};DEVICES.forEach(d=>{(mody[d.modul]=mody[d.modul]||[]).push(d.id);});
+  pane.innerHTML=`
+  <div class="vcard" style="max-width:1080px"><h2>Schemat ciągu technologicznego (M1) — Linia A · recykling LAB</h2>${sekcja("A")}
+    <p class="note">Połączenia wyprowadzone automatycznie z pól we→wy katalogu (ciągła strzałka = dopasowanie dokładne, przerywana = przybliżone). Brakujące ogniwa linii A (podział frakcji z breakera na wsad Pb / pastę / PP) oraz etapy 1–8 / 1–14 i intralogistyka — po dostarczeniu schematu procesu z dokumentacji (M1 czeka na dane, nie zgadujemy).</p></div>
+  <div class="vcard" style="max-width:1080px"><h2>Linia B · produkcja ogniw</h2>${sekcja("B")}</div>
+  <div class="vcard" style="max-width:1080px"><h2>Moduły funkcjonalne (podział fabryki)</h2>
+    <table><tr><th>Moduł funkcjonalny</th><th>Urządzenia w katalogu</th><th class="num">Na planie</th></tr>
+    ${Object.entries(mody).map(([m,ids])=>`<tr><td><b>${MOD_IC[m]||"▦"} ${m}</b></td><td>${ids.map(i=>`<span class="mono">${i}</span>`).join(" · ")}</td><td class="num">${placed.filter(p=>ids.includes(p.dev)).length}</td></tr>`).join("")}</table></div>`;
+}
+
+/* ── widok: zestawienie modułów — wszystkie użyte karty ── */
+function renderZestaw(){
+  const cnt={};placed.forEach(p=>cnt[p.dev]=(cnt[p.dev]||0)+1);
+  const ids=Object.keys(cnt).sort();
+  if(!ids.length){pane.innerHTML=`<div class="soon"><div class="big">◱</div><h2>Zestawienie modułów</h2><p style="margin-top:8px;font-size:13px">Przeciągnij urządzenia na halę w widoku Układ hali — zestawienie zbiera wszystkie użyte karty.</p></div>`;return;}
+  const mods={};ids.forEach(id=>{const d=DEV[id];(mods[d.modul]=mods[d.modul]||[]).push(id);});
+  const card=id=>{const d=DEV[id],n=cnt[id],col=LHEX(d.linia),load=Math.round(100*d.kWsr/d.kW);
+    return `<div class="tile l${d.linia.toLowerCase()}" style="cursor:default" title="${d.nazwa}">
+      <div class="th"><div class="tt"><span class="tid mono">${d.id}</span><span class="tpill" style="color:${col}">${n}× na planie</span><div class="tnm">${d.nazwa}</div></div>
+        <div class="timg">${GFX2[d.gfx]||GFX.ph}${d.custom?'<span class="badge custom cb">B+R</span>':""}</div></div>
+      <div class="route"><span>${d.we}</span><span>${d.wy}</span></div>
+      <div class="rbar"><div class="trk"></div><div class="fill" style="width:${load}%;background:${col}"></div><div class="dotL" style="background:${col}"></div><div class="ring"></div><div class="hnd" style="left:calc(${load}% - 12px);background:${col}"></div></div>
+      <div class="rsub"><span>obc. ${load}%</span><span>${d.modul}</span></div>
+      <div class="tstats"><span>⚡ ${n}× ${d.kW} kW</span><span>👤 ${n}× ${d.os}</span><span>${fmtZl(n*d.capex)} zł</span></div>
+    </div>`;};
+  const sek=Object.entries(mods).map(([m,mi])=>{
+    const f=k=>mi.reduce((a,id)=>a+cnt[id]*DEV[id][k],0);
+    return `<h2 style="font-size:14px;margin-top:16px">${MOD_IC[m]||"▦"} ${m}</h2>
+    <div class="zsum"><span>moc zainst. <b>${f("kW").toLocaleString("pl-PL")} kW</b></span><span>os./zm. <b>${f("os")}</b></span><span>CAPEX <b>${fmtZl(f("capex"))} zł</b></span></div>
+    <div class="zgrid">${mi.map(card).join("")}</div>`;}).join("");
+  const tot=k=>placed.reduce((a,p)=>a+DEV[p.dev][k],0);
+  pane.innerHTML=`<div class="vcard" style="max-width:1080px"><h2>Zestawienie modułów — wszystkie użyte karty</h2>
+    <div class="zsum"><span>urządzeń <b>${placed.length}</b> (${ids.length} typów)</span><span>moc zainst. <b>${tot("kW").toLocaleString("pl-PL")} kW</b></span><span>os./zm. <b>${tot("os")}</b></span><span>CAPEX <b>${fmtZl(tot("capex"))} zł</b> (dane robocze)</span></div>
+    ${sek}</div>`;
+}
+
+/* ── widok: 3D hali (izometria poglądowa, statyczna) ── */
+function renderIso(){
+  const c=Math.cos(Math.PI/6),s=.5,H=3,W=5.5; // H = robocza wysokość urządzeń, W = ścian
+  const ip=(x,y,z=0)=>[(x-y)*c,(x+y)*s-z];
+  const poly=(pts,fill,st,w)=>`<polygon points="${pts.map(p=>p[0].toFixed(2)+","+p[1].toFixed(2)).join(" ")}" fill="${fill}"${st?` stroke="${st}" stroke-width="${w||.1}" stroke-linejoin="round"`:""}/>`;
+  const box=(x0,y0,x1,y1,h,ct,cr,cf,st)=>
+    poly([ip(x1,y0,h),ip(x1,y1,h),ip(x1,y1),ip(x1,y0)],cr,st)+
+    poly([ip(x0,y1,h),ip(x1,y1,h),ip(x1,y1),ip(x0,y1)],cf,st)+
+    poly([ip(x0,y0,h),ip(x1,y0,h),ip(x1,y1,h),ip(x0,y1,h)],ct,st);
+  let g="";
+  // ściany tylne + podłoga
+  g+=poly([ip(0,0,W),ip(HALA.dl,0,W),ip(HALA.dl,0),ip(0,0)],"#F1EFEB","#C9C6C0",.12);
+  g+=poly([ip(0,0,W),ip(0,HALA.szer,W),ip(0,HALA.szer),ip(0,0)],"#E7E4DF","#C9C6C0",.12);
+  g+=poly([ip(0,0),ip(HALA.dl,0),ip(HALA.dl,HALA.szer),ip(0,HALA.szer)],"#FBFAF8","#B9B6B0",.14);
+  for(let x=10;x<HALA.dl;x+=10)g+=`<line x1="${ip(x,0)[0]}" y1="${ip(x,0)[1]}" x2="${ip(x,HALA.szer)[0]}" y2="${ip(x,HALA.szer)[1]}" stroke="#ECEAE6" stroke-width=".07"/>`;
+  for(let y=10;y<HALA.szer;y+=10)g+=`<line x1="${ip(0,y)[0]}" y1="${ip(0,y)[1]}" x2="${ip(HALA.dl,y)[0]}" y2="${ip(HALA.dl,y)[1]}" stroke="#ECEAE6" stroke-width=".07"/>`;
+  // strefy programu powierzchni jako plamy na posadzce
+  strefy.forEach(z=>{const zd=STREFA[z.typ];
+    const pts=[ip(z.x,z.y),ip(z.x+z.w,z.y),ip(z.x+z.w,z.y+z.h),ip(z.x,z.y+z.h)].map(p=>p[0].toFixed(2)+","+p[1].toFixed(2)).join(" ");
+    g+=`<polygon points="${pts}" fill="${zd.kol}" fill-opacity="0.12" stroke="${zd.kol}" stroke-opacity="0.4" stroke-width="0.08"/>`;
+  });
+  // urządzenia od najdalszych
+  [...placed].sort((a,b)=>(a.x+a.y)-(b.x+b.y)).forEach(p=>{
+    const d=DEV[p.dev],rot=p.rot%180,L=rot?d.szer:d.dl,Sz=rot?d.dl:d.szer;
+    const x0=p.x-L/2,y0=p.y-Sz/2,x1=p.x+L/2,y1=p.y+Sz/2,col=LHEX(d.linia);
+    g+=box(x0,y0,x1,y1,H,"#F7F5F2","#DFDBD5","#CFCBC5","#ABA8A2");
+    g+=`<text x="${ip(p.x,p.y,H)[0]}" y="${ip(p.x,p.y,H)[1]-.5}" font-size="1.25" font-weight="700" fill="${col}" text-anchor="middle">${d.id}</text>`;
+  });
+  const minX=(0-HALA.szer)*c-2,maxX=HALA.dl*c+2,minY=-W-2.5,maxY=(HALA.dl+HALA.szer)*s+2;
+  pane.innerHTML=`<div class="vcard isoWrap" style="max-width:1080px"><h2>Widok 3D hali — izometria poglądowa</h2>
+    <svg viewBox="${minX.toFixed(1)} ${minY.toFixed(1)} ${(maxX-minX).toFixed(1)} ${(maxY-minY).toFixed(1)}" xmlns="http://www.w3.org/2000/svg">${g}</svg>
+    <p class="note">Widok poglądowy (statyczna izometria SVG). Wysokości brył = <b>założenie robocze ${H} m</b> — pole <span class="mono">wys</span> dojdzie do katalogu po review schematu przez Marcina. ${placed.length?"":"Przeciągnij urządzenia na halę w widoku Układ hali."}</p></div>`;
+}
+document.getElementById("nav").addEventListener("click",e=>{const b=e.target.closest("button");if(b){view=b.dataset.v;renderView();}});
+document.getElementById("rail").addEventListener("click",e=>{const b=e.target.closest("button");if(b){view=b.dataset.v;renderView();}});
+
+/* ── M2: bilans energii i mediów ── */
+function renderM2(){
+  const grupy={};placed.forEach(p=>{const d=DEV[p.dev];(grupy[d.modul]=grupy[d.modul]||[]).push(d);});
+  const rows=Object.entries(grupy).map(([m,ds])=>{
+    const f=k=>ds.reduce((a,d)=>a+d[k],0);
+    return `<tr><td><b>${m}</b> <span style="color:var(--mut)">(${ds.length})</span></td><td class="num">${f("kW").toLocaleString("pl-PL")}</td><td class="num">${f("kWsr").toLocaleString("pl-PL")}</td><td class="num">${f("woda")}</td><td class="num">${f("n2")}</td><td class="num">${f("os")}</td></tr>`;}).join("");
+  const tot=k=>placed.reduce((a,p)=>a+DEV[p.dev][k],0);
+  pane.innerHTML=`<div class="vcard"><h2>Bilans energii i mediów — moduły funkcjonalne (M2)</h2>
+    <table><tr><th>Moduł funkcjonalny</th><th class="num">Moc zainst. [kW]</th><th class="num">Moc śr. [kW]</th><th class="num">Woda [m³/h]</th><th class="num">N₂ [m³/h]</th><th class="num">Os./zm.</th></tr>
+    ${rows||PUSTO}
+    ${rows?`<tr style="font-weight:700"><td>RAZEM</td><td class="num">${tot("kW").toLocaleString("pl-PL")}</td><td class="num">${tot("kWsr").toLocaleString("pl-PL")}</td><td class="num">${tot("woda")}</td><td class="num">${tot("n2")}</td><td class="num">${tot("os")}</td></tr>`:""}</table>
+    <p class="note">⚠ Dane urządzeń = placeholder (typ W-draft) do podmiany po review schematu przez Marcina. Zużycie na jednostkę produkcji i profil dobowy — iteracja 2 (wymaga kWh/m² elektrody — pytanie #5 do klienta).</p></div>`;
+}
+
+/* ── M4: personel i model zmianowy ── */
+function renderM4(){
+  const cnt={};placed.forEach(p=>cnt[p.dev]=(cnt[p.dev]||0)+1);
+  const ids=Object.keys(cnt).sort();
+  const rows=ids.map(id=>{const d=DEV[id],n=cnt[id],z=zmianyDev(id);
+    return `<tr><td><b class="mono">${d.id}</b><br><span style="color:var(--mut);font-size:11px">${d.nazwa}</span></td>
+      <td>${d.modul}</td><td class="num">${n}</td><td class="num">${d.os}</td>
+      <td><span class="chips">${[1,2,3].map(k=>`<button data-zmdev="${id}" data-zmval="${k}" class="${k===z?"act":""}">${k}</button>`).join("")}</span></td>
+      <td class="num"><b>${n*d.os*z}</b></td></tr>`;}).join("");
+  const shift=k=>placed.reduce((a,p)=>a+(zmianyDev(p.dev)>=k?DEV[p.dev].os:0),0);
+  const tot=placed.reduce((a,p)=>a+DEV[p.dev].os*zmianyDev(p.dev),0);
+  const mod={};placed.forEach(p=>{const d=DEV[p.dev];const m=mod[d.modul]=mod[d.modul]||{n:0,os:0,et:0};m.n++;m.os+=d.os;m.et+=d.os*zmianyDev(d.id);});
+  const mrows=Object.entries(mod).map(([m,v])=>`<tr><td><b>${m}</b> <span style="color:var(--mut)">(${v.n})</span></td><td class="num">${v.os}</td><td class="num">${v.et}</td></tr>`).join("");
+  pane.innerHTML=`
+  <div class="vcard"><h2>Zatrudnienie i obłożenie stanowisk (M4)</h2>
+    <div class="tiles3">
+      <div class="t3"><div class="lbl">Zmiana I</div><div class="v">${shift(1)}<small>os.</small></div></div>
+      <div class="t3"><div class="lbl">Zmiana II</div><div class="v">${shift(2)}<small>os.</small></div></div>
+      <div class="t3"><div class="lbl">Zmiana III</div><div class="v">${shift(3)}<small>os.</small></div></div>
+      <div class="t3 hl"><div class="lbl">Razem etaty operacyjne</div><div class="v">${tot}<small>os.</small></div></div>
+    </div>
+    <table><tr><th>Urządzenie</th><th>Moduł funkcjonalny</th><th class="num">Na planie</th><th class="num">Os./zm.</th><th>Model zmianowy</th><th class="num">Obsada łącznie</th></tr>
+    ${rows||PUSTO}</table>
+    <p class="note">Obsada = szt. na planie × os./zmianę × liczba zmian. Model zmianowy per urządzenie = <b>założenie robocze</b> (domyślnie 3 zmiany); docelowo z pola <span class="mono">praca</span> po review schematu przez Marcina. Bez narzutu urlopowo-chorobowego i personelu pośredniego (UR, logistyka, QA) — iteracja 3.</p></div>
+  ${mrows?`<div class="vcard"><h2>Obłożenie per moduł funkcjonalny</h2>
+    <table><tr><th>Moduł funkcjonalny</th><th class="num">Os./zm. (gdy pracuje)</th><th class="num">Etaty łącznie</th></tr>${mrows}</table></div>`:""}`;
+}
+
+/* ── M6: koszty operacyjne + suwaki założeń ── */
+const SLIDERY=[
+  ["cenaEnergii","Cena energii",.3,1.5,.01],
+  ["cenaWody","Woda + ścieki",5,40,1],
+  ["cenaN2","Azot N₂",.2,3,.05],
+  ["stawkaOs","Koszt osobowy (całkowity)",6000,20000,250],
+  ["urPct","Utrzymanie ruchu",1,6,.25],
+  ["dniRobocze","Dni robocze / rok",200,360,5],
+];
+const KAT=[["energia","Energia","#F97316"],["woda","Woda + ścieki","#3B82F6"],["n2","Azot N₂","#9CA3AF"],["personel","Personel","#16A34A"],["ur","Utrzymanie ruchu","#8B5CF6"]];
+const pl2=v=>v.toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2});
+function fmtZal(k){const v=zalozenia[k];
+  if(k==="cenaEnergii")return pl2(v)+" zł/kWh";
+  if(k==="cenaWody")return v+" zł/m³";
+  if(k==="cenaN2")return pl2(v)+" zł/m³";
+  if(k==="stawkaOs")return v.toLocaleString("pl-PL")+" zł/mies.";
+  if(k==="urPct")return v.toLocaleString("pl-PL")+"% CAPEX/rok";
+  return v+" dni";}
+function opexCalc(){
+  let en=0,wo=0,az=0,os=0,cap=0;
+  placed.forEach(p=>{const d=DEV[p.dev],h=hRokDev(d.id);
+    en+=d.kWsr*h;wo+=d.woda*h;az+=d.n2*h;os+=d.os*zmianyDev(d.id);cap+=d.capex;});
+  return{energia:en*zalozenia.cenaEnergii,woda:wo*zalozenia.cenaWody,n2:az*zalozenia.cenaN2,
+    personel:os*zalozenia.stawkaOs*12,ur:cap*zalozenia.urPct/100};
+}
+function renderM6(){
+  pane.innerHTML=`
+  <div class="vcard"><h2>Założenia kosztowe — suwaki (M6)</h2>
+    ${SLIDERY.map(([k,l,mn,mx,st])=>`<div class="slrow"><span class="lbl">${l}</span>
+      <input type="range" data-zal="${k}" min="${mn}" max="${mx}" step="${st}" value="${zalozenia[k]}">
+      <span class="val" id="v_${k}">${fmtZal(k)}</span></div>`).join("")}
+    <p class="note">⚠ Ceny = założenia robocze do kalibracji (nie oferty). Dni robocze wspólne z modelem zmianowym w M4 (godziny pracy = zmiany × 8 h × dni).</p></div>
+  <div class="vcard"><h2>OPEX roczny — struktura</h2><div id="opexOut"></div></div>`;
+  updateM6();
+}
+function updateM6(){
+  SLIDERY.forEach(([k])=>{const el=document.getElementById("v_"+k);if(el)el.textContent=fmtZal(k);});
+  const out=document.getElementById("opexOut");if(!out)return;
+  if(!placed.length){out.innerHTML='<p class="note">Przeciągnij urządzenia na halę w widoku Układ hali — koszty liczą się z planu.</p>';return;}
+  const o=opexCalc(),sum=KAT.reduce((a,[k])=>a+o[k],0);
+  const pct=v=>{const p=100*v/sum;return p>0&&p<1?"<1":Math.round(p);};
+  out.innerHTML=`
+    <div class="opexV">${fmtZl(sum)}<small>zł / rok</small></div>
+    <div class="stack">${KAT.filter(([k])=>o[k]>0).map(([k,l,c])=>`<div data-tip="${l} · ${fmtZl(o[k])} zł/rok · ${pct(o[k])}%" style="flex:${o[k]};background:${c}"></div>`).join("")}</div>
+    ${KAT.map(([k,l,c])=>`<div class="leg"><span><span class="dot" style="background:${c}"></span>${l}</span><span><b>${fmtZl(o[k])} zł</b> <span style="color:var(--mut)">· ${pct(o[k])}%</span></span></div>`).join("")}
+    <p class="note">Energia liczona z mocy średniej × godziny pracy (model zmianowy z M4). Wartości mocy = oszacowania robocze z dokumentacji (D-szac ⚠). Bez amortyzacji — OPEX gotówkowy.</p>
+    ${cashCostHTML(sum)}
+    ${hrfHTML()}`;
+}
+/* cash cost na kWh — z wolumenów dokumentacji (454/481 MWh/rok) */
+function cashCostHTML(opex){
+  const mwh=DOK.MWh_rok, mwhOpt=DOK.MWh_rok_opt;
+  const cc=v=>opex/(v*1000); // zł/kWh
+  return `<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+    <div class="opexV" style="font-size:20px">${cc(mwh).toLocaleString("pl-PL",{maximumFractionDigits:2})}<small>zł / kWh ogniwa (cash cost, wariant bazowy ${mwh} MWh/rok)</small></div>
+    <p class="note">Po pakiecie optymalizacji (${mwhOpt} MWh/rok): ~${cc(mwhOpt).toLocaleString("pl-PL",{maximumFractionDigits:2})} zł/kWh. Uwaga: tylko OPEX gotówkowy z planu — bez surowca (Pb ~2,6 zł/kg, ${DOK.Pb_kg_kWh} kg/kWh), amortyzacji i kosztów pośrednich; przychody uboczne (Na₂SO₄, nadwyżka Pb/PP) nie odjęte. Pełny cash cost — po cenach surowca i wolumenach z RFQ.</p></div>`;
+}
+/* CAPEX wg kategorii HRF (STEP/Cleantech) */
+function hrfHTML(){
+  const srodki=placed.reduce((a,p)=>a+DEV[p.dev].capex,0);
+  return `<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+    <h2 style="font-size:13px;margin-bottom:6px">CAPEX wg kategorii wniosku (HRF · STEP/Cleantech)</h2>
+    <table style="font-size:12px">
+      <tr><td>Zadanie 1 · Grunt</td><td class="num" style="color:var(--mut)">wg działki (poza narzędziem)</td></tr>
+      <tr><td>Zadanie 2 · Roboty i materiały budowlane</td><td class="num" style="color:var(--mut)">wg projektu bud. (hala ${DOK.hala_m2.toLocaleString("pl-PL")} m²)</td></tr>
+      <tr><td><b>Zadanie 3 · Środki trwałe</b> (urządzenia z planu)</td><td class="num"><b>${fmtZl(srodki)} zł</b> ⚠ W-draft</td></tr>
+      <tr><td>Zadanie 4 · Wartości niematerialne i prawne</td><td class="num" style="color:var(--mut)">oprogramowanie/licencje — do uzupełnienia</td></tr>
+    </table>
+    <p class="note">Zadanie 3 liczone z katalogu (${placed.length} urządzeń na planie). Eksport listy w układzie HRF: menu ⋮ → „Eksport Zadanie 3 (CSV)". Każdy wydatek wymaga ≥3 ofert (netto = najniższa). Termin realizacji projektu: 31.12.2030. CAPEX A+B wg dokumentacji ≈ ${DOK.capex_AB_mln} mln zł (+${DOK.capex_opt_mln} mln pakiet optymalizacji).</p></div>`;
+}
+
+/* ═══ AUTO-UKŁAD — heurystyka lean/SLP (deterministyczna, bez solvera) ═══ */
+const fmtM=v=>String(v).replace(".",",")+" m";
+function autoLayout(o){ // o: {strat:'i'|'u'|'kompakt', gl,bo,pi, uzup, strefyOn, areas}
+  if(o.uzup)DEVICES.forEach(d=>{if(!placed.some(p=>p.dev===d.id))placed.push({uid:uidN++,dev:d.id,x:0,y:0,rot:0});});
+  if(!placed.length)return{ok:false,msg:"Plan jest pusty — przeciągnij urządzenia albo zaznacz uzupełnienie z katalogu."};
+  // ═══ MODEL PASMOWY: strefy w górnym paśmie, urządzenia w pasmach linii, ciągi tylko poziome (w przerwach) ═══
+  // gwarancja braku nakładek: wszystko to poziome pasy o rozłącznych zakresach y; x w [x0,x1]
+  const M=2, x0=M, x1=HALA.dl-M, W=x1-x0, gap=0.6;
+  ciagi=[]; let y=M;
+  ciagi.push({x:x0,y:y,w:W,h:o.pi,nazwa:"ciąg pieszy "+fmtM(o.pi)}); y+=o.pi+0.4;
+  // ── STREFY (górne pasmo) ──
+  if(o.strefyOn){
+    strefy=[];zidN=1;
+    const A=t=>Math.max(20,o.areas[t]||STREFA[t].m2);
+    const order=["surowiec","wyroby","socjal","qaur","technika","chemia"];
+    const totalA=order.reduce((s,t)=>s+A(t),0);
+    const hZ=Math.max(6,Math.min(13,Math.round(totalA/(W*1.6)+0.5)+5)); // wysokość rzędu stref
+    let zx=x0, zy=y;
+    order.forEach(t=>{let w=Math.min(W,Math.max(6,A(t)/hZ));
+      if(zx+w>x1+0.05&&zx>x0){zx=x0;zy+=hZ+0.6;}
+      w=Math.min(w,x1-zx);
+      strefy.push({zid:zidN++,typ:t,x:snapV(zx),y:snapV(zy),w:snapV(w),h:hZ});zx+=w+0.8;});
+    y=zy+hZ+0.4;
+    ciagi.push({x:x0,y:y,w:W,h:o.gl,nazwa:"ciąg główny (transport dwukier.) "+fmtM(o.gl)}); y+=o.gl+0.4;
+  } else { strefy=[]; }
+  const instLine=linia=>{
+    const ord=lineChains(linia).chains.flat().map(d=>d.id);const out=[];
+    ord.forEach(id=>placed.filter(p=>p.dev===id).forEach(p=>out.push(p)));return out;};
+  const dims=(p,rot)=>{const d=DEV[p.dev];const r=rot%180;return{w:(r?d.szer:d.dl)+2*d.serw,h:(r?d.dl:d.szer)+2*d.serw};};
+  const mk=p=>{const d=DEV[p.dev];const rot=(d.dl>=d.szer)?0:90;const {w,h}=dims(p,rot);return{p,rot,w,h};};
+  const rowPack=items=>{const rs=[];let cur=[],w=0;
+    items.forEach(it=>{if(w+it.w+gap>W&&cur.length){rs.push(cur);cur=[];w=0;}cur.push(it);w+=it.w+gap;});
+    if(cur.length)rs.push(cur);return rs;};
+  // pakuj pasmo urządzeń: każdy rząd + przylegający ciąg (dostęp do każdego urządzenia)
+  // lastAisle=false → nie dokładaj ciągu po ostatnim rzędzie (caller sam wstawia ciąg główny między liniami)
+  function packBand(items,{sortH=false,serp=false,aisle,lastAisle=true}={}){
+    const its=items.map(mk); if(sortH)its.sort((a,b)=>b.h-a.h);
+    const rows=rowPack(its);
+    rows.forEach((row,ri)=>{
+      const h=Math.max(...row.map(it=>it.h)),cy=y+h/2;
+      const dir=serp&&ri%2===1?-1:1;let x=dir===1?x0:x1;
+      row.forEach(it=>{it.p.rot=it.rot;it.p.x=snapV(dir===1?x+it.w/2:x-it.w/2);it.p.y=snapV(cy);x=dir===1?x+it.w+gap:x-it.w-gap;});
+      y+=h;
+      if(ri<rows.length-1||lastAisle){ciagi.push({x:x0,y:snapV(y+0.15),w:W,h:aisle-0.3,nazwa:"ciąg boczny "+fmtM(aisle)}); y+=aisle;}
+    });
+  }
+  const glowny=()=>{ciagi.push({x:x0,y:snapV(y+0.15),w:W,h:o.gl-0.3,nazwa:"ciąg główny (transport dwukier.) "+fmtM(o.gl)}); y+=o.gl+0.4;};
+  if(o.strat==="kompakt"){
+    packBand(placed,{sortH:true,aisle:o.bo,lastAisle:false}); // najgęściej, ciąg przy każdym rzędzie
+  }else if(o.strat==="u"){
+    packBand(instLine("A"),{serp:true,aisle:o.bo,lastAisle:false});
+    glowny(); // jeden ciąg główny między liniami — bez nakładki z ciągiem bocznym
+    packBand(instLine("B"),{serp:true,aisle:o.bo,lastAisle:false});
+  }else{ // lean I (przepływ) — A nad B, kolejność procesu
+    packBand(instLine("A"),{aisle:o.bo,lastAisle:false});
+    glowny();
+    packBand(instLine("B"),{aisle:o.bo,lastAisle:false});
+  }
+  const yUsed=y-M;
+  const over=y-(HALA.szer-M);
+  const deficyt=Math.max(0,Math.ceil(over*HALA.dl));
+  const needSzer=deficyt?Math.ceil((y+M)/2)*2:0;
+  return{ok:true,deficyt,needSzer,yUsed,msg:deficyt?`⚠ Program nie mieści się w hali ${HALA.dl}×${HALA.szer} m — brakuje ~${deficyt.toLocaleString("pl-PL")} m². Użyj „Powiększ halę" (na środku) albo zmniejsz szerokości ciągów. Wymiary hali to założenie robocze — do potwierdzenia z klientem.`:""};
+}
+/* dry-run: policz metryki wariantu bez zatwierdzania (przywraca stan) */
+function trialLayout(o){
+  const snap0=JSON.stringify({placed,ciagi,strefy,uidN,zidN,hd:HALA.dl,hs:HALA.szer});
+  const r=autoLayout(o);
+  const b=r.ok?bilansPow():null;
+  const j=JSON.parse(snap0);placed=j.placed;ciagi=j.ciagi;strefy=j.strefy;uidN=j.uidN;zidN=j.zidN;HALA.dl=j.hd;HALA.szer=j.hs;
+  return{r,b};
+}
+/* bilans powierzchni do programu M5 */
+function bilansPow(){
+  const prod=placed.reduce((a,p)=>{const f=foot(p);return a+f.w*f.h;},0);
+  const str=strefy.reduce((a,z)=>a+z.w*z.h,0);
+  const kom=ciagi.reduce((a,c)=>a+c.w*c.h,0);
+  const hala=HALA.dl*HALA.szer;
+  return{prod,str,kom,hala,wolne:hala-prod-str-kom};
+}
+/* zalecenia infrastrukturalne wg norm/dobrych praktyk — lista, nie urządzenia (zasada: zero urządzeń spoza dokumentacji) */
+function zaleceniaNorm(){
+  const P=placed.map(p=>DEV[p.dev]);const out=[];
+  if(P.some(d=>d.media.includes("kwas")))out.push("Strefa kwasów: prysznic bezpieczeństwa + oczomyjka w zasięgu stanowisk (PN-EN 15154), wanny wychwytowe, posadzka kwasoodporna.");
+  if(P.some(d=>d.n2>0))out.push("Azot: stacja/zbiornik N₂ (zwykle na zewnątrz + parownica) i czujniki niedoboru tlenu przy piecu (ryzyko asfiksji).");
+  if(P.some(d=>d.gfx==="piec"))out.push("Piece: odciągi miejscowe i wentylacja — szczegóły z pola `wymagania` po review schematu.");
+  const kW=P.reduce((a,d)=>a+d.kW,0);
+  if(kW>1000)out.push(`Moc zainstalowana ${kW.toLocaleString("pl-PL")} kW — przewidzieć rozdzielnię / stację trafo i trasy kablowe.`);
+  if(P.some(d=>d.woda>0))out.push("Woda procesowa: podczyszczalnia ścieków (kwaśne, ołowionośne) przed zrzutem.");
+  out.push("Drogi wg ogólnych przepisów BHP: dwukierunkowa ≥ 2×szer. środka transportu + 0,9 m; jednokierunkowa ≥ szer. + 0,6 m; pieszy ≥ 0,75 m (przyjęto 1,2 m).");
+  out.push("Praca z Pb: śluzy higieniczne (szatnia czysta/brudna z prysznicami); zaplecze socjalne wg obłożenia z M4.");
+  return out;
+}
+const autoPanel=document.getElementById("autoPanel");
+document.getElementById("aAreas").innerHTML=STREFY_DEF.map(([t,n,m2])=>
+  `<div class="arow"><span>${n} [m²]</span><input id="aZ_${t}" type="number" step="10" min="20" value="${m2}"></div>`).join("")+
+  `<p class="note" style="margin:2px 0 6px">Metraże = wartości robocze do kalibracji (np. surowiec z danych o przyjęciu ~20 t/d). Strefy po wygenerowaniu można przesuwać, a wymiary zmieniać w karcie po prawej.</p>`;
+document.getElementById("autoBtn").onclick=()=>{autoPanel.style.display=autoPanel.style.display==="block"?"none":"block";};
+document.getElementById("refBtn").onclick=autoReferencyjny;
+document.getElementById("autoX").onclick=()=>autoPanel.style.display="none";
+document.getElementById("autoClr").onclick=()=>{ciagi=[];strefy=[];selZone=null;snap();render();renderRight();};
+function readOpts(){
+  const areas={};STREFY_DEF.forEach(([t])=>areas[t]=+document.getElementById("aZ_"+t).value||STREFA[t].m2);
+  return{gl:+document.getElementById("aGl").value||4,bo:+document.getElementById("aBo").value||3,
+    pi:+document.getElementById("aPi").value||1.2,uzup:document.getElementById("aUzup").checked,
+    strefyOn:document.getElementById("aStrefy").checked,areas};
+}
+const STRATS=[
+  {k:"kompakt",n:"Kompakt — min. straty",d:"Obrót urządzeń do poziomu + sortowanie po wysokości = najciaśniejsze rzędy. Ignoruje kolejność procesu."},
+  {k:"i",n:"Lean — przepływ liniowy (I)",d:"Kolejność z łańcucha we→wy, linia A nad linią B. Materiał płynie w jedną stronę."},
+  {k:"u",n:"Lean — komórka U",d:"Rzędy serpentyną — wejście i wyjście po tej samej stronie, krótsze drogi operatora."},
+];
+function raportBilans(){
+  const b=bilansPow(),pc=v=>Math.round(100*v/b.hala);
+  return `<h3>Bilans powierzchni (program M5)</h3>
+    <table style="font-size:11px">
+      <tr><td>Produkcja (urządzenia + serwis)</td><td class="num"><b>${Math.round(b.prod).toLocaleString("pl-PL")} m²</b> · ${pc(b.prod)}%</td></tr>
+      <tr><td>Strefy (magazyny, technika, socjal…)</td><td class="num"><b>${Math.round(b.str).toLocaleString("pl-PL")} m²</b> · ${pc(b.str)}%</td></tr>
+      <tr><td>Komunikacja (ciągi)</td><td class="num"><b>${Math.round(b.kom).toLocaleString("pl-PL")} m²</b> · ${pc(b.kom)}%</td></tr>
+      <tr style="font-weight:700"><td>Rezerwa / wolne (hala ${HALA.dl}×${HALA.szer} m)</td><td class="num" style="color:${b.wolne<0?"var(--bad)":"var(--ok)"}">${Math.round(b.wolne).toLocaleString("pl-PL")} m² · ${pc(b.wolne)}%</td></tr>
+    </table>
+    <h3 style="margin-top:9px">Zalecenia infrastrukturalne (normy / dobre praktyki)</h3>
+    <ul>${zaleceniaNorm().map(z=>`<li>${z}</li>`).join("")}</ul>
+    <p class="note">Zalecenia i metraże poglądowe — do weryfikacji przez projektanta technologii i BHP. Symulator nie dodaje urządzeń spoza dokumentacji — potrzeby normowe rezerwuje strefami. Cofniesz przez Ctrl+Z.</p>`;
+}
+function applyStrat(strat){
+  const o={...readOpts(),strat};
+  const r=autoLayout(o);
+  const out=document.getElementById("autoOut");out.style.display="block";
+  if(!r.ok){out.innerHTML=`<p class="note">${r.msg}</p>`;return;}
+  selUid=null;selZone=null;snap();render();renderTiles();renderRight();
+  out.innerHTML=`${r.msg?`<p class="note" style="color:var(--bad);font-weight:600">${r.msg}</p><button id="growInline" style="border:1px solid var(--acc);background:#FFF3EC;color:var(--acc);border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:9px">⤢ Powiększ halę teraz</button>`:""}${raportBilans()}`;
+}
+function runAuto(){ // 3 propozycje z metrykami
+  const o=readOpts();
+  if(!placed.length&&!o.uzup){document.getElementById("autoOut").style.display="block";
+    document.getElementById("autoOut").innerHTML=`<p class="note">Plan jest pusty — przeciągnij urządzenia albo zaznacz „uzupełnij plan o brakujące urządzenia z katalogu".</p>`;return;}
+  const avail=(HALA.szer-2)-(2+o.pi+0.4); // dostępna głębokość na rzędy
+  const props=STRATS.map(s=>{const {r,b}=trialLayout({...o,strat:s.k});return{s,r,b};});
+  const fits=props.filter(p=>p.r.ok&&!p.r.deficyt);
+  const best=(fits.length?fits:props.filter(p=>p.r.ok)).sort((a,b)=>a.r.yUsed-b.r.yUsed)[0];
+  const out=document.getElementById("autoOut");out.style.display="block";
+  out.innerHTML=`<h3>3 propozycje układu — wybierz najlepszą</h3>
+    <p class="note" style="margin-bottom:8px">Metryka: głębokość zajętych rzędów (mniej = mniej strat) i rezerwa hali. „Kompakt" zwykle najgęstszy.</p>`+
+    props.map(({s,r,b})=>{
+      const pc=b?Math.round(100*b.wolne/b.hala):0;
+      const eff=Math.round(100*Math.min(1,avail>0?r.yUsed/avail:1));
+      const isBest=best&&best.s.k===s.k;
+      return `<div class="aprop${isBest?" best":""}">
+        <div class="apt"><b>${s.n}</b>${isBest?'<span class="apbadge">✦ NAJLEPSZA</span>':""}</div>
+        <div class="apm">${s.d}</div>
+        <div class="apbar"><i style="width:${eff}%;background:${r.deficyt?"var(--bad)":isBest?"var(--acc)":"var(--mut)"}"></i></div>
+        <div class="apk">głębokość rzędów <b>${r.yUsed.toFixed(1)} m</b> / dostępne ${Math.max(0,avail).toFixed(1)} m · rezerwa hali <b>${pc}%</b>${r.deficyt?` · <span style="color:var(--bad)">nie mieści się (~${r.deficyt} m²)</span>`:""}</div>
+        <button data-strat="${s.k}">Zastosuj ten układ</button>
+      </div>`;}).join("");
+  out.querySelectorAll("[data-strat]").forEach(btn=>btn.onclick=()=>applyStrat(btn.dataset.strat));
+}
+/* Optymalizuj — zagęść to, co już stoi, ZACHOWUJĄC kolejność procesu (lean I) i dostęp do ciągów */
+function optymalizuj(){
+  if(!placed.length){autoPanel.style.display="block";document.getElementById("autoOut").style.display="block";
+    document.getElementById("autoOut").innerHTML=`<p class="note">Plan jest pusty — nie ma czego optymalizować. Użyj „Autorozmieszczenie" albo dodaj urządzenia z katalogu.</p>`;return;}
+  const bb=()=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;placed.forEach(p=>{const f=foot(p);x0=Math.min(x0,f.x);y0=Math.min(y0,f.y);x1=Math.max(x1,f.x+f.w);y1=Math.max(y1,f.y+f.h);});return{a:(x1-x0)*(y1-y0),d:y1-y0};};
+  const przed=bb(), prodPrzed=placed.reduce((a,p)=>{const f=foot(p);return a+f.w*f.h;},0);
+  const strefyByly=strefy.length>0;
+  // optymalizacja lean I: kolejność procesu zachowana, obrót do poziomu, ciąg przy każdym rzędzie
+  const o={...readOpts(),strefyOn:strefyByly,strat:"i"};
+  const r=autoLayout(o);
+  const out=document.getElementById("autoOut");autoPanel.style.display="block";out.style.display="block";
+  if(!r.ok){out.innerHTML=`<p class="note">${r.msg}</p>`;return;}
+  selUid=null;selZone=null;snap();render();renderTiles();renderRight();
+  out.innerHTML=raportBilans();
+  const po=bb();
+  const zysk=Math.max(0,Math.round(przed.a-po.a));
+  const gest=po.a>0?Math.round(100*prodPrzed/po.a):0;
+  const info=document.createElement("div");
+  info.innerHTML=`<div style="border:1px solid #C7EBD1;background:#F0FAF3;border-radius:11px;padding:9px 11px;margin-bottom:9px">
+    <b style="font-size:12px">Zoptymalizowano (lean, kolejność procesu zachowana)</b>
+    <p class="note" style="margin-top:3px">Obrys zabudowy ${Math.round(przed.a).toLocaleString("pl-PL")} → ${Math.round(po.a).toLocaleString("pl-PL")} m²${zysk?`, odzyskano ~${zysk.toLocaleString("pl-PL")} m² (gęstość ${gest}%)`:""}. Urządzenia w kolejności we→wy (A nad B), obrócone do poziomu, każdy rząd przy ciągu komunikacyjnym; strefy i ciągi bez nakładek.${r.deficyt?' <b style="color:var(--bad)">Nie mieści się — użyj „Powiększ halę".</b>':""} Cofniesz przez Ctrl+Z.</p>
+    ${r.deficyt?`<button id="growInline" style="border:1px solid var(--acc);background:#FFF3EC;color:var(--acc);border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px">⤢ Powiększ halę teraz</button>`:""}</div>`;
+  out.insertBefore(info,out.firstChild);
+}
+document.getElementById("autoGo").onclick=runAuto;
+document.getElementById("optBtn").onclick=optymalizuj;
+/* powiększ halę tak, by zmieścić wszystko, co wystaje (urządzenia, ciągi, strefy) */
+function enlargeToFit(){
+  let mx=HALA.dl,my=HALA.szer;
+  placed.forEach(p=>{const f=foot(p);mx=Math.max(mx,f.x+f.w+2);my=Math.max(my,f.y+f.h+2);});
+  ciagi.forEach(c=>{mx=Math.max(mx,c.x+c.w+2);my=Math.max(my,c.y+c.h+2);});
+  strefy.forEach(z=>{mx=Math.max(mx,z.x+z.w+2);my=Math.max(my,z.y+z.h+2);});
+  HALA.dl=Math.ceil(mx/2)*2;HALA.szer=Math.ceil(my/2)*2;vb=fitVB();snap();render();renderRight();
+}
+document.getElementById("growBtn").onclick=enlargeToFit;
+document.getElementById("autoOut").addEventListener("click",e=>{if(e.target.closest("#growInline"))enlargeToFit();});
+/* ręczna edycja wymiarów hali — klik w kafel KPI */
+document.getElementById("kpis").addEventListener("click",e=>{
+  if(!e.target.closest('[data-edit="hala"]'))return;
+  document.getElementById("hDl").value=HALA.dl;
+  document.getElementById("hSz").value=HALA.szer;
+  document.getElementById("halaPanel").style.display="block";
+});
+document.getElementById("hNo").onclick=()=>document.getElementById("halaPanel").style.display="none";
+document.getElementById("hOk").onclick=()=>{
+  HALA.dl=Math.min(400,Math.max(20,+document.getElementById("hDl").value||HALA.dl));
+  HALA.szer=Math.min(300,Math.max(20,+document.getElementById("hSz").value||HALA.szer));
+  document.getElementById("halaPanel").style.display="none";
+  vb=fitVB();snap();render();
+};
+
+/* interakcje widoków: chipsy zmian, suwaki, tooltip */
+pane.addEventListener("click",e=>{
+  const b=e.target.closest("[data-zmdev]");
+  if(b){zalozenia.zmiany[b.dataset.zmdev]=+b.dataset.zmval;save();renderView();}
+});
+pane.addEventListener("input",e=>{
+  const s=e.target.closest("input[data-zal]");
+  if(s){zalozenia[s.dataset.zal]=+s.value;save();updateM6();}
+});
+const tip=document.getElementById("tip");
+pane.addEventListener("mousemove",e=>{
+  const t=e.target.closest("[data-tip]");
+  if(t){tip.textContent=t.dataset.tip;tip.style.display="block";tip.style.left=(e.clientX+12)+"px";tip.style.top=(e.clientY-32)+"px";}
+  else tip.style.display="none";
+});
+
+/* ═══ TOOLS ═══ */
+document.getElementById("tglMedia").onclick=e=>{showMedia=!showMedia;e.currentTarget.classList.toggle("on",showMedia);render();};
+document.getElementById("tglSerw").onclick=e=>{showSerw=!showSerw;e.currentTarget.classList.toggle("on",showSerw);render();};
+document.getElementById("btnExport").onclick=()=>{
+  const blob=new Blob([JSON.stringify({wersja:"0.8",data:new Date().toISOString(),hala:HALA,placed,ciagi,strefy,zalozenia},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="klab_projekt.json";a.click();};
+document.getElementById("btnImport").onclick=()=>{menu.style.display="none";document.getElementById("fileIn").click();};
+/* eksport listy urządzeń jako projekt „Zadanie 3 — środki trwałe" w układzie HRF (STEP/Cleantech) */
+document.getElementById("btnHRF").onclick=()=>{menu.style.display="none";
+  const cnt={};placed.forEach(p=>cnt[p.dev]=(cnt[p.dev]||0)+1);
+  const ids=Object.keys(cnt).length?Object.keys(cnt).sort():DEVICES.map(d=>d.id);
+  const esc=s=>`"${String(s==null?"":s).replace(/"/g,'""')}"`;
+  const head=["Nazwa wydatku (środek trwały)","Ilość szt.","Wartość netto [zł] (W-draft → RFQ)","Uzasadnienie / specyfikacja","Kandydaci na oferentów (≥3 do RFQ)","Metoda szacowania"];
+  const rows=ids.map(id=>{const d=DEV[id],n=cnt[id]||1;
+    const sup=[...d.karta.dostEU,...d.karta.dostCN].map(s=>s.n).slice(0,4).join("; ");
+    return [`${d.id} · ${d.nazwa}`,n,d.capex*n,`${d.karta.opis.slice(0,120)} (${d.m2} m²)`,sup,"oferty rynkowe / cenniki dostawców"].map(esc).join(",");});
+  const csv="﻿"+[head.map(esc).join(","),...rows].join("\r\n")+
+    `\r\n\r\n${esc("UWAGA: wartości netto = oszacowania robocze (W-draft). Zgodnie z HRF STEP/Cleantech każdy wydatek wymaga ≥3 ofert; netto = najniższa cena. Termin realizacji: 31.12.2030.")}`;
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="klab_HRF_zadanie3_srodki_trwale.csv";a.click();};
+document.getElementById("fileIn").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const j=JSON.parse(r.result);placed=(j.placed||[]).filter(p=>DEV[p.dev]);uidN=Math.max(0,...placed.map(p=>p.uid))+1;
+    ciagi=j.ciagi||[];strefy=(j.strefy||[]).filter(z=>STREFA[z.typ]);zidN=Math.max(0,...strefy.map(z=>z.zid))+1;
+    if(j.hala&&j.hala.dl&&j.hala.szer){HALA.dl=+j.hala.dl;HALA.szer=+j.hala.szer;vb=fitVB();}
+    if(j.zalozenia)zalozenia={...zalozenia,...j.zalozenia,zmiany:{...(j.zalozenia.zmiany||{})}};
+    selUid=null;selZone=null;snap();render();renderTiles();renderRight();renderView();}catch(err){alert("Nieprawidłowy plik JSON");}};r.readAsText(f);e.target.value="";};
+document.getElementById("q").oninput=e=>{q=e.target.value.toLowerCase();renderTiles();};
+document.querySelectorAll(".fchips .f").forEach(f=>f.onclick=()=>{document.querySelectorAll(".fchips .f").forEach(x=>x.classList.remove("act"));f.classList.add("act");filtr=f.dataset.f;renderTiles();});
+function save(){try{localStorage.setItem("klab_sym_v02",JSON.stringify({placed,uidN,ciagi,strefy,hala:{dl:HALA.dl,szer:HALA.szer},zalozenia}));}catch(e){}}
+
+snap();render();renderTiles();renderRight();renderView();
+
+/* ═══ STRONA STARTOWA — logika ═══ */
+/* SLOTY NA OBRAZY Z CHATGPT: wklej data-URI (data:image/webp;base64,...) — pusta i zapełniona hala, ten sam kadr.
+   Dopóki null, rysujemy wektorowe placeholdery (izometria jak w widoku 3D). */
+const INTRO_IMG_PUSTA=null;
+const INTRO_IMG_PELNA=null;
+function introSVG(pelna){
+  const c=Math.cos(Math.PI/6),s2=.5,K=9.2,OX=830,OY=210;
+  const ip=(x,y,z=0)=>[(OX+(x-y)*c*K).toFixed(1),(OY+(x+y)*s2*K-z*K).toFixed(1)];
+  const poly=(pts,f,st,w)=>`<polygon points="${pts.map(p=>p.join(",")).join(" ")}" fill="${f}"${st?` stroke="${st}" stroke-width="${w||1}" stroke-linejoin="round"`:""}/>`;
+  const box=(x0,y0,x1,y1,h)=>poly([ip(x1,y0,h),ip(x1,y1,h),ip(x1,y1),ip(x1,y0)],"#DFDBD5","#ABA8A2",1)+
+    poly([ip(x0,y1,h),ip(x1,y1,h),ip(x1,y1),ip(x0,y1)],"#CFCBC5","#ABA8A2",1)+
+    poly([ip(x0,y0,h),ip(x1,y0,h),ip(x1,y1,h),ip(x0,y1,h)],"#F7F5F2","#ABA8A2",1);
+  let g="";
+  g+=poly([ip(0,0,7),ip(96,0,7),ip(96,0),ip(0,0)],"#F1EFEB","#C9C6C0",1.4);
+  g+=poly([ip(0,0,7),ip(0,48,7),ip(0,48),ip(0,0)],"#E7E4DF","#C9C6C0",1.4);
+  g+=poly([ip(0,0),ip(96,0),ip(96,48),ip(0,48)],"#FBFAF8","#B9B6B0",1.6);
+  for(let x=8;x<96;x+=8)g+=`<line x1="${ip(x,0)[0]}" y1="${ip(x,0)[1]}" x2="${ip(x,48)[0]}" y2="${ip(x,48)[1]}" stroke="#ECEAE6" stroke-width="0.8"/>`;
+  for(let y=8;y<48;y+=8)g+=`<line x1="${ip(0,y)[0]}" y1="${ip(0,y)[1]}" x2="${ip(96,y)[0]}" y2="${ip(96,y)[1]}" stroke="#ECEAE6" stroke-width="0.8"/>`;
+  if(pelna){
+    [["#F59E0B",1,3,9,45],["#16A34A",88,3,95,45],["#7C3AED",12,3,32,10],["#2563EB",36,3,58,10],["#8B5CF6",62,3,74,10]]
+      .forEach(([k,x0,y0,x1,y1])=>{g+=poly([ip(x0,y0),ip(x1,y0),ip(x1,y1),ip(x0,y1)],k+"1E");});
+    [["#F97316",42.6],["#3B82F6",43.9],["#9CA3AF",45.2]].forEach(([k,y])=>{
+      g+=`<line x1="${ip(4,y)[0]}" y1="${ip(4,y)[1]}" x2="${ip(92,y)[0]}" y2="${ip(92,y)[1]}" stroke="${k}" stroke-width="1.6" opacity=".6"/>`;});
+    [[14,14,26,19,3.4],[30,13,40,18,4.2],[44,14,58,20,3.2],[62,13,72,17,3],[16,26,32,30,3],[36,25,48,29,4.6],[52,26,62,31,3.2],[66,25,74,28,3],[24,34,38,39,3.4],[44,34,58,42,3.6]]
+      .forEach(([x0,y0,x1,y1,h])=>{g+=box(x0,y0,x1,y1,h);});
+  }
+  return "data:image/svg+xml;utf8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1660 940">${g}</svg>`);
+}
+let introOn=true;
+(function(){
+  const intro=document.getElementById("intro");
+  document.getElementById("introBase").style.backgroundImage=`url("${INTRO_IMG_PUSTA||introSVG(false)}")`;
+  const rev=document.getElementById("introReveal");
+  rev.style.backgroundImage=`url("${INTRO_IMG_PELNA||introSVG(true)}")`;
+  // nagłówek słowo po słowie
+  const head=document.getElementById("introHead");
+  "Symulator fabryki KLAB — planujesz halę, media, personel i koszty produkcji akumulatorów w jednym narzędziu.".split(" ").forEach((w,i)=>{
+    const sp=document.createElement("span");sp.className="word-reveal";sp.textContent=w;
+    sp.style.animationDelay=(1+i*.05)+"s";head.appendChild(sp);head.appendChild(document.createTextNode(" "));});
+  // latarka: kursor odsłania zapełnioną halę
+  const cv=document.getElementById("introCanvas"),ctx=cv.getContext("2d");
+  const R=260,mouse={x:-999,y:-999},sm={x:-999,y:-999};
+  const rs=()=>{cv.width=innerWidth;cv.height=innerHeight;};rs();addEventListener("resize",rs);
+  intro.addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY;});
+  function loop(){
+    if(!introOn)return;
+    sm.x+=(mouse.x-sm.x)*.1;sm.y+=(mouse.y-sm.y)*.1;
+    ctx.clearRect(0,0,cv.width,cv.height);
+    const gr=ctx.createRadialGradient(sm.x,sm.y,0,sm.x,sm.y,R);
+    gr.addColorStop(0,"rgba(255,255,255,1)");gr.addColorStop(.4,"rgba(255,255,255,1)");
+    gr.addColorStop(.6,"rgba(255,255,255,.75)");gr.addColorStop(.75,"rgba(255,255,255,.4)");
+    gr.addColorStop(.88,"rgba(255,255,255,.12)");gr.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.beginPath();ctx.arc(sm.x,sm.y,R,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    const du=cv.toDataURL();
+    rev.style.webkitMaskImage=`url(${du})`;rev.style.maskImage=`url(${du})`;
+    rev.style.webkitMaskSize="100% 100%";rev.style.maskSize="100% 100%";
+    requestAnimationFrame(loop);
+  }
+  loop();
+  function closeIntro(){introOn=false;intro.classList.add("bye");setTimeout(()=>{intro.style.display="none";},500);}
+  // klik w logo aplikacji = powrót do strony startowej
+  document.getElementById("logoHome").onclick=()=>{
+    intro.style.display="block";intro.classList.remove("bye");introOn=true;loop();
+  };
+  document.getElementById("btnIntroZero").onclick=()=>{
+    if(placed.length||strefy.length||ciagi.length){
+      if(!confirm("Zaczynasz od zera — bieżący projekt zapisany na tym urządzeniu zostanie wyczyszczony. Kontynuować?"))return;
+    }
+    placed=[];ciagi=[];strefy=[];selUid=null;selDev=null;selZone=null;uidN=1;zidN=1;
+    HALA.dl=156;HALA.szer=72;vb=fitVB();
+    snap();render();renderTiles();renderRight();closeIntro();
+  };
+  document.getElementById("btnIntroImport").onclick=()=>{closeIntro();setTimeout(()=>document.getElementById("fileIn").click(),450);};
+  // link "kontynuuj zapisany projekt" — tylko gdy jest zapis
+  const cont=document.getElementById("introContinue");
+  if(placed.length||strefy.length||ciagi.length){cont.style.display="block";cont.onclick=e=>{e.preventDefault();closeIntro();};}
+})();
+</script>
+</body>
+</html>
