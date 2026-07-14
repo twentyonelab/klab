@@ -91,6 +91,18 @@ centrale dachowe z odzyskiem, ring wody chłodzącej, ring sprężonego powietrz
    i lead time. Hala domyślna nowego projektu = 156×72.
 6. CLAUDE.md + dziennik; wersjonowanie: nowy plik v0.8.
 
-## Status: CZEKAMY na XLSX od Krzyśka przed startem implementacji. Model może się zmienić na Opus — plan
+## XLSX (Harmonogram rzeczowo-finansowy STEP/Cleantech) — PUSTY SZABLON WNIOSKU (nie dane!)
+Wszystkie kwoty 0, brak dostawców/cen. Wartość = struktura kosztów wniosku (regionalna pomoc inwestycyjna):
+- Zadanie 1 Grunt · Zadanie 2 Roboty i materiały budowlane · Zadanie 3 Środki trwałe (= nasz katalog urządzeń!)
+  · Zadanie 4 Wartości niematerialne i prawne (oprogramowanie/licencje).
+- Wymóg: każdy wydatek szacowany na ≥3 ofertach (netto = najniższa, chyba że szerszy zakres/serwis/gwarancja/
+  automatyzacja to uzasadniają) → potwierdza pola dostawca/„kandydat do RFQ" w kartach.
+- Deadline realizacji + wniosek o płatność końcową: 31.12.2030.
+- Kategorie kwalifikowalne RPI: grunty, nieruchomości zabudowane, środki trwałe/dostawy, roboty budowlane, WNiP.
+- Tabele intensywności wsparcia tylko wymienione z tytułu (brak %-ów w pliku).
+DOŁOŻONE do v0.8 (zaakceptowane): (M6) rozbicie CAPEX wg 4 kategorii HRF; (eksport) lista urządzeń →
+CSV „Zadanie 3 · środki trwałe" w układzie HRF (kolumny 3 ofert puste do uzupełnienia). Model: Opus 4.8.
+
+## Status: XLSX przeanalizowany — start implementacji v0.8 po zielonym świetle Krzyśka. Model może się zmienić na Opus — plan
 i dane są w tym pliku, transkrypty PDF w /root/.claude/uploads/b32b0717-*/ (kontener ulotny — dane
 merytoryczne są wyciągnięte wyżej).

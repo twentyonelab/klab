@@ -1,6 +1,6 @@
 # Symulator fabryki KLAB — instrukcje dla Claude Code
 
-Pracujesz nad **`Symulator fabryki v0.7.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
+Pracujesz nad **`Symulator fabryki v0.8.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
 
 ## Zanim zaczniesz — przeczytaj (w tej kolejności)
 
@@ -23,7 +23,17 @@ Pracujesz nad **`Symulator fabryki v0.7.html`** (starsze wersje zostają w repo 
 
 Tło `#F2F1EF` · karty białe radius 14–16 px cień `0 2px 12px rgba(0,0,0,.07)` · akcent `#FF4D00` (pomarańcz 21 zmysłów) · linia B na kafelkach `#7C3AED` · etykiety małe szare uppercase · liczby duże cienkie · media: energia `#F97316`, woda `#3B82F6`, N₂ `#9CA3AF`, kwas `#8B5CF6` · czarne przyciski-pigułki · ŻADNEGO dark mode na razie.
 
-## Stan obecny (v0.7)
+## Stan obecny (v0.8)
+
+**Pełny katalog z dokumentacji klienta (rev. 07.2026):** DEVICES = 23 karty procesowe A1–A8, B1–B14, B8b (pełna podmiana — stare 10 W-draft usunięte). Każda karta ma pola plannera (kompaktowe: m², wymiary, tryb, przepustowość, strefa Pb/czysta/ATEX, badge wąskie-gardło/krytyczne, `ref` = pozycja w planie referencyjnym) oraz obiekt `karta` (opis, wejścia/wyjścia, urządzenia ze specyfikacją, media, odpady z kodami, BHP, dostawcy EU/PL + Chiny/Tajwan z **linkami** — zweryfikowane HTTP; Genox/TEKMAX bez linku). Moc (D-szac ⚠) i CAPEX (W-draft, skalowane do ~35 mln zł A+B z dok.) — do zastąpienia ofertami RFQ. Domyślna hala = **156×72 m** (11 232 m²).
+
+**Autorozmieszczenie** (pomarańczowy przycisk obok Auto-układu) = wierne odtworzenie planu referencyjnego z dokumentacji: hala 156×72, wszystkie 23 urządzenia wg współrzędnych `ref`, strefy zaplecza, korytarz AGV. Auto-układ heurystyczny (lean/SLP) zostaje.
+
+**Nowa zakładka w lewym pasku „Karty urządzeń"** (`renderKarty`) — pełne karty procesowe wszystkich pozycji z nawigacją chipami, dostawcami z linkami; katalog w plannerze pozostaje kompaktowy (karta po prawej ma przycisk „Pełna karta →"). **M3** = pierwsza realna wersja (PV 1 MWp, odzysk ciepła 250–450 kW, pompa ciepła COP 4–5, PCM/M-TES — z bilansu ciepła dok.). **M6** = cash cost zł/kWh (z 454/481 MWh/rok) + rozbicie CAPEX wg kategorii HRF (STEP/Cleantech: grunt/budowlane/środki trwałe/WNiP). Menu ⋮ → **eksport „Zadanie 3 · środki trwałe" (CSV w układzie HRF)**. Intro: dwa przyciski CTA „Zaimportuj dane"/„Zacznij od zera" (usunięto „Zacznij projektowanie"), stopka © 21 zmysłów LAB. Obiekt `DOK` = dane zbiorcze z dokumentacji (wsad 20 t/d, 1455 kWh/d, lead time 75/49 h, CAPEX itd.).
+
+Dokumentacja klienta (5 PDF + XLSX kart procesowych) — wyciąg w `notatki-analiza-dokumentacji-07.2026.md`. XLSX „Harmonogram rzeczowo-finansowy STEP/Cleantech" = pusty szablon wniosku (struktura kosztów, ≥3 oferty/wydatek, deadline 31.12.2030).
+
+## Stan poprzedni (v0.7)
 
 Nowe w v0.7: **strona startowa** (intro w tym samym pliku: splash w akcencie, wielki napis KLAB, izometryczna hala z efektem „latarki" — kursor odsłania zapełnioną wersję; przyciski „Zaimportuj dane" (.json z eksportu) / „Zacznij od zera" / „Zacznij projektowanie"; stopka © 21 zmysłów LAB). Grafiki intro to generowane SVG-placeholdery — **sloty `INTRO_IMG_PUSTA` / `INTRO_IMG_PELNA`** w skrypcie przyjmą data-URI obrazów od Krzyśka (ten sam kadr, pusta vs zapełniona hala). Do tego: **monit automatycznego powiększania hali** (przy deficycie w Auto-układzie przycisk „Tak, powiększ" przelicza układ ponownie; przy urządzeniu poza obrysem chip kolizji dostaje „Powiększ halę…" z confirmem), **wymiar hali w pasku KPI** (karta „Hala (wymiar roboczy)"), wymiar hali zapisywany w localStorage/eksporcie/undo, przyklejony nagłówek panelu Auto-układu (krzyżyk widoczny przy scrollu). Bez Google Fonts i zewnętrznych zasobów — plik dalej offline.
 
