@@ -1,6 +1,8 @@
 # Symulator fabryki KLAB — instrukcje dla Claude Code
 
-Pracujesz nad **`Symulator fabryki v0.9.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
+Pracujesz nad **`Symulator fabryki v0.11.html`** (starsze wersje zostają w repo jako archiwum) — narzędziem do symulacji fabryki akumulatorów KLAB (recykling LAB + produkcja ogniw w obiegu zamkniętym). Zespół: Krzysiek (design/strategia) i Marcin (inżynieria), firma 21 zmysłów. Mów po polsku.
+
+**Odnoga: prezentacja interaktywna (5 slajdów)** — jeśli sesja dotyczy prezentacji, zacznij od `handoff-2026-08-06-prezentacja-klab.md` (komplet wiedzy: mapa zasobów w v0.11, zasady, plan slajdów, deploy). Prezentacja żyje w `prezentacja/`, NIE modyfikuje plików symulatora.
 
 ## Zanim zaczniesz — przeczytaj (w tej kolejności)
 
