@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="KLAB — interaktywna prezentacja: recykling akumulatorów kwasowo-ołowiowych i produkcja ogniw w obiegu zamkniętym. 5 slajdów: Dlaczego · Jak · Gdzie · Ile · Co dalej.">
+<title>KLAB · Prezentacja — fabryka w obiegu zamkniętym</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FF4D00'/%3E%3Ctext x='32' y='45' font-family='Arial,sans-serif' font-size='38' font-weight='800' fill='white' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
+<!--
+  PREZENTACJA KLAB — 5 interaktywnych slajdów (odnoga symulatora fabryki).
+  Zasady: JEDEN plik HTML · zero CDN/frameworków · działa offline z podwójnego kliknięcia · UI po polsku.
+  Dane i język wizualny przeniesione 1:1 z „Symulator fabryki v0.11.html" (DEVICES, DOK, plan referencyjny,
+  tokeny CSS, logo KLAB_SVG). Dane robocze oznaczane ⚠ W-draft / D-szac. Nie modyfikować plików symulatora.
+  Nawigacja: taby · strzałki ←/→ · klawisze 1–5 · hash #1…#5 · Esc = przegląd slajdów.
+-->
+<style>
+:root{
+  --bg:#F2F1EF; --card:#FFFFFF; --ink:#1A1A1A; --mut:#8A8A85; --line:#E5E3DF;
+  --acc:#FF4D00; --ok:#16A34A; --warn:#F59E0B; --bad:#DC2626; --info:#2563EB;
+  --lineA:#FF4D00; --lineB:#7C3AED; --lav:#EDE9FE; --lavInk:#6D28D9;
+  --c-energia:#F97316; --c-woda:#3B82F6; --c-n2:#9CA3AF; --c-kwas:#8B5CF6;
+  --r:14px; --sh:0 2px 12px rgba(0,0,0,.07); --shF:0 6px 24px rgba(0,0,0,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;overflow:hidden}
+.mono{font-family:"Consolas","JetBrains Mono",monospace}
+.lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+button{font-family:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
+
+/* ── TOP BAR ── */
+header{display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--line);z-index:30;flex-shrink:0;height:52px}
+.logo{display:flex;align-items:center;gap:11px}
+.logo .klabmark svg{height:21px;width:auto;display:block}
+.logo .tt-sub{font-size:8px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase;border-left:1px solid var(--line);padding-left:11px}
+nav{display:flex;margin:0 auto;height:100%}
+nav button{border:0;background:transparent;padding:0 16px;font-size:12px;font-weight:600;color:var(--mut);cursor:pointer;white-space:nowrap;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+nav button .mk{font-size:8.5px;letter-spacing:.12em;font-weight:800;color:var(--mut);opacity:.8;line-height:1}
+nav button.act .mk{color:var(--acc);opacity:1}
+nav button+button{border-left:1px solid var(--line)}
+nav button.act{color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--acc)}
+nav button:hover:not(.act){color:var(--ink)}
+.wdraft{background:var(--lav);color:var(--lavInk);font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:6px 12px;border-radius:999px;white-space:nowrap;cursor:help}
+.iconb{width:36px;height:36px;border:1px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px}
+.iconb:hover{border-color:var(--ink)}
+
+/* ── STAGE / SLIDES ── */
+#stage{flex:1;min-height:0;position:relative}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;padding:16px 26px 10px;opacity:0;visibility:hidden;transform:translateX(14px);transition:opacity .18s ease,transform .18s ease,visibility .18s;max-width:1460px;margin:0 auto;width:100%}
+.slide.act{opacity:1;visibility:visible;transform:none}
+@media (prefers-reduced-motion:reduce){.slide{transition:none;transform:none}}
+.shead{display:flex;align-items:flex-start;gap:14px;flex-shrink:0}
+.kick{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--acc);font-weight:800;padding-top:6px;white-space:nowrap}
+.stats{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.stat{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:7px 14px;min-width:118px}
+.stat .v{font-size:19px;font-weight:300;letter-spacing:-.02em;white-space:nowrap;line-height:1.15}
+.stat .v small{font-size:10.5px;color:var(--mut);font-weight:600;margin-left:2px}
+.stat .l{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin-top:1px}
+h1.thesis{font-size:clamp(19px,2.4vw,29px);font-weight:700;letter-spacing:-.02em;line-height:1.15;margin:4px 0 12px;flex-shrink:0;max-width:1050px}
+.sbody{flex:1;min-height:0;display:flex;gap:14px}
+.snote{flex-shrink:0;font-size:10.5px;color:var(--mut);padding:8px 2px 2px;line-height:1.45}
+.snote b{color:var(--ink)}
+.vcard{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;min-width:0}
+.vcard h2{font-size:13px;font-weight:700;margin-bottom:8px}
+.badge-w{display:inline-block;background:var(--lav);color:var(--lavInk);font-size:9px;font-weight:800;letter-spacing:.05em;padding:2px 7px;border-radius:999px;vertical-align:1px}
+.pillb{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none}
+.pillb:hover{border-color:var(--ink)}
+.pillb.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pillb.dark:hover{background:#000}
+
+/* ── FOOTER ── */
+footer{flex-shrink:0;display:flex;align-items:center;gap:14px;padding:7px 16px;background:var(--card);border-top:1px solid var(--line);font-size:10.5px;color:var(--mut)}
+footer .klabmark svg{height:11px;width:auto;display:block;opacity:.55}
+footer .hint{margin-left:auto}
+footer .cnt{font-weight:700;color:var(--ink);min-width:34px;text-align:right}
+footer kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;font-family:inherit;font-size:10px;background:var(--bg)}
+
+/* ── S1: OBIEG ── */
+#s1 .sbody{align-items:stretch}
+#ringWrap{flex:1.45;min-width:0;display:flex;align-items:center;justify-content:center}
+#ringWrap svg{width:100%;height:100%;max-height:100%}
+.stn rect{fill:var(--card);stroke:var(--line);stroke-width:1.2;filter:drop-shadow(0 2px 5px rgba(0,0,0,.06))}
+.stn text{font-weight:700;font-size:13.5px}
+.stn .sub{font-weight:600;font-size:10px;fill:var(--mut)}
+.frak-arc{fill:none;stroke-width:5;cursor:pointer;transition:opacity .15s,stroke-width .15s}
+.frak-arc:hover{stroke-width:7}
+.dim .frak-arc{opacity:.16}.dim .frak-arc.on{opacity:1;stroke-width:7.5}
+.ring-base{fill:none;stroke-width:2.4}
+#s1panel{flex:1;display:flex;flex-direction:column;gap:10px;min-width:300px;max-width:430px}
+.frow{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:11px;padding:9px 12px;cursor:pointer;background:var(--card);text-align:left;font-size:12.5px;font-weight:600;width:100%}
+.frow:hover{border-color:var(--ink)}
+.frow.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.frow .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+.frow .fv{margin-left:auto;font-size:10.5px;color:var(--mut);font-weight:600;white-space:nowrap}
+#fdetail{border-top:1px solid var(--line);padding-top:10px;font-size:12px;line-height:1.5;min-height:108px}
+#fdetail .rchips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:7px 0}
+#fdetail .rchip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap}
+#fdetail .rchip.hot{background:var(--ink);color:#fff;border-color:var(--ink)}
+#fdetail .rarw{color:var(--mut);font-weight:700}
+
+/* ── S2: PROCES ── */
+#s2 .sbody{flex-direction:column}
+#procWrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 8px}
+#procWrap svg{width:100%;height:100%}
+.node{cursor:pointer}
+.node rect{fill:var(--card);stroke-width:1.3;filter:drop-shadow(0 1.5px 4px rgba(0,0,0,.05))}
+.node:hover rect{stroke:var(--ink)}
+.node.sel rect{stroke:var(--acc);stroke-width:2}
+.node .nid{font-family:"Consolas",monospace;font-weight:700;font-size:12px}
+.node .nnm{font-size:9.3px;fill:#5c5c58}
+.lane-lbl{font-size:10px;letter-spacing:.12em;font-weight:800;fill:var(--mut)}
+.pedge{fill:none;stroke-width:1.6}
+.pedge.ap{stroke-dasharray:4 3}
+#s2detail{flex-shrink:0;min-height:106px}
+#s2detail .drow{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline}
+#s2detail .dk{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut)}
+#s2detail .dv{font-size:12.5px;font-weight:600}
+#s2detail .opis{font-size:11.5px;color:#5c5c58;margin-top:7px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mchip{display:inline-block;padding:2px 8px;border-radius:999px;color:#fff;font-size:10px;font-weight:700;margin-right:4px}
+.bdg{display:inline-block;padding:2px 8px;border-radius:999px;font-size:9.5px;font-weight:800;letter-spacing:.03em;margin-left:6px;vertical-align:2px}
+.bdg.waskie{background:#FEF3C7;color:#92400E}
+.bdg.krytyczne{background:#FEE2E2;color:#991B1B}
+.bdg.br{background:#FFE9DE;color:var(--acc)}
+
+/* ── S3: HALA ── */
+#s3 .sbody{flex-direction:column}
+#halaBar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0;padding-bottom:8px}
+.tgl{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:11.5px;font-weight:600;cursor:pointer}
+.tgl .sw{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--mut);background:transparent}
+.tgl.on .sw{background:var(--ok);border-color:var(--ok)}
+.tgl:hover{border-color:var(--ink)}
+#halaBar .zoombox{display:flex;align-items:center;gap:2px;margin-left:6px}
+#halaBar .zb{width:28px;height:28px;border:1px solid var(--line);background:var(--card);border-radius:9px;cursor:pointer;font-size:14px;font-weight:700;line-height:1}
+#halaBar .zb:hover{border-color:var(--ink)}
+#zoomPct{font-size:11px;color:var(--mut);min-width:42px;text-align:center}
+#halaBar .bhint{margin-left:auto;font-size:10.5px;color:var(--mut)}
+#halaWrap{flex:1;min-height:0;background:var(--card);border-radius:var(--r);box-shadow:var(--sh);position:relative;overflow:hidden}
+#svg3{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#svg3.panning{cursor:grabbing}
+#tip3{position:absolute;pointer-events:none;background:var(--ink);color:#fff;border-radius:10px;padding:8px 11px;font-size:11px;line-height:1.45;max-width:250px;display:none;z-index:5;box-shadow:var(--shF)}
+#tip3 .t{font-weight:700;font-size:12px}
+#tip3 .m{color:#CFCCC6}
+.dev3 .body{fill:#fff;stroke:#CFCCC6;stroke-width:.09}
+.dev3:hover .body{stroke:var(--acc);stroke-width:.16}
+.serw3{fill:none;stroke-width:.07;stroke-dasharray:.5 .35;opacity:.75}
+.mline{fill:none;stroke-width:.09;opacity:.3}
+
+/* ── S4: KOSZTY ── */
+#s4 .sbody{gap:14px}
+#s4L{flex:1.15;display:flex;flex-direction:column;gap:12px;min-width:0}
+#s4R{flex:1;display:flex;flex-direction:column;gap:10px;min-width:300px;max-width:440px}
+.kpiT{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:12px 16px}
+.kpiT .v{font-size:27px;font-weight:300;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}
+.kpiT .v small{font-size:11px;color:var(--mut);font-weight:600;margin-left:4px}
+.kpiT .l{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:3px}
+.kpiT .sub{font-size:10.5px;color:var(--mut);margin-top:4px}
+.slrow{display:flex;align-items:center;gap:12px;margin:6px 0 2px}
+.slrow input[type=range]{flex:1;accent-color:var(--acc);height:26px}
+.slrow .val{font-size:13px;font-weight:700;min-width:96px;text-align:right}
+.stack{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:10px 0 8px}
+.stack div{min-width:2px}
+.leg{display:flex;justify-content:space-between;font-size:11.5px;padding:3.5px 0;border-bottom:1px dashed var(--line)}
+.leg:last-of-type{border-bottom:0}
+.leg .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+.note{font-size:10.5px;color:var(--mut);line-height:1.5;margin-top:8px}
+.chiprow{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:10.5px;font-weight:600;color:#5c5c58}
+
+/* ── S5: PRZEWAGI ── */
+#s5 .sbody{flex-direction:column;gap:12px;justify-content:center}
+#advRow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start}
+.adv{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;cursor:pointer;border:1px solid transparent;text-align:left;width:100%}
+.adv:hover{border-color:var(--line)}
+.adv.open{border-color:var(--ink)}
+.adv .no{font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--acc)}
+.adv h3{font-size:15.5px;font-weight:700;margin:4px 0 5px;letter-spacing:-.01em}
+.adv .proof{font-size:12px;color:#5c5c58;line-height:1.45}
+.adv .proof b{color:var(--ink)}
+.adv .more{font-size:10.5px;color:var(--mut);margin-top:8px;font-weight:600}
+.adv .det{display:none;font-size:11.5px;line-height:1.55;color:#3d3d3a;margin-top:9px;border-top:1px dashed var(--line);padding-top:9px}
+.adv.open .det{display:block}
+.adv.open .more{display:none}
+#ctaCard{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+#ctaCard .big{font-size:15px;font-weight:700}
+
+/* ── PRZEGLĄD (Esc) ── */
+#ov{position:absolute;inset:0;background:var(--bg);z-index:20;display:none;flex-direction:column;padding:22px 30px}
+#ov.act{display:flex}
+#ov .ovh{display:flex;align-items:baseline;gap:14px;margin-bottom:16px}
+#ov h2{font-size:19px;font-weight:700}
+#ov .ovh .x{margin-left:auto}
+#ovGrid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:12px;align-content:center}
+.ovc{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:16px;cursor:pointer;border:1px solid transparent;text-align:left;display:flex;flex-direction:column;gap:8px;min-height:190px}
+.ovc:hover{border-color:var(--ink)}
+.ovc.here{border-color:var(--acc)}
+.ovc .n{font-size:26px;font-weight:300;color:var(--acc)}
+.ovc .k{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:800}
+.ovc .t{font-size:13px;font-weight:700;line-height:1.3}
+.ovc .s{font-size:11px;color:var(--mut);margin-top:auto}
+
+@media (max-width:1150px){#ovGrid{grid-template-columns:repeat(2,1fr)}#advRow{grid-template-columns:1fr}#s1 .sbody{flex-direction:column;overflow:auto}#s1panel{max-width:none}.slide{overflow:auto}#s4 .sbody{flex-direction:column}#s4R{max-width:none}}
+@media (max-height:660px){.slide{overflow:auto}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo" id="logoTop"><span class="klabmark" id="wmTop"></span><span class="tt-sub">Prezentacja · fabryka<br>w obiegu zamkniętym</span></div>
+  <nav id="tabs" aria-label="Slajdy"></nav>
+  <span class="wdraft" title="Część danych szczegółowych (moce urządzeń, CAPEX na pozycję) to szacunki robocze przed zapytaniami RFQ — w prezentacji oznaczone ⚠. Liczby zbiorcze pochodzą z dokumentacji technologicznej klienta (rev. 07.2026).">⚠ W-DRAFT · dane robocze</span>
+  <button class="iconb" id="ovBtn" title="Przegląd slajdów (Esc)" aria-label="Przegląd slajdów">⊞</button>
+</header>
+
+<main id="stage">
+
+  <!-- ═══ SLAJD 1 · DLACZEGO ═══ -->
+  <section class="slide" id="s1" aria-label="Slajd 1: obieg zamknięty">
+    <div class="shead">
+      <span class="kick">1 · Dlaczego</span>
+      <div class="stats">
+        <div class="stat"><div class="v">20 <small>t/d</small></div><div class="l">wsad złomu LAB</div></div>
+        <div class="stat"><div class="v">4</div><div class="l">frakcje w obiegu</div></div>
+        <div class="stat"><div class="v">8,1 <small>kg Pb/kWh</small></div><div class="l">zużycie ołowiu</div></div>
+      </div>
+    </div>
+    <h1 class="thesis">Nic nie ginie — zużyty akumulator wraca jako nowe ogniwo.</h1>
+    <div class="sbody">
+      <div id="ringWrap"></div>
+      <div id="s1panel" class="vcard">
+        <span class="lbl">Frakcje w obiegu — wybierz</span>
+        <div id="frows"></div>
+        <div id="fdetail"></div>
+      </div>
+    </div>
+    <div class="snote">Deklaracje „battery-grade" i bilanse frakcji — <b>wg dokumentacji technologicznej klienta (rev. 07.2026)</b>. Obieg liczony dla 312 dni pracy w roku.</div>
+  </section>
+
+  <!-- ═══ SLAJD 2 · JAK ═══ -->
+  <section class="slide" id="s2" aria-label="Slajd 2: technologia">
+    <div class="shead">
+      <span class="kick">2 · Jak</span>
+      <div class="stats">
+        <div class="stat"><div class="v">8</div><div class="l">węzłów recyklingu (A)</div></div>
+        <div class="stat"><div class="v">15</div><div class="l">węzłów produkcji (B)</div></div>
+        <div class="stat"><div class="v">75<small>→</small>49 <small>h</small></div><div class="l">lead time partii</div></div>
+      </div>
+    </div>
+    <h1 class="thesis">23 węzły składają się w jeden ciąg — od złomu do gotowego ogniwa.</h1>
+    <div class="sbody">
+      <div id="procWrap" class="vcard"></div>
+      <div id="s2detail" class="vcard"></div>
+    </div>
+    <div class="snote">Strzałki = przepływy z pól we→wy katalogu urządzeń (przerywane = dopasowanie po substancji). Powroty frakcji z linii A do B — patrz slajd 1. Pełne karty procesowe (media, BHP, dostawcy) — w konfiguratorze.</div>
+  </section>
+
+  <!-- ═══ SLAJD 3 · GDZIE ═══ -->
+  <section class="slide" id="s3" aria-label="Slajd 3: layout hali">
+    <div class="shead">
+      <span class="kick">3 · Gdzie</span>
+      <div class="stats">
+        <div class="stat"><div class="v">11 232 <small>m²</small></div><div class="l">hala 156 × 72 m</div></div>
+        <div class="stat"><div class="v">84 <small>os./zm.</small></div><div class="l">personel procesowy</div></div>
+        <div class="stat"><div class="v" id="statColl">—</div><div class="l">kolizji na planie</div></div>
+      </div>
+    </div>
+    <h1 class="thesis">To zaplanowany zakład, nie koncepcja — 11 232 m² rozrysowane co do metra.</h1>
+    <div class="sbody">
+      <div id="halaBar">
+        <button class="tgl on" data-l="strefy"><span class="sw"></span>Strefy</button>
+        <button class="tgl on" data-l="ciagi"><span class="sw"></span>Ciągi komunikacyjne</button>
+        <button class="tgl" data-l="media"><span class="sw"></span>Magistrale mediów</button>
+        <div class="zoombox">
+          <button class="zb" id="zOut" aria-label="Oddal">−</button>
+          <span id="zoomPct">100%</span>
+          <button class="zb" id="zIn" aria-label="Przybliż">+</button>
+          <button class="zb" id="zFit" title="Dopasuj widok" aria-label="Dopasuj widok" style="width:auto;padding:0 10px;font-size:12px">⟲ dopasuj</button>
+        </div>
+        <span class="bhint">przeciągnij = przesuń · kółko = zoom · najedź na urządzenie = szczegóły</span>
+      </div>
+      <div id="halaWrap">
+        <svg id="svg3" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="tip3"></div>
+      </div>
+    </div>
+    <div class="snote"><b>Plan referencyjny z dokumentacji (rev. 07.2026), odtworzony 1:1 w konfiguratorze 21 zmysłów.</b> Przepływ jednokierunkowy: przyjęcie od wschodu → wysyłka na zachód, bez krzyżowań; korytarz AGV/AMR jako kręgosłup intralogistyki. Każdy wariant układu przeliczamy na liczby (media · personel · koszty) — <a href="https://twentyonelab.github.io/klab/" target="_blank" rel="noopener">konfigurator online →</a></div>
+  </section>
+
+  <!-- ═══ SLAJD 4 · ILE ═══ -->
+  <section class="slide" id="s4" aria-label="Slajd 4: efektywność">
+    <div class="shead">
+      <span class="kick">4 · Ile</span>
+      <div class="stats">
+        <div class="stat"><div class="v">1455 <small>kWh/d</small></div><div class="l">produkcja ogniw</div></div>
+        <div class="stat"><div class="v">454<small>→</small>481 <small>MWh/r</small></div><div class="l">wolumen roczny</div></div>
+        <div class="stat"><div class="v">~1 <small>MWp</small></div><div class="l">PV na dachu</div></div>
+      </div>
+    </div>
+    <h1 class="thesis">Policzone, nie obiecane — koszty operacyjne przeliczamy na żywo.</h1>
+    <div class="sbody">
+      <div id="s4L">
+        <div class="vcard">
+          <h2>Jedno założenie do przesunięcia — cena energii</h2>
+          <div class="slrow">
+            <span class="lbl" style="white-space:nowrap">cena energii</span>
+            <input type="range" id="slEn" min="0.40" max="1.20" step="0.01" value="0.75" aria-label="Cena energii, zł za kWh">
+            <span class="val" id="slEnV">0,75 zł/kWh</span>
+          </div>
+          <p class="note">Pozostałe założenia jak w konfiguratorze: woda 15 zł/m³ · N₂ 0,80 zł/m³ · 10 000 zł/os./mies. · utrzymanie ruchu 3% CAPEX/rok · 250 dni × model zmianowy (3 zmiany — założenie robocze).</p>
+        </div>
+        <div class="vcard" style="flex:1">
+          <h2>Struktura OPEX — cały plan (23 urządzenia) <span class="badge-w">⚠ D-szac</span></h2>
+          <div class="stack" id="stack4"></div>
+          <div id="leg4"></div>
+          <p class="note">Energia = moc średnia × godziny pracy. Moce urządzeń = oszacowania robocze z dokumentacji (D-szac ⚠). OPEX gotówkowy — bez amortyzacji, bez surowców zewnętrznych; przychody uboczne (Na₂SO₄, nadwyżki Pb/PP) nie odjęte.</p>
+        </div>
+      </div>
+      <div id="s4R">
+        <div class="kpiT"><div class="l">OPEX roczny — wynik na żywo</div><div class="v" id="opexV">—</div><div class="sub">liczony z katalogu urządzeń i planu, jak w konfiguratorze</div></div>
+        <div class="kpiT"><div class="l">Cash cost ogniwa — na żywo</div><div class="v" id="ccV">—</div><div class="sub" id="ccSub">—</div></div>
+        <div class="kpiT"><div class="l">Energia odzyskana w zakładzie</div><div class="v">250–450 <small>kW</small></div><div class="sub">odzysk ciepła procesowego ≈ 0,5–0,9 mln zł/rok · formacja z recyrkulacją: −25–30% energii (wg dokumentacji)</div></div>
+        <div class="chiprow">
+          <span class="chip">pakiet optymalizacji: +2,85 mln zł → 481 MWh/rok</span>
+          <span class="chip">ścieżka do ~580 MWh/rok (faza II)</span>
+        </div>
+      </div>
+    </div>
+    <div class="snote">Suwak przelicza <b>ten sam model kosztowy, który działa w konfiguratorze</b> (M6) — prezentacja liczy, nie twierdzi. Ceny = założenia robocze do kalibracji, nie oferty.</div>
+  </section>
+
+  <!-- ═══ SLAJD 5 · CO DALEJ ═══ -->
+  <section class="slide" id="s5" aria-label="Slajd 5: przewagi i następny krok">
+    <div class="shead">
+      <span class="kick">5 · Co dalej</span>
+      <div class="stats">
+        <div class="stat"><div class="v">≈35 <small>mln zł</small></div><div class="l">CAPEX A+B ⚠ W-draft</div></div>
+        <div class="stat"><div class="v">481 <small>MWh/r</small></div><div class="l">po optymalizacji</div></div>
+        <div class="stat"><div class="v">2030</div><div class="l">realizacja do 31.12</div></div>
+      </div>
+    </div>
+    <h1 class="thesis">Trzy przewagi. Jeden następny krok.</h1>
+    <div class="sbody">
+      <div id="advRow"></div>
+      <div class="vcard" id="ctaCard">
+        <span class="big">Następny krok:</span>
+        <a class="pillb dark" href="https://twentyonelab.github.io/klab/" target="_blank" rel="noopener">▶ Demo konfiguratora na żywo</a>
+        <span style="font-size:11.5px;color:var(--mut);max-width:520px">przegląd specyfikacji technicznej → start zapytań RFQ (≥3 oferty na każdy wydatek, układ HRF gotowy). Prezentacja i konfigurator działają też offline — jeden plik HTML, bez zależności.</span>
+      </div>
+    </div>
+    <div class="snote">Kwoty inwestycyjne = <b>W-draft ⚠</b> do potwierdzenia ofertami; deklaracje technologiczne — wg dokumentacji klienta. Bez nazwisk — kontakt przez 21 zmysłów LAB.</div>
+  </section>
+
+  <!-- ═══ PRZEGLĄD ═══ -->
+  <div id="ov" role="dialog" aria-label="Przegląd slajdów">
+    <div class="ovh"><h2>Przegląd — 5 slajdów</h2><span class="lbl">kliknij, aby przejść · Esc zamyka</span><button class="iconb x" id="ovX" aria-label="Zamknij przegląd">✕</button></div>
+    <div id="ovGrid"></div>
+  </div>
+
+</main>
+
+<footer>
+  <span class="klabmark" id="wmFoot"></span>
+  <span>© 21 zmysłów LAB</span>
+  <span class="hint"><kbd>←</kbd><kbd>→</kbd> slajdy · <kbd>1</kbd>–<kbd>5</kbd> skok · <kbd>Esc</kbd> przegląd</span>
+  <span class="cnt" id="cnt">1 / 5</span>
+</footer>
+
+<noscript><div style="padding:20px;font-size:14px">Prezentacja wymaga włączonego JavaScriptu (plik działa offline, bez zależności zewnętrznych).</div></noscript>
+
+<script>
+"use strict";
+/* ════════ DANE — wyciągnięte 1:1 z Symulator fabryki v0.11.html ════════ */
+const DOK={wsad_td:20,kWh_d:1455,MWh_rok:454,MWh_rok_opt:481,Pb_kg_kWh:8.1,leadtime_h:75,leadtime_opt_h:49,capex_AB_mln:35,capex_opt_mln:2.85,hala_dl:156,hala_szer:72,hala_m2:11232,proces_m2:6800,osProc:84,osZakl:94,pv_MWp:1,cieplo_odzysk_kW:[250,450],chlod_kW:[170,300]};
+const MEDIA_KOL={energia:"#F97316",woda:"#3B82F6",n2:"#9CA3AF",kwas:"#8B5CF6"};
+const MEDIA_NAZ={energia:"energia",woda:"woda",n2:"azot",kwas:"kwas"};
+const MEDIA_LIT={energia:"E",woda:"W",n2:"N",kwas:"KW"};
+const LHEX=l=>l==="A"?"#FF4D00":"#7C3AED";
+const STREFY_DEF=[["surowiec","Przyjęcie + magazyn surowca (złom LAB)",300,"#F59E0B"],["wyroby","Magazyn wyrobów + wysyłka",250,"#16A34A"],["socjal","Socjal + śluzy higieniczne Pb",150,"#7C3AED"],["qaur","Laboratorium QA + warsztat UR",120,"#0EA5E9"],["technika","Technika: trafo · sprężarki · woda/ścieki",200,"#2563EB"],["chemia","Strefa kwasów (wanny wychwytowe)",100,"#8B5CF6"]];
+const STREFA=Object.fromEntries(STREFY_DEF.map(z=>[z[0],{nazwa:z[1],m2:z[2],kol:z[3]}]));
+/* katalog 23 urządzeń — pola planistyczne (bez pełnych kart dostawców; te są w konfiguratorze) */
+const DEVICES=[
+{id:"A1",nazwa:"Przyjęcie i identyfikacja",linia:"A",modul:"Przyjęcie",dl:23,szer:15,serw:0.25,kW:20,kWsr:20,n2:0,woda:0,os:4,capex:890000,media:["energia"],we:"Złom LAB 20 t/d",wy:"Wsad zidentyf. → A2",m2:400,tryb:"1–2 zm",przepust:"20 t/d",strefa:"Pb",badge:"",opis:"Rozładunek dostaw zużytych LAB, ważenie, identyfikacja partii (MES/LIMS), selekcja typów, wstępne rozładowanie elektryczne akumulatorów z odzyskiem energii do sieci wewnętrznej. Start genealogii partii."},
+{id:"A2",nazwa:"Breakowanie + separacja",linia:"A",modul:"Recykling mech.",dl:23,szer:15,serw:0.25,kW:150,kWsr:150,n2:0,woda:3,os:6,capex:2089999,media:["energia","woda"],we:"Wsad 20 t/d",wy:"Pb·pasta·PP·kwas",m2:350,tryb:"1 zm + rezerwa",przepust:"2,25 t/h",strefa:"Pb",badge:"waskie",opis:"Kruszenie akumulatorów i rozdział na frakcje: metaliczną Pb, pastę, PP i elektrolit. Separacja gęstościowa sink-float, odsiew pasty, odwadnianie. Serce strony recyklingowej."},
+{id:"A3",nazwa:"Gospodarka elektrolitem H₂SO₄",linia:"A",modul:"Chemia kwasu",dl:23,szer:10,serw:0.25,kW:12,kWsr:12,n2:0,woda:0,os:2,capex:740000,media:["energia","kwas","woda"],we:"Elektrolit surowy ← A2",wy:"H₂SO₄ 15–38% → B7/B12",m2:150,tryb:"przerywana",przepust:"2,4 t/d",strefa:"Pb",badge:"",opis:"Odbiór elektrolitu z A2, filtracja (klarowanie z resztek pasty), magazynowanie buforowe, korekta stężenia do 15–38% i dystrybucja do past (B7) i zalewania (B12). Zamknięcie obiegu kwasu."},
+{id:"A4",nazwa:"Piec topielny + hot-to-product",linia:"A",modul:"Obróbka termiczna",dl:23,szer:12,serw:0.25,kW:40,kWsr:40,n2:0,woda:4,os:6,capex:2610000,media:["energia","n2","woda"],we:"Frakcja Pb ← A2",wy:"Pb battery-grade 6,2 t/d",m2:300,tryb:"2 zm",przepust:"6,2 t/d Pb",strefa:"Pb",badge:"",custom:true,opis:"Wytapianie nisko-temperaturowe frakcji Pb i odlew „hot-to-product” — m.in. anody do galwanizacji (B5), Pb do kontaktów (B6) i strapów (B9)."},
+{id:"A5",nazwa:"Hydrometalurgia pasty → PbO",linia:"A",modul:"Hydrometalurgia",dl:22,szer:27,serw:0.25,kW:200,kWsr:200,n2:0,woda:8,os:9,capex:3350000,media:["energia","woda"],we:"Pasta ← A2",wy:"PbO α/β + Na₂SO₄",m2:500,tryb:"ciągła 24/7",przepust:"7,0 t/d",strefa:"Pb",badge:"waskie",opis:"Hydrometalurgia pasty: ługowanie i synteza PbO α/β battery-grade, praca ciągła 24/7 (wąskie gardło kalendarzowe). Produkt uboczny: Na₂SO₄."},
+{id:"A6",nazwa:"Mycie + regranulacja PP",linia:"A",modul:"Tworzywa",dl:16,szer:12,serw:0.25,kW:110,kWsr:110,n2:0,woda:2,os:2,capex:1190000,media:["energia","woda"],we:"PP ← A2",wy:"Regranulat PP 2,2 t/d",m2:300,tryb:"1 zm",przepust:"2,4 t/d",strefa:"Pb",badge:"",opis:"Rozdrobnienie obudów PP, mycie tarciowe z flotacją (usunięcie pasty i kwasu), suszenie, ekstruzja z odgazowaniem i filtracją stopu, regranulacja. Regranulat → obudowy ogniw KLAB lub sprzedaż."},
+{id:"A7",nazwa:"Oczyszczanie mediów i emisji (EHS)",linia:"A",modul:"EHS",dl:16,szer:14,serw:0.25,kW:55,kWsr:55,n2:0,woda:0,os:2,capex:1640000,media:["energia","woda"],we:"Gazy/ścieki zakładu",wy:"Powietrze/woda oczyszcz.",m2:250,tryb:"ciągła",przepust:"wg strumieni",strefa:"Pb",badge:"",opis:"Centralny węzeł ochrony środowiska: odpylanie gazów, absorpcja aerozoli H₂SO₄, filtry węglowe, oczyszczalnia ścieków (neutralizacja + koagulacja/flokulacja), odwadnianie osadów, monitoring emisji on-line. Warunek pozwolenia zintegrowanego (IPPC)."},
+{id:"A8",nazwa:"Kontrola jakości + magazyn surowców",linia:"A",modul:"QA / magazyn",dl:40,szer:9,serw:0.25,kW:20,kWsr:20,n2:0,woda:0,os:5,capex:1790000,media:["energia","n2"],we:"Pb·PbO·H₂SO₄·PP",wy:"Surowce zwolnione → B",m2:400,tryb:"2 zm",przepust:"partie",strefa:"Pb",badge:"krytyczne",opis:"Laboratoryjne potwierdzenie battery-grade (Pb: ICP-OES; PbO: XRD α/β, BET, granulometria; H₂SO₄; PP: MFI) i buforowe magazynowanie surowców. Punkt zwolnienia partii do linii B."},
+{id:"B1",nazwa:"Magazyn wejściowy linii B",linia:"B",modul:"Magazyn",dl:49,szer:9,serw:0.25,kW:15,kWsr:15,n2:3,woda:0,os:2,capex:1120000,media:["energia","n2"],we:"Surowce B (zakup + A8)",wy:"→ B2/B3/B7/B10/B12",m2:400,tryb:"2 zm",przepust:"1455 kWh/d",strefa:"ATEX",badge:"",opis:"Przyjęcie i składowanie surowców linii B: pianki PU, żywice, etanol (strefa ATEX), H₂SO₄, dodatki past, separatory, obudowy. Zasilanie stanowisk przez AGV wg zleceń MES."},
+{id:"B2",nazwa:"Przygotowanie żywic (ATEX)",linia:"B",modul:"Elektroda",dl:12,szer:13,serw:0.25,kW:40,kWsr:40,n2:7,woda:0,os:2,capex:1040000,media:["energia","n2","woda"],we:"Żywice + EtOH ← B1",wy:"Roztwór impregn. → B3",m2:150,tryb:"szarże 2–4 h",przepust:"wg B3",strefa:"ATEX",badge:"",opis:"Mieszanie roztworów żywic (nośnik węgla po pirolizie) w etanolu, w reaktorach z płaszczem i inertyzacją N₂. Rektyfikacja odzyskanego etanolu z suszarni B3 — zamknięty obieg rozpuszczalnika."},
+{id:"B3",nazwa:"Impregnacja pianki PU (roll-to-roll)",linia:"B",modul:"Elektroda",dl:26,szer:12,serw:0.25,kW:80,kWsr:80,n2:15,woda:0,os:4,capex:1940000,media:["energia","n2"],we:"Pianka PU ← B1",wy:"Formatki → B4",m2:350,tryb:"ciągła",przepust:"1455 kWh/d",strefa:"ATEX",badge:"",custom:true,opis:"Rozwijanie taśmy pianki PU (200–500 m), impregnacja roztworem żywicy, przedmuch, suszenie IR/konwekcja 140 °C z pełnym odzyskiem etanolu do B2, cięcie na formatki. Maszyna projektowana od zera (rdzeń IP)."},
+{id:"B4",nazwa:"Piroliza LT + HT (24/7)",linia:"B",modul:"Obróbka termiczna",dl:18,szer:27,serw:0.25,kW:325,kWsr:325,n2:55,woda:3,os:6,capex:3130000,media:["energia","n2","woda"],we:"Formatki ← B3",wy:"Siatki węglowe → B5",m2:450,tryb:"24/7",przepust:"1455 kWh/d",strefa:"czysta",badge:"waskie",opis:"Dwustopniowa karbonizacja formatek: LT 250–900 °C i HT 1200–1400 °C w N₂. Katalityczne dopalanie syngazów, rekuperacja ciepła do suszarni B3. Mufla sekcyjna, bufory WIP 8–12 h z obu stron. Dyktuje takt całej linii."},
+{id:"B5",nazwa:"Galwaniczna metalizacja Pb",linia:"B",modul:"Elektroda",dl:13,szer:13,serw:0.25,kW:110,kWsr:110,n2:0,woda:4,os:4,capex:1340000,media:["energia","kwas","woda"],we:"Siatki ← B4 · anody ← A4",wy:"Elektrody Pb ~100 µm → B6",m2:300,tryb:"2,5 zm",przepust:"1455 kWh/d",strefa:"czysta",badge:"",opis:"Elektrolityczne osadzanie ciągłej powłoki Pb na szkieletach węglowych (kasety). Przygotowanie powierzchni, kąpiel główna z filtracją, płukania kaskadowe, suszenie. Anody z Pb z A4."},
+{id:"B6",nazwa:"Szkielet i kontakty Pb",linia:"B",modul:"Montaż płyt",dl:13,szer:13,serw:0.25,kW:45,kWsr:45,n2:5,woda:2,os:4,capex:1490000,media:["energia","n2","woda"],we:"Elektrody ← B5 · Pb ← A4",wy:"Elektrody z kontaktami → B8",m2:200,tryb:"1,5–2 zm",przepust:"takt 1–2 min",strefa:"czysta",badge:"",custom:true,opis:"Nadanie elektrodzie sztywności i ścieżek prądowych: druk/odlew beleczek Pb + monolityczne wtapianie wyprowadzeń (integralne kontaktowanie — filar IP). Dwie ścieżki B+R: depozycja addytywna lub mini-odlew."},
+{id:"B7",nazwa:"Przygotowanie past elektrodowych",linia:"B",modul:"Montaż płyt",dl:13,szer:7,serw:0.25,kW:30,kWsr:30,n2:0,woda:2,os:2,capex:1120000,media:["energia","kwas","woda"],we:"PbO ← A5 · H₂SO₄ ← A3",wy:"Pasty ± → B8",m2:150,tryb:"2–3 szarże/d",przepust:"~7 t past/d",strefa:"czysta",badge:"",opis:"Mieszanie past dodatniej i ujemnej: PbO (z A5) + H₂SO₄ (z A3) + woda + dodatki. Kontrola gęstości, penetracji i temperatury szarży. Mieszalniki zamknięte z odpylaniem HEPA i myciem CIP."},
+{id:"B8",nazwa:"Pastowanie dwustronne",linia:"B",modul:"Montaż płyt",dl:13,szer:14,serw:0.25,kW:22,kWsr:22,n2:0,woda:1,os:4,capex:1120000,media:["energia","woda"],we:"Elektrody ← B6 · pasty ← B7",wy:"Płyty pastowane → B8b",m2:250,tryb:"1,5 zm",przepust:"takt sek.",strefa:"czysta",badge:"",custom:true,opis:"Obustronne naniesienie pasty na delikatną siatkę kompozytową przy obniżonym nacisku (podparcia próżniowe), laserowa kontrola grubości i gramatury. Adaptacja rozwiązań rynkowych do elektrody KLAB."},
+{id:"B8b",nazwa:"Curing / drying (fast-cure)",linia:"B",modul:"Formacja",dl:14,szer:14,serw:0.25,kW:55,kWsr:55,n2:0,woda:2,os:2,capex:970000,media:["energia","woda"],we:"Płyty mokre ← B8",wy:"Płyty dojrzałe → B9",m2:350,tryb:"w tle 24/7",przepust:"WIP 0,9× d.",strefa:"czysta",badge:"",opis:"Komory dojrzewania i suszenia płyt z kontrolą T/RH. Po pakiecie optymalizacji fast-cure 65–85 °C: 36 → 22 h."},
+{id:"B9",nazwa:"Odlewanie strapów (COS)",linia:"B",modul:"Montaż ogniw",dl:7,szer:11,serw:0.25,kW:35,kWsr:35,n2:0,woda:0,os:2,capex:890000,media:["energia","woda"],we:"Płyty ← B8b · Pb ← A4",wy:"Grupy z mostkami → B10",m2:150,tryb:"1,5 zm",przepust:"takt min.",strefa:"czysta",badge:"",opis:"Cast-on-strap: łączenie chorągiewek płyt w grupy przez zalanie ciekłym Pb w formach precyzyjnych; odlew mostków i wyprowadzeń zgodnych z architekturą bipolarną."},
+{id:"B10",nazwa:"Kopertowanie i grupy płyt",linia:"B",modul:"Montaż ogniw",dl:7,szer:11,serw:0.25,kW:12,kWsr:12,n2:0,woda:0,os:2,capex:670000,media:["energia"],we:"Grupy ← B9 · separatory",wy:"Grupy kopertowane → B11",m2:150,tryb:"1,5 zm",przepust:"takt sek.",strefa:"czysta",badge:"",opis:"Owijanie płyt separatorami (koperty PE/AGM), układanie naprzemienne w grupy, kontrola wizyjna kompletności i polaryzacji."},
+{id:"B11",nazwa:"Jar assembly — montaż ogniw",linia:"B",modul:"Montaż ogniw",dl:9,szer:11,serw:0.25,kW:16,kWsr:16,n2:0,woda:0,os:2,capex:1040000,media:["energia"],we:"Grupy ← B10 · obudowy PP",wy:"Ogniwa suche → B12",m2:100,tryb:"1,5 zm",przepust:"takt min.",strefa:"czysta",badge:"",opis:"Wkładanie grup do obudów (regranulat PP z A6), zgrzewanie międzyogniwowe i wieczek, architektura bipolarna ≥4 V, test szczelności każdej sztuki."},
+{id:"B12",nazwa:"Zalewanie / żelowanie elektrolitu",linia:"B",modul:"Formacja",dl:9,szer:8,serw:0.25,kW:12,kWsr:12,n2:0,woda:0,os:2,capex:820000,media:["energia","kwas"],we:"Ogniwa ← B11 · H₂SO₄ ← A3",wy:"Ogniwa zalane → B13",m2:150,tryb:"1,5 zm",przepust:"takt min.",strefa:"czysta",badge:"",opis:"Dozowanie elektrolitu (H₂SO₄ z A3, wariant żelowy z krzemionką) pod próżnią. Stabilizacja żelu w buforze kolejki przed formacją (optymalizacja #6: 4 → 1,5 h)."},
+{id:"B13",nazwa:"Formacja z recyrkulacją",linia:"B",modul:"Formacja",dl:23,szer:27,serw:0.25,kW:100,kWsr:100,n2:0,woda:6,os:6,capex:2980000,media:["energia","woda"],we:"Ogniwa ← B12",wy:"Ogniwa sformowane → B14",m2:700,tryb:"obwody 24/7",przepust:"1455 kWh/d",strefa:"czysta",badge:"waskie",opis:"Pierwsze ładowanie profilami IUI z recyrkulacją elektrolitu i chłodzeniem: −42% czasu, +50–70% zdolności wanien, −25–30% energii. Rejestracja SoC/SoH/T każdego ogniwa."},
+{id:"B14",nazwa:"Testy EoL, starzenie, pakowanie",linia:"B",modul:"Montaż ogniw",dl:22,szer:14,serw:0.25,kW:30,kWsr:30,n2:0,woda:0,os:4,capex:1040000,media:["energia"],we:"Ogniwa ← B13",wy:"OGNIWA KLAB (wyrób)",m2:300,tryb:"1 zm",przepust:"1455 kWh/d",strefa:"czysta",badge:"",opis:"Testy elektryczne EoL (pojemność, rezystancja wewnętrzna, OCV), test szczelności, starzenie kontrolne próbek, etykietowanie (genealogia partii) i pakowanie wysyłkowe."}
+];
+const DEV=Object.fromEntries(DEVICES.map(d=>[d.id,d]));
+/* plan referencyjny hali 156×72 z dokumentacji (eksport z konfiguratora — klab_plan_referencyjny.json) */
+const PLAN={hala:{dl:156,szer:72},
+placed:[{dev:"A1",x:142.5,y:9.5},{dev:"A2",x:117.5,y:9.5},{dev:"A3",x:142.5,y:24},{dev:"A4",x:117.5,y:25},{dev:"A5",x:93,y:15.5},{dev:"A6",x:72,y:24},{dev:"A7",x:72,y:9},{dev:"A8",x:84,y:36.5},{dev:"B1",x:130.5,y:36.5},{dev:"B2",x:149,y:50.5},{dev:"B3",x:141,y:65},{dev:"B4",x:117,y:57.5},{dev:"B5",x:96.5,y:50.5},{dev:"B6",x:96.5,y:64.5},{dev:"B7",x:81.5,y:47.5},{dev:"B8",x:81.5,y:59},{dev:"B8b",x:66,y:51},{dev:"B9",x:62.5,y:65.5},{dev:"B10",x:70.5,y:65.5},{dev:"B11",x:52.5,y:65.5},{dev:"B12",x:52.5,y:48},{dev:"B13",x:13.5,y:57.5},{dev:"B14",x:27,y:9}].map((p,i)=>({uid:i+1,rot:0,...p})),
+ciagi:[{x:1,y:41.5,w:154,h:2.2,nazwa:"korytarz AGV/AMR — kręgosłup intralogistyki (MES/LIMS)"},{x:104.5,y:2,w:1.5,h:39,nazwa:"",pion:true}],
+strefy:[{zid:1,typ:"wyroby",x:1,y:2,w:14,h:28},{zid:2,typ:"technika",x:40,y:2,w:22,h:28},{zid:3,typ:"socjal",x:25,y:44,w:22,h:27}]};
+/* założenia kosztowe — jak w konfiguratorze (M6) */
+const zalozenia={zmiany:{},dniRobocze:250,cenaEnergii:0.75,cenaWody:15,cenaN2:0.8,stawkaOs:10000,urPct:3};
+const zmianyDev=id=>zalozenia.zmiany[id]||3;
+const hRokDev=id=>zmianyDev(id)*8*zalozenia.dniRobocze;
+const fmtZl=n=>n>=1e6?(n/1e6).toLocaleString("pl-PL",{maximumFractionDigits:2})+" mln":Math.round(n/1e3)+" tys.";
+const pl2=v=>v.toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+/* ════════ LOGO KLAB (wordmark klienta — 1:1 z v0.11) ════════ */
+</script>
+<script id="klabLogoSeg">
+const KLAB_PATH="M 1417.007 34.681 C 1403.903 41.406, 1399.523 56.004, 1406.669 69.134 C 1409.630 74.573, 1415.005 78.897, 1421.394 80.980 C 1426.357 82.599, 1434.545 81.783, 1439.691 79.158 C 1445.453 76.218, 1450.572 70.034, 1452.620 63.537 C 1454.148 58.691, 1454.228 57.117, 1453.203 52.205 C 1451.695 44.984, 1447.782 39.378, 1441.566 35.535 C 1437.587 33.075, 1435.395 32.463, 1429.597 32.193 C 1423.403 31.904, 1421.801 32.220, 1417.007 34.681 M 1419.587 38.032 C 1414.349 40.646, 1412.179 42.733, 1409.751 47.490 C 1407.055 52.772, 1407.075 60.266, 1409.798 65.604 C 1415.952 77.668, 1430.016 81.394, 1440.253 73.674 C 1448.372 67.551, 1451.245 56.541, 1447.104 47.421 C 1442.661 37.640, 1429.424 33.124, 1419.587 38.032 M 1419 56.570 C 1419 70.070, 1419.012 70.137, 1421.250 69.820 C 1423.152 69.549, 1423.577 68.738, 1424 64.578 C 1424.749 57.203, 1426.490 57.352, 1431.864 65.250 C 1434.859 69.651, 1438.059 71.332, 1439.378 69.197 C 1439.651 68.756, 1438.528 66.325, 1436.883 63.796 L 1433.892 59.198 1436.446 56.645 C 1438.933 54.158, 1439.640 50.830, 1438.379 47.545 C 1437.299 44.731, 1432.414 43, 1425.550 43 L 1419 43 1419 56.570 M 1424.743 47.590 C 1424.334 47.999, 1424 49.859, 1424 51.724 C 1424 55.083, 1424.039 55.112, 1428.148 54.807 C 1433.064 54.443, 1435.362 51.933, 1432.970 49.541 C 1431.221 47.793, 1425.821 46.512, 1424.743 47.590 M 791.519 72.003 C 779.561 74.157, 765.799 81.377, 757.831 89.678 C 755.813 91.780, 750.188 98.753, 745.331 105.174 C 722.726 135.057, 644.491 232.418, 639.811 236.493 C 637.440 238.556, 633.025 241.427, 630 242.872 L 624.500 245.500 552 245.500 L 479.500 245.500 474.728 242.695 C 472.103 241.152, 468.728 238.035, 467.228 235.768 L 464.500 231.647 464.227 152.324 L 463.953 73 433.477 73 L 403 73 403 156.840 C 403 236.421, 403.098 241.064, 404.932 248.234 C 410.742 270.949, 426.733 286.852, 449.699 292.753 C 455.940 294.356, 464.363 294.500, 552 294.500 L 647.500 294.500 655.269 291.751 C 663.607 288.800, 668.943 285.776, 675.852 280.085 C 679.836 276.803, 691.127 263.381, 720.508 227 C 726.504 219.575, 744.032 197.975, 759.458 179 C 774.884 160.025, 789.886 141.487, 792.796 137.804 C 798.179 130.990, 800.423 129.458, 803.365 130.587 C 804.271 130.934, 828.048 159.407, 856.202 193.859 C 884.357 228.312, 911.195 261.097, 915.841 266.716 C 928.291 281.771, 938.250 288.896, 952.265 292.775 C 958.061 294.378, 970.967 294.500, 1135.500 294.500 C 1300.174 294.500, 1312.935 294.380, 1318.749 292.771 C 1322.185 291.820, 1326.910 290.082, 1329.249 288.908 C 1341.418 282.801, 1351.133 271.759, 1355.813 258.716 C 1358.112 252.309, 1358.447 249.639, 1358.799 234.906 C 1359.105 222.108, 1358.839 216.920, 1357.637 212.229 C 1355.113 202.376, 1352.020 196.917, 1344.892 189.736 L 1338.178 182.971 1343.971 177.446 C 1350.469 171.249, 1355.190 163.208, 1357.469 154.458 C 1359.587 146.327, 1359.539 123.819, 1357.385 115.064 C 1353.546 99.456, 1343.244 86.183, 1329.858 79.595 C 1315.891 72.722, 1323.648 73.037, 1167.750 73.017 C 1028.322 73, 1026.981 73.019, 1025 75 C 1023.128 76.872, 1023 78.333, 1023 97.845 C 1023 116.769, 1023.169 118.843, 1024.829 120.345 C 1026.511 121.867, 1037.129 122, 1157.079 122.006 C 1242.539 122.009, 1288.764 122.362, 1291.168 123.030 C 1293.225 123.601, 1296.189 125.590, 1297.918 127.559 C 1300.827 130.872, 1301 131.532, 1300.996 139.285 C 1300.992 149.273, 1299.076 153.155, 1292.729 156.036 C 1288.629 157.898, 1284.521 157.957, 1157.750 157.978 C 1028.348 158, 1026.979 158.021, 1025 160 C 1023.128 161.872, 1023 163.333, 1023 182.845 C 1023 201.702, 1023.173 203.846, 1024.813 205.330 C 1026.471 206.831, 1037.910 206.994, 1158.740 207.235 L 1290.854 207.500 1293.677 209.592 C 1295.230 210.743, 1297.513 213.172, 1298.750 214.990 C 1300.617 217.734, 1301 219.647, 1301 226.247 C 1301 235.793, 1299.288 240.035, 1294.144 243.234 L 1290.500 245.500 1135.500 245.500 L 980.500 245.500 975.500 243.203 C 972.750 241.940, 968.775 239.716, 966.667 238.260 C 964.471 236.744, 946.127 214.878, 923.710 187.057 C 902.191 160.351, 878.916 131.525, 871.986 123 C 865.056 114.475, 856.902 104.125, 853.865 100 C 843.780 86.300, 832.291 77.837, 818.030 73.602 C 811.277 71.596, 798.170 70.806, 791.519 72.003 M 32 183.500 L 32 294 62.500 294 L 93 294 93 265.687 L 93 237.373 116.050 224.187 C 128.728 216.934, 139.505 211, 140 211 C 140.495 211, 151.610 216.582, 164.700 223.404 C 246.628 266.104, 298.223 292.285, 303 293.582 C 307.565 294.821, 316.617 295.045, 356.250 294.896 C 382.513 294.798, 404 294.362, 404 293.927 C 404 293.231, 388.656 284.561, 351.500 264.261 C 335.475 255.506, 295.311 234.329, 248.537 209.972 C 226.007 198.241, 205.841 187.658, 203.724 186.455 L 199.875 184.269 212.688 176.771 C 224.590 169.805, 292.113 130.564, 319.500 114.697 C 351.281 96.284, 372.125 84.293, 378.415 80.805 C 386.614 76.259, 388.162 75.071, 387.430 73.887 C 387.125 73.394, 368.157 73.004, 344.691 73.010 L 302.500 73.020 297.080 75.543 C 294.098 76.930, 283.973 82.270, 274.580 87.408 C 265.186 92.546, 238.600 106.999, 215.500 119.527 C 192.400 132.054, 160 149.745, 143.500 158.841 C 101.313 182.096, 94.130 186, 93.529 186 C 93.238 186, 93 160.575, 93 129.500 L 93 73 62.500 73 L 32 73 32 183.500";
+function KLAB_SVG(color){
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1486 327" fill="${color}" fill-rule="evenodd" role="img" aria-label="KLAB"><path d="${KLAB_PATH}"/></svg>`;
+}
+document.getElementById("wmTop").innerHTML=KLAB_SVG("#1A1A1A");
+document.getElementById("wmFoot").innerHTML=KLAB_SVG("#8A8A85");
+</script>
+<script>
+/* ════════ SZKIELET: nawigacja slajdów ════════ */
+const N=5;
+const META=[
+ {k:"1 · Dlaczego",t:"Nic nie ginie — zużyty akumulator wraca jako nowe ogniwo.",tab:"Obieg zamknięty",s:"20 t/d · 4 frakcje · 8,1 kg Pb/kWh"},
+ {k:"2 · Jak",t:"23 węzły składają się w jeden ciąg — od złomu do ogniwa.",tab:"Technologia",s:"8 + 15 węzłów · lead time 75→49 h"},
+ {k:"3 · Gdzie",t:"To zaplanowany zakład, nie koncepcja — 11 232 m² co do metra.",tab:"Layout hali",s:"156×72 m · 84 os./zm. · 0 kolizji"},
+ {k:"4 · Ile",t:"Policzone, nie obiecane — OPEX przeliczany na żywo.",tab:"Efektywność",s:"1455 kWh/d · 454→481 MWh/rok"},
+ {k:"5 · Co dalej",t:"Trzy przewagi. Jeden następny krok.",tab:"Przewagi i krok",s:"≈35 mln zł ⚠ · do 31.12.2030"}
+];
+let cur=0;
+const tabs=document.getElementById("tabs");
+META.forEach((m,i)=>{
+  const b=document.createElement("button");
+  b.innerHTML=`<span class="mk">0${i+1}</span><span>${m.tab}</span>`;
+  b.addEventListener("click",()=>goTo(i));
+  tabs.appendChild(b);
+});
+const slides=[...document.querySelectorAll(".slide")];
+function goTo(i,fromHash){
+  cur=Math.max(0,Math.min(N-1,i));
+  slides.forEach((s,j)=>s.classList.toggle("act",j===cur));
+  [...tabs.children].forEach((b,j)=>b.classList.toggle("act",j===cur));
+  document.getElementById("cnt").textContent=(cur+1)+" / "+N;
+  if(!fromHash&&location.hash!=="#"+(cur+1))history.replaceState(null,"","#"+(cur+1));
+  closeOv();
+}
+window.addEventListener("hashchange",()=>{const n=parseInt(location.hash.slice(1),10);if(n>=1&&n<=N)goTo(n-1,true);});
+/* przegląd (Esc) */
+const ov=document.getElementById("ov"),ovGrid=document.getElementById("ovGrid");
+META.forEach((m,i)=>{
+  const c=document.createElement("button");c.className="ovc";
+  c.innerHTML=`<span class="n">0${i+1}</span><span class="k">${m.k}</span><span class="t">${m.t}</span><span class="s">${m.s}</span>`;
+  c.addEventListener("click",()=>{goTo(i);});
+  ovGrid.appendChild(c);
+});
+function openOv(){ov.classList.add("act");[...ovGrid.children].forEach((c,i)=>c.classList.toggle("here",i===cur));}
+function closeOv(){ov.classList.remove("act");}
+function toggleOv(){ov.classList.contains("act")?closeOv():openOv();}
+document.getElementById("ovBtn").addEventListener("click",toggleOv);
+document.getElementById("ovX").addEventListener("click",closeOv);
+document.addEventListener("keydown",e=>{
+  const tag=(e.target.tagName||"").toLowerCase();
+  if(e.key==="Escape"){toggleOv();return;}
+  if(tag==="input"||tag==="textarea"||tag==="select")return;
+  if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "&&tag!=="button"){goTo(cur+1);e.preventDefault();}
+  else if(e.key==="ArrowLeft"||e.key==="PageUp"){goTo(cur-1);e.preventDefault();}
+  else if(e.key==="Home"){goTo(0);}else if(e.key==="End"){goTo(N-1);}
+  else if(e.key>="1"&&e.key<="5"){goTo(+e.key-1);}
+});
+/* swipe (tablet/telefon) */
+let tX=null;
+document.getElementById("stage").addEventListener("touchstart",e=>{tX=e.touches[0].clientX;},{passive:true});
+document.getElementById("stage").addEventListener("touchend",e=>{
+  if(tX==null)return;const dx=e.changedTouches[0].clientX-tX;tX=null;
+  if(Math.abs(dx)>60&&!e.target.closest("#svg3"))goTo(cur+(dx<0?1:-1));
+},{passive:true});
+
+/* ════════ S1 · OBIEG ZAMKNIĘTY ════════ */
+const FRAKCJE=[
+ {f:"pb",nazwa:"Pb metaliczne",kol:"#1A1A1A",v:"6,2 t/d battery-grade",
+  route:["frakcja Pb","A4 · piec topielny","Pb battery-grade 6,2 t/d","B5 galwanizacja · B6 kontakty · B9 strapy"]},
+ {f:"pasta",nazwa:"Pasta → PbO α/β",kol:"#F59E0B",v:"7,0 t/d przerobu",
+  route:["pasta","A5 · hydrometalurgia","PbO α/β + Na₂SO₄","B7 pasty elektrodowe"]},
+ {f:"pp",nazwa:"Polipropylen (PP)",kol:"#16A34A",v:"2,2 t/d regranulatu",
+  route:["obudowy PP","A6 · mycie + regranulacja","regranulat 2,2 t/d","B11 obudowy ogniw"]},
+ {f:"kwas",nazwa:"Elektrolit H₂SO₄",kol:"#8B5CF6",v:"15–38% zawracany",
+  route:["elektrolit","A3 · gospodarka kwasem","H₂SO₄ 15–38%","B7 pasty · B12 zalewanie"]}
+];
+let selF=null;
+function ringSVG(){
+  const cx=440,cy=290,R=200,P=(r,a)=>[cx+r*Math.cos(a*Math.PI/180),cy+r*Math.sin(a*Math.PI/180)];
+  const arc=(r,a1,a2)=>{const[x1,y1]=P(r,a1),[x2,y2]=P(r,a2);return`M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 ${a2-a1>180?1:0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;};
+  let s=`<svg viewBox="0 0 880 560" xmlns="http://www.w3.org/2000/svg" id="ringSVG" role="img" aria-label="Diagram obiegu zamkniętego"><defs>`;
+  const cols={pb:"#1A1A1A",pasta:"#F59E0B",pp:"#16A34A",kwas:"#8B5CF6",ink:"#1A1A1A",mut:"#8A8A85"};
+  for(const[k,c]of Object.entries(cols))s+=`<marker id="mk-${k}" viewBox="0 0 8 8" refX="6.4" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0.5 0.5L7 4L0.5 7.5Z" fill="${c}"/></marker>`;
+  s+=`</defs>`;
+  s+=`<path class="ring-base" stroke="#1A1A1A" marker-end="url(#mk-ink)" d="${arc(R,-64,-24)}"/>`;
+  s+=`<text x="597" y="140" font-size="11.5" font-weight="700" fill="#1A1A1A">20 t/d złomu</text>`;
+  s+=`<path class="ring-base" stroke="#8A8A85" stroke-dasharray="6 5" marker-end="url(#mk-mut)" d="${arc(R,206,244)}"/>`;
+  s+=`<text x="283" y="132" font-size="11" font-weight="600" fill="#8A8A85" text-anchor="end">eksploatacja u klienta</text>`;
+  s+=`<text x="283" y="146" font-size="11" font-weight="600" fill="#8A8A85" text-anchor="end">→ zwrot złomu</text>`;
+  const rr={pb:224,pasta:208,pp:192,kwas:176};
+  s+=`<g id="frakArcs">`;
+  FRAKCJE.forEach(F=>{s+=`<path class="frak-arc" data-f="${F.f}" stroke="${F.kol}" marker-end="url(#mk-${F.f})" d="${arc(rr[F.f],22,158)}"><title>${F.nazwa} — kliknij</title></path>`;});
+  s+=`</g>`;
+  const stn=(x,y,l1,l2,anchor)=>`<g class="stn"><rect x="${x}" y="${y}" width="196" height="58" rx="12"/><text x="${x+98}" y="${y+25}" text-anchor="middle">${l1}</text><text class="sub" x="${x+98}" y="${y+42}" text-anchor="middle">${l2}</text></g>`;
+  s+=stn(342,60,"Zużyty akumulator","złom LAB · 20 t/d");
+  s+=stn(542,261,"Rozdział na frakcje","breaker + separacja (A2)");
+  s+=stn(342,462,"Surowce battery-grade","A3 · A4 · A5 · A6 → QA (A8)");
+  s+=stn(142,261,"Nowe ogniwo KLAB","linia B · 1455 kWh/d");
+  s+=`<g id="ringC" text-anchor="middle">`;
+  FRAKCJE.forEach((F,i)=>{s+=`<circle cx="${404+i*24}" cy="268" r="6.5" fill="${F.kol}"/>`;});
+  s+=`<text x="440" y="298" font-size="15" font-weight="700">4 frakcje w obiegu</text>`;
+  s+=`<text x="440" y="318" font-size="11" fill="#8A8A85">kliknij frakcję — na łuku lub liście obok</text></g>`;
+  s+=`</svg>`;
+  return s;
+}
+document.getElementById("ringWrap").innerHTML=ringSVG();
+const frows=document.getElementById("frows"),fdet=document.getElementById("fdetail");
+FRAKCJE.forEach(F=>{
+  const b=document.createElement("button");b.className="frow";b.dataset.f=F.f;
+  b.innerHTML=`<span class="dot" style="background:${F.kol}"></span>${F.nazwa}<span class="fv">${F.v}</span>`;
+  b.addEventListener("click",()=>selectF(selF===F.f?null:F.f));
+  frows.appendChild(b);
+});
+document.getElementById("ringSVG").addEventListener("click",e=>{
+  const a=e.target.closest(".frak-arc");if(a)selectF(selF===a.dataset.f?null:a.dataset.f);
+});
+function selectF(f){
+  selF=f;
+  const g=document.getElementById("frakArcs");
+  g.classList.toggle("dim",!!f);
+  g.querySelectorAll(".frak-arc").forEach(p=>p.classList.toggle("on",p.dataset.f===f));
+  frows.querySelectorAll(".frow").forEach(r=>r.classList.toggle("on",r.dataset.f===f));
+  const F=FRAKCJE.find(x=>x.f===f);
+  if(!F){fdet.innerHTML=`<span class="lbl">Ścieżka frakcji</span><p style="margin-top:6px">Każda z 4 frakcji z breakera (A2) ma zaplanowaną ścieżkę powrotu do nowego ogniwa — <b>własny surowiec zamiast zakupów</b>. Kliknij frakcję, aby zobaczyć jej drogę.</p>`;return;}
+  fdet.innerHTML=`<span class="lbl">Ścieżka frakcji</span> <b style="font-size:12px">· ${esc(F.nazwa)}</b>
+   <div class="rchips">${F.route.map((r,i)=>`<span class="rchip${i===1?" hot":""}">${esc(r)}</span>`).join(`<span class="rarw">→</span>`)}</div>
+   <p style="color:var(--mut);font-size:11px">kontrola battery-grade przed zwolnieniem do produkcji: laboratorium QA (A8) — ICP-OES · XRD · BET</p>`;
+}
+selectF(null);
+
+/* ════════ S2 · PROCES (23 węzły) ════════ */
+const POS={ /* pozycje węzłów [x,y]; rozmiar 118×44; viewBox 1200×470 */
+ A1:[30,84],A2:[178,84],A3:[340,18],A4:[340,70],A5:[340,122],A6:[340,174],A8:[520,96],A7:[30,174],
+ B1:[30,300],B2:[178,300],B3:[326,300],B4:[474,300],B5:[622,300],B6:[770,300],B7:[918,300],B8:[1066,300],
+ B8b:[1066,396],B9:[918,396],B10:[770,396],B11:[622,396],B12:[474,396],B13:[326,396],B14:[178,396]};
+const NW=118,NH=44;
+const EDGES=[ /* [z,do,styl(s=pełna,a=przybliżona/substancja),kolor?] — tylko przepływy udokumentowane w we→wy */
+ ["A1","A2","s"],["A2","A3","s","#8B5CF6"],["A2","A4","s","#1A1A1A"],["A2","A5","s","#F59E0B"],["A2","A6","s","#16A34A"],
+ ["A3","A8","a"],["A4","A8","a"],["A5","A8","a"],["A6","A8","a"],
+ ["B1","B2","s"],["B2","B3","s"],["B3","B4","s"],["B4","B5","s"],["B5","B6","s"],["B6","B8","s"],["B7","B8","s"],
+ ["B8","B8b","s"],["B8b","B9","s"],["B9","B10","s"],["B10","B11","s"],["B11","B12","s"],["B12","B13","s"],["B13","B14","s"]];
+function procSVG(){
+  const a=(id)=>POS[id];
+  const MK={"#8B5CF6":"pmk-v","#1A1A1A":"pmk-i","#F59E0B":"pmk-a","#16A34A":"pmk-g"};
+  let s=`<svg viewBox="0 0 1200 470" xmlns="http://www.w3.org/2000/svg" id="procSVG" role="img" aria-label="Schemat 23 węzłów"><defs>
+   <marker id="pmk" viewBox="0 0 8 8" refX="6.4" refY="4" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0.5 0.5L7 4L0.5 7.5Z" fill="#8A8A85"/></marker>
+   ${Object.entries(MK).map(([c,id])=>`<marker id="${id}" viewBox="0 0 8 8" refX="6.4" refY="4" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0.5 0.5L7 4L0.5 7.5Z" fill="${c}"/></marker>`).join("")}</defs>`;
+  s+=`<text class="lane-lbl" x="30" y="12">LINIA A · RECYKLING (STREFA Pb)</text>`;
+  s+=`<text class="lane-lbl" x="30" y="284">LINIA B · PRODUKCJA OGNIW</text>`;
+  /* krawędzie */
+  EDGES.forEach(([f,t,st,kol])=>{
+    const[fx,fy]=a(f),[tx,ty]=a(t);let d;
+    if(f==="B6"&&t==="B8"){d=`M${fx+NW-6} ${fy} C ${fx+NW+70} ${fy-34}, ${tx-70} ${ty-34}, ${tx+26} ${ty-2}`;}
+    else if(f==="B8"&&t==="B8b"){d=`M${fx+NW/2} ${fy+NH} L${tx+NW/2} ${ty}`;}
+    else if(fy===ty&&fy>=396){d=`M${fx} ${fy+NH/2} L${tx+NW} ${ty+NH/2}`;}       /* rząd dolny: w lewo */
+    else if(fy===ty){d=`M${fx+NW} ${fy+NH/2} L${tx} ${ty+NH/2}`;}                 /* rząd górny: w prawo */
+    else{d=`M${fx+NW} ${fy+NH/2} L${tx} ${ty+NH/2}`;}                             /* skosy (wachlarz A) */
+    s+=`<path class="pedge${st==="a"?" ap":""}" stroke="${kol||"#8A8A85"}" marker-end="url(#${kol?MK[kol]:"pmk"})" d="${d}"/>`;
+  });
+  /* zejście A8 → B1 */
+  const[ax,ay]=a("A8"),[bx,by]=a("B1");
+  s+=`<path class="pedge" stroke="#8A8A85" marker-end="url(#pmk)" d="M${ax+NW/2} ${ay+NH} L${ax+NW/2} ${ay+NH+124} L${bx+NW/2} ${ay+NH+124} L${bx+NW/2} ${by-4}"/>`;
+  s+=`<text x="${bx+NW/2+10}" y="${ay+NH+118}" font-size="10" fill="#8A8A85">zwolnienie partii surowców → linia B</text>`;
+  /* węzły */
+  DEVICES.forEach(d=>{
+    const p=POS[d.id];if(!p)return;const[x,y]=p,col=LHEX(d.linia);
+    const nm=d.nazwa.length>21?d.nazwa.slice(0,20)+"…":d.nazwa;
+    const dash=d.id==="A7"?` stroke-dasharray="5 4"`:"";
+    s+=`<g class="node" data-id="${d.id}" tabindex="0" role="button" aria-label="${esc(d.id)} ${esc(d.nazwa)}"><title>${esc(d.id)} · ${esc(d.nazwa)}</title>`;
+    s+=`<rect x="${x}" y="${y}" width="${NW}" height="${NH}" rx="9" stroke="${d.linia==="A"?"#FFDCCB":"#E5DBF8"}"${dash}/>`;
+    s+=`<text class="nid" x="${x+9}" y="${y+18}" fill="${col}">${d.id}</text>`;
+    if(d.badge==="waskie")s+=`<circle cx="${x+NW-12}" cy="${y+12}" r="4" fill="#F59E0B"><title>wąskie gardło</title></circle>`;
+    if(d.badge==="krytyczne")s+=`<circle cx="${x+NW-12}" cy="${y+12}" r="4" fill="#DC2626"><title>punkt krytyczny</title></circle>`;
+    if(d.custom)s+=`<circle cx="${x+NW-12}" cy="${y+12}" r="4" fill="#FF4D00"><title>maszyna projektowana od zera (B+R)</title></circle>`;
+    s+=`<text class="nnm" x="${x+9}" y="${y+33}">${esc(nm)}</text></g>`;
+  });
+  /* wyrób */
+  s+=`<g><rect x="30" y="396" width="118" height="44" rx="9" fill="#FF4D00"/><text x="89" y="414" text-anchor="middle" fill="#fff" font-weight="800" font-size="11.5">OGNIWA KLAB</text><text x="89" y="429" text-anchor="middle" fill="#FFD9C7" font-size="9.5">1455 kWh / dobę</text></g>`;
+  s+=`<path class="pedge" stroke="#8A8A85" marker-end="url(#pmk)" d="M178 418 L152 418"/>`;
+  s+=`</svg>`;
+  return s;
+}
+document.getElementById("procWrap").innerHTML=procSVG();
+const s2det=document.getElementById("s2detail");
+function s2show(id){
+  document.querySelectorAll("#procSVG .node").forEach(n=>n.classList.toggle("sel",n.dataset.id===id));
+  const d=id?DEV[id]:null;
+  if(!d){s2det.innerHTML=`<span class="lbl">Karta węzła</span><p style="font-size:12px;margin-top:6px;color:#5c5c58">Kliknij dowolny węzeł na schemacie — zobaczysz jego wejścia i wyjścia, przepustowość, media i tryb pracy. Kropki: <span style="color:#F59E0B">●</span> wąskie gardło · <span style="color:#DC2626">●</span> punkt krytyczny · <span style="color:#FF4D00">●</span> maszyna projektowana od zera (B+R).</p>`;return;}
+  const bdg=(d.badge==="waskie"?`<span class="bdg waskie">wąskie gardło</span>`:d.badge==="krytyczne"?`<span class="bdg krytyczne">punkt krytyczny</span>`:"")+(d.custom?`<span class="bdg br">B+R od zera</span>`:"");
+  s2det.innerHTML=`
+   <div class="drow" style="justify-content:space-between">
+     <div><span class="mono" style="font-weight:800;color:${LHEX(d.linia)};font-size:14px">${d.id}</span>
+       <span style="font-weight:700;font-size:13.5px;margin-left:8px">${esc(d.nazwa)}</span>${bdg}</div>
+     <div>${d.media.map(m=>`<span class="mchip" style="background:${MEDIA_KOL[m]}">${MEDIA_LIT[m]}</span>`).join("")}<span style="font-size:11px;color:var(--mut)">strefa: ${esc(d.strefa)}</span></div>
+   </div>
+   <div class="drow" style="margin-top:7px">
+     <span><span class="dk">we </span><span class="dv">${esc(d.we)}</span></span>
+     <span><span class="dk">wy </span><span class="dv">${esc(d.wy)}</span></span>
+     <span><span class="dk">przepustowość </span><span class="dv">${esc(d.przepust)}</span></span>
+     <span><span class="dk">tryb </span><span class="dv">${esc(d.tryb)}</span></span>
+     <span><span class="dk">moc </span><span class="dv">${d.kW} kW ⚠</span></span>
+     <span><span class="dk">obsada </span><span class="dv">${d.os} os./zm.</span></span>
+   </div>
+   <p class="opis">${esc(d.opis||"")}</p>`;
+}
+document.getElementById("procSVG").addEventListener("click",e=>{
+  const n=e.target.closest(".node");s2show(n?(n.classList.contains("sel")?null:n.dataset.id):null);
+});
+document.getElementById("procSVG").addEventListener("keydown",e=>{
+  if(e.key==="Enter"||e.key===" "){const n=e.target.closest(".node");if(n){s2show(n.dataset.id);e.preventDefault();e.stopPropagation();}}
+});
+s2show(null);
+
+/* ════════ S3 · HALA (renderer read-only z konfiguratora) ════════ */
+const HALA={dl:PLAN.hala.dl,szer:PLAN.hala.szer};
+const placed=PLAN.placed,ciagi=PLAN.ciagi,strefy=PLAN.strefy;
+const L3={strefy:true,ciagi:true,media:false};
+const svg3=document.getElementById("svg3"),tip3=document.getElementById("tip3");
+function fitVB(){return{x:-4.5,y:-4,w:HALA.dl+8,h:HALA.szer+6.5};}
+let vb=fitVB();
+function foot(p){const d=DEV[p.dev],L=(p.rot%180?d.szer:d.dl)+2*d.serw,S=(p.rot%180?d.dl:d.szer)+2*d.serw;return{x:p.x-L/2,y:p.y-S/2,w:L,h:S};}
+function collisions(){const bad=new Set(),ov=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
+ for(let i=0;i<placed.length;i++)for(let j=i+1;j<placed.length;j++){if(ov(foot(placed[i]),foot(placed[j]))){bad.add(placed[i].uid);bad.add(placed[j].uid);}}
+ placed.forEach(p=>{const d=DEV[p.dev],r=p.rot%180,L=r?d.szer:d.dl,S=r?d.dl:d.szer,body={x:p.x-L/2,y:p.y-S/2,w:L,h:S};strefy.forEach(z=>{if(ov(body,{x:z.x,y:z.y,w:z.w,h:z.h}))bad.add(p.uid);});});
+ placed.forEach(p=>{const f=foot(p);if(f.x<0||f.y<0||f.x+f.w>HALA.dl||f.y+f.h>HALA.szer)bad.add(p.uid);});return bad;}
+document.getElementById("statColl").textContent=collisions().size;
+function renderHala(){
+  svg3.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  let s="";
+  s+=`<rect x="-0.5" y="-0.5" width="${HALA.dl+1}" height="${HALA.szer+1}" fill="#FBFAF8" stroke="#9B9891" stroke-width="0.22" rx="0.3"/>`;
+  s+=`<rect x="0" y="0" width="${HALA.dl}" height="${HALA.szer}" fill="none" stroke="#B9B6B0" stroke-width="0.1"/>`;
+  s+=`<g stroke="#ECEAE6" stroke-width="0.03">`;
+  for(let x=2;x<HALA.dl;x+=2)s+=`<line x1="${x}" y1="0" x2="${x}" y2="${HALA.szer}"/>`;
+  for(let y=2;y<HALA.szer;y+=2)s+=`<line x1="0" y1="${y}" x2="${HALA.dl}" y2="${y}"/>`;
+  s+=`</g><g fill="#8A8A85" font-size="1.05">`;
+  for(let x=0;x<=HALA.dl;x+=5){const mj=x%10===0;s+=`<line x1="${x}" y1="${mj?-1.5:-1.15}" x2="${x}" y2="-0.8" stroke="#C9C6C0" stroke-width="0.06"/>`;if(mj)s+=`<text x="${x}" y="-2" text-anchor="middle">${x}</text>`;}
+  for(let y=0;y<=HALA.szer;y+=5){const mj=y%10===0;s+=`<line x1="${mj?-1.5:-1.15}" y1="${y}" x2="-0.8" y2="${y}" stroke="#C9C6C0" stroke-width="0.06"/>`;if(mj)s+=`<text x="-2" y="${y+0.38}" text-anchor="end">${y}</text>`;}
+  s+=`<text x="${HALA.dl+1}" y="-2">m</text></g>`;
+  if(L3.strefy)strefy.forEach(z=>{
+    const zd=STREFA[z.typ];
+    s+=`<g><rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" rx="0.4" fill="${zd.kol}" fill-opacity="0.08" stroke="${zd.kol}" stroke-width="0.1" stroke-dasharray="0.9 0.5"/>`;
+    const pion=z.h>z.w*1.4,fit=Math.max(6,Math.floor(((pion?z.h:z.w)-1.6)/0.46));
+    const nm=zd.nazwa.length>fit?zd.nazwa.slice(0,fit-1)+"…":zd.nazwa,lbl=`${nm} · ${Math.round(z.w*z.h)} m²`;
+    if(pion)s+=`<text transform="rotate(90 ${z.x+1.1} ${z.y+1})" x="${z.x+1.1}" y="${z.y+1}" font-size="0.85" font-weight="600" fill="${zd.kol}">${lbl}</text>`;
+    else s+=`<text x="${z.x+0.8}" y="${z.y+1.3}" font-size="0.85" font-weight="600" fill="${zd.kol}">${lbl}</text>`;
+    if(z.typ==="surowiec"||z.typ==="wyroby"){
+      const lewa=(z.x+z.w/2)<HALA.dl/2,wx=lewa?-0.45:HALA.dl-0.25;
+      [0.33,0.66].forEach(f=>{s+=`<rect x="${wx}" y="${z.y+z.h*f-1.5}" width="0.7" height="3" rx="0.15" fill="${zd.kol}"/>`;});
+      const tx=lewa?-1.3:HALA.dl+2.1;
+      s+=`<text transform="rotate(90 ${tx} ${z.y+z.h*0.33+2})" x="${tx}" y="${z.y+z.h*0.33+2}" font-size="0.7" fill="${zd.kol}">doki ${z.typ==="surowiec"?"przyjęcia":"wysyłki"}</text>`;
+    }
+    s+=`</g>`;
+  });
+  if(L3.ciagi)ciagi.forEach(c=>{
+    s+=`<g><rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="0.3" fill="#8A8A85" fill-opacity="0.06" stroke="#B9B6B0" stroke-width="0.06" stroke-dasharray="0.9 0.55"/>`;
+    if(c.pion)s+=`<text transform="rotate(90 ${c.x+c.w/2+0.28} ${c.y+1})" x="${c.x+c.w/2+0.28}" y="${c.y+1}" font-size="0.8" fill="#9B9891">${c.nazwa}</text>`;
+    else s+=`<text x="${c.x+0.9}" y="${c.y+c.h/2+0.3}" font-size="0.8" fill="#9B9891">${c.nazwa}</text>`;
+    s+=`</g>`;
+  });
+  const rails=[["energia",HALA.szer-5.4],["woda",HALA.szer-4.3],["n2",HALA.szer-3.2],["kwas",HALA.szer-2.1]];
+  if(L3.media){
+    rails.forEach(([m,y])=>{
+      const k=MEDIA_KOL[m],lit=MEDIA_LIT[m],lw=lit.length>1?2:1.3;
+      s+=`<rect x="1.2" y="${y-0.62}" width="${lw}" height="1.24" rx="0.25" fill="${k}"/><text x="${1.2+lw/2}" y="${y+0.32}" font-size="0.8" font-weight="700" fill="#fff" text-anchor="middle">${lit}</text>`;
+      s+=`<text x="${1.6+lw}" y="${y+0.3}" font-size="0.85" fill="${k}">${MEDIA_NAZ[m]}</text>`;
+      s+=`<line x1="7.5" y1="${y}" x2="${HALA.dl-1.5}" y2="${y}" stroke="${k}" stroke-width="0.13" opacity="0.55"/><circle cx="${HALA.dl-1.5}" cy="${y}" r="0.22" fill="${k}"/>`;
+    });
+    s+=`<g>`;
+    placed.forEach(p=>{const d=DEV[p.dev];d.media.forEach(m=>{const r=rails.find(r=>r[0]===m),k=MEDIA_KOL[m];
+      s+=`<path class="mline" stroke="${k}" d="M ${p.x} ${p.y} V ${r[1]}"/><circle cx="${p.x}" cy="${r[1]}" r="0.2" fill="${k}"/>`;});});
+    s+=`</g>`;
+  }
+  placed.forEach(p=>{
+    const d=DEV[p.dev],rot=p.rot%180,L=rot?d.szer:d.dl,Sz=rot?d.dl:d.szer,col=LHEX(d.linia);
+    s+=`<g class="dev3" data-dev="${d.id}">`;
+    s+=`<rect class="serw3" stroke="${col}" x="${p.x-L/2-d.serw}" y="${p.y-Sz/2-d.serw}" width="${L+2*d.serw}" height="${Sz+2*d.serw}" rx="0.4"/>`;
+    s+=`<rect class="body" x="${p.x-L/2}" y="${p.y-Sz/2}" width="${L}" height="${Sz}" rx="0.35"/>`;
+    const mx=Math.max(4,Math.floor((L-1.2)/0.36));
+    const nm=d.nazwa.length>mx?d.nazwa.slice(0,mx-1)+"…":d.nazwa;
+    s+=`<text x="${p.x-L/2+0.7}" y="${p.y-Sz/2+1.25}" font-size="0.9" font-weight="700" fill="${col}">${d.id}</text>`;
+    s+=`<text x="${p.x-L/2+0.7}" y="${p.y-Sz/2+2.2}" font-size="0.62" fill="#5c5c58">${esc(nm)}</text>`;
+    if(Sz>=5)s+=`<text x="${p.x+L/2-0.7}" y="${p.y+Sz/2-0.6}" font-size="0.58" fill="#8A8A85" text-anchor="end">${d.kW} kW · ${d.os} os.</text>`;
+    s+=`</g>`;
+  });
+  svg3.innerHTML=s;
+  document.getElementById("zoomPct").textContent=Math.round((HALA.dl+8)/vb.w*100)+"%";
+}
+/* pan/zoom — współrzędne przez getScreenCTM().inverse() (lekcja z v0.11) */
+function toSVG3(cx,cy){const m=svg3.getScreenCTM();if(!m)return{x:0,y:0};return new DOMPoint(cx,cy).matrixTransform(m.inverse());}
+let pan3=null;
+svg3.addEventListener("pointerdown",e=>{pan3={cx:e.clientX,cy:e.clientY,vx:vb.x,vy:vb.y,m:svg3.getScreenCTM().inverse()};svg3.setPointerCapture(e.pointerId);svg3.classList.add("panning");tip3.style.display="none";});
+svg3.addEventListener("pointermove",e=>{
+  if(pan3){
+    const p0=new DOMPoint(pan3.cx,pan3.cy).matrixTransform(pan3.m),p1=new DOMPoint(e.clientX,e.clientY).matrixTransform(pan3.m);
+    vb.x=pan3.vx+(p0.x-p1.x);vb.y=pan3.vy+(p0.y-p1.y);
+    svg3.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);return;
+  }
+  const g=e.target.closest(".dev3");
+  if(g){
+    const d=DEV[g.dataset.dev];
+    tip3.innerHTML=`<div class="t">${d.id} · ${esc(d.nazwa)}</div>
+      <div class="m">${d.dl}×${d.szer} m (${d.m2} m² progr.) · strefa ${esc(d.strefa)}</div>
+      <div class="m">moc ${d.kW} kW ⚠ · ${d.os} os./zm. · ${esc(d.przepust)}</div>
+      <div class="m">tryb: ${esc(d.tryb)} · media: ${d.media.map(m=>MEDIA_NAZ[m]).join(" · ")}</div>`;
+    const r=document.getElementById("halaWrap").getBoundingClientRect();
+    tip3.style.display="block";
+    const tw=tip3.offsetWidth,th=tip3.offsetHeight;
+    tip3.style.left=Math.min(e.clientX-r.left+14,r.width-tw-8)+"px";
+    tip3.style.top=Math.min(e.clientY-r.top+14,r.height-th-8)+"px";
+  }else tip3.style.display="none";
+});
+svg3.addEventListener("pointerup",e=>{pan3=null;svg3.classList.remove("panning");});
+svg3.addEventListener("pointerleave",()=>{tip3.style.display="none";});
+svg3.addEventListener("wheel",e=>{
+  e.preventDefault();
+  const pt=toSVG3(e.clientX,e.clientY),f=e.deltaY>0?1.15:1/1.15;
+  const nw=Math.max(24,Math.min(420,vb.w*f)),k=nw/vb.w;
+  vb.x=pt.x-(pt.x-vb.x)*k;vb.y=pt.y-(pt.y-vb.y)*k;vb.w=nw;vb.h=vb.h*k;
+  svg3.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  document.getElementById("zoomPct").textContent=Math.round((HALA.dl+8)/vb.w*100)+"%";
+},{passive:false});
+function zoomBy(f){const cxy={x:vb.x+vb.w/2,y:vb.y+vb.h/2};const nw=Math.max(24,Math.min(420,vb.w*f)),k=nw/vb.w;
+  vb.x=cxy.x-(cxy.x-vb.x)*k;vb.y=cxy.y-(cxy.y-vb.y)*k;vb.w=nw;vb.h*=k;
+  svg3.setAttribute("viewBox",`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  document.getElementById("zoomPct").textContent=Math.round((HALA.dl+8)/vb.w*100)+"%";}
+document.getElementById("zIn").addEventListener("click",()=>zoomBy(1/1.25));
+document.getElementById("zOut").addEventListener("click",()=>zoomBy(1.25));
+document.getElementById("zFit").addEventListener("click",()=>{vb=fitVB();renderHala();});
+document.querySelectorAll("#halaBar .tgl").forEach(b=>b.addEventListener("click",()=>{
+  L3[b.dataset.l]=!L3[b.dataset.l];b.classList.toggle("on",L3[b.dataset.l]);renderHala();
+}));
+renderHala();
+
+/* ════════ S4 · OPEX na żywo (logika M6 z konfiguratora) ════════ */
+const KAT=[["energia","Energia","#F97316"],["woda","Woda + ścieki","#3B82F6"],["n2","Azot N₂","#9CA3AF"],["personel","Personel","#16A34A"],["ur","Utrzymanie ruchu","#8B5CF6"]];
+function opexCalc(){
+  let en=0,wo=0,az=0,os=0,cap=0;
+  placed.forEach(p=>{const d=DEV[p.dev],h=hRokDev(d.id);
+    en+=d.kWsr*h;wo+=d.woda*h;az+=d.n2*h;os+=d.os*zmianyDev(d.id);cap+=d.capex;});
+  return{energia:en*zalozenia.cenaEnergii,woda:wo*zalozenia.cenaWody,n2:az*zalozenia.cenaN2,
+    personel:os*zalozenia.stawkaOs*12,ur:cap*zalozenia.urPct/100};
+}
+const slEn=document.getElementById("slEn");
+function updateS4(){
+  zalozenia.cenaEnergii=+slEn.value;
+  document.getElementById("slEnV").textContent=pl2(zalozenia.cenaEnergii)+" zł/kWh";
+  const o=opexCalc(),sum=KAT.reduce((a,[k])=>a+o[k],0);
+  const pct=v=>{const p=100*v/sum;return p>0&&p<1?"<1":Math.round(p);};
+  document.getElementById("opexV").innerHTML=fmtZl(sum)+" <small>zł / rok</small>";
+  const cc=v=>sum/(v*1000);
+  document.getElementById("ccV").innerHTML=cc(DOK.MWh_rok).toLocaleString("pl-PL",{maximumFractionDigits:2})+" <small>zł / kWh ogniwa</small>";
+  document.getElementById("ccSub").textContent=`przy ${DOK.MWh_rok} MWh/rok · po pakiecie optymalizacji (${DOK.MWh_rok_opt} MWh/rok): ~${cc(DOK.MWh_rok_opt).toLocaleString("pl-PL",{maximumFractionDigits:2})} zł/kWh · bez surowca (Pb ${DOK.Pb_kg_kWh} kg/kWh) i amortyzacji`;
+  document.getElementById("stack4").innerHTML=KAT.filter(([k])=>o[k]>0).map(([k,l,c])=>`<div title="${l} · ${fmtZl(o[k])} zł/rok · ${pct(o[k])}%" style="flex:${o[k]};background:${c}"></div>`).join("");
+  document.getElementById("leg4").innerHTML=KAT.map(([k,l,c])=>`<div class="leg"><span><span class="dot" style="background:${c}"></span>${l}</span><span><b>${fmtZl(o[k])} zł</b> <span style="color:var(--mut)">· ${pct(o[k])}%</span></span></div>`).join("");
+}
+slEn.addEventListener("input",updateS4);
+updateS4();
+
+/* ════════ S5 · PRZEWAGI ════════ */
+const ADV=[
+ {t:"Obieg zamknięty = własny surowiec",p:"<b>4 frakcje</b> z 20 t/d złomu wracają do produkcji — zamiast zakupów rynkowych.",
+  d:"Z własnego odzysku: <b>6,2 t/d Pb battery-grade</b> (A4) · <b>PbO α/β z pasty</b> (A5) · <b>2,2 t/d regranulatu PP</b> (A6) · <b>H₂SO₄ 15–38%</b> zawracany do past i elektrolitu (A3). Zwolnienie każdej partii przez własne laboratorium QA (A8: ICP-OES · XRD · BET), przy zużyciu 8,1 kg Pb/kWh ogniwa — wg dokumentacji technologicznej."},
+ {t:"Hydrometalurgia zamiast pirometalurgii",p:"Pasta wraca jako PbO w procesie mokrym — <b>niższa energia i emisje</b> <i>(wg dokumentacji technologicznej)</i>.",
+  d:"Pasta PbSO₄ → <b>PbO α/β battery-grade</b> w węźle hydrometalurgii (A5), bez pełnego przetopu pirometalurgicznego; produkt uboczny Na₂SO₄. Do tego energia odzyskiwana w zakładzie: <b>250–450 kW ciepła procesowego</b> (≈ 0,5–0,9 mln zł/rok), formacja z recyrkulacją <b>−25–30% energii</b>, dach PV ~1 MWp."},
+ {t:"Gotowy plan wykonawczy, nie wizja",p:"Layout <b>156×72 m</b> + media + personel + koszty — wszystko w jednym narzędziu, <b>0 kolizji</b>.",
+  d:"Plan referencyjny odtworzony w konfiguratorze: <b>11 232 m²</b>, przepływ jednokierunkowy E→W, korytarz AGV, <b>84 os./zm.</b> · CAPEX A+B ≈ <b>35 mln zł</b> <span class='badge-w'>⚠ W-draft</span> — każdy wydatek potwierdzany ≥3 ofertami (RFQ), struktura HRF (STEP/Cleantech) gotowa · realizacja do <b>31.12.2030</b>."}
+];
+const advRow=document.getElementById("advRow");
+ADV.forEach((a,i)=>{
+  const c=document.createElement("button");c.className="adv";
+  c.innerHTML=`<span class="no">PRZEWAGA 0${i+1}</span><h3>${a.t}</h3><p class="proof">${a.p}</p><p class="more">+ szczegóły i dowody</p><div class="det">${a.d}</div>`;
+  c.addEventListener("click",()=>c.classList.toggle("open"));
+  advRow.appendChild(c);
+});
+
+/* ════════ START ════════ */
+(function(){
+  const n=parseInt(location.hash.slice(1),10);
+  goTo(n>=1&&n<=N?n-1:0,true);
+})();
+</script>
+</body>
+</html>
