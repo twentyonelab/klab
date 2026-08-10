@@ -251,6 +251,8 @@ nav button:hover:not(.act){color:var(--ink)}
 #viewPane{position:absolute;inset:0;overflow:auto;padding:8px 16px 20px 4px;display:none;z-index:12;background:var(--bg)}
 .vcard{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:18px 20px;max-width:860px;margin:0 auto 14px}
 .vcard h2{font-size:15px;margin-bottom:10px}
+.vcard.m7wrap{max-width:none}
+#m7Frame{display:block;width:100%;height:78vh;min-height:520px;border:0;border-radius:10px;margin-top:12px;background:#fff}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
 th{text-align:left;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);padding:6px 8px;border-bottom:1px solid var(--line)}
 td{padding:7px 8px;border-bottom:1px solid var(--line)}
@@ -437,6 +439,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
     <button data-v="m4" title="M4 · Zatrudnienie i obłożenie stanowisk"><span class="mk">M4</span>Zatrudnienie</button>
     <button data-v="layout" class="act" title="M5 · Program powierzchni i layout hali"><span class="mk">M5</span>Layout hali</button>
     <button data-v="m6" title="M6 · Symulator kosztów eksploatacji"><span class="mk">M6</span>Koszty</button>
+    <button data-v="m7" title="M7 · Harmonogram inwestycji i budżet grantu"><span class="mk">M7</span>Harmonogram</button>
   </nav>
   <div class="tools">
     <span class="wdraft" title="Dane urządzeń = wartości robocze (W-draft) do doprecyzowania po weryfikacji specyfikacji technicznej i ofertach RFQ">W-draft</span>
@@ -1042,6 +1045,7 @@ function renderView(){
   else if(view==="iso")renderIso();
   else if(view==="karty")renderKarty();
   else if(view==="m3")renderM3();
+  else if(view==="m7")renderM7();
   else pane.innerHTML="";
 }
 
@@ -1716,6 +1720,425 @@ let introOn=true;
   const cont=document.getElementById("introContinue");
   if(placed.length||strefy.length||ciagi.length){cont.style.display="block";cont.onclick=e=>{e.preventDefault();closeIntro();};}
 })();
+
+/* ═══ M7 · Harmonogram inwestycji i budżet grantu (FENG.05.01) — dokument źródłowy klienta, wstawiony 1:1 w izolowanej ramce (iframe srcdoc), żeby zero ryzyka konfliktu ID/CSS z resztą aplikacji.
+   Treść merytoryczna (daty, kwoty, zadania, role, ryzyka) nienaruszona — zmiany tylko w warstwie integracji (karta/rozmiar zakładki). ═══ */
+const M7_HTML=`<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KLAB — harmonogram realizacji inwestycji 2026–2030</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#F2F1EF; --card:#fff; --acc:#E8630F; --acc-d:#B3300A;
+  --tx:#1A1A1A; --tx2:#8A8A85; --line:#E4E2DE;
+  --z1:#2F7D6E; --z2:#2563A8; --z3:#E8630F; --z4:#7B5CB8; --z0:#9C9C96;
+  --mw:30px; --lw:430px;
+}
+html,body{margin:0;background:var(--bg);color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1800px;margin:0 auto;padding:28px 24px 60px}
+h1{font-size:26px;font-weight:600;letter-spacing:-.4px;margin:0 0 6px}
+.sub{color:var(--tx2);font-size:13px;max-width:1080px;margin:0 0 4px}
+.sub b{color:var(--tx);font-weight:600}
+.card{background:var(--card);border-radius:15px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:20px 22px;margin-top:18px}
+.kpis{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 0}
+.kpi{background:var(--card);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:13px 18px;min-width:126px}
+.kpi .n{font-size:24px;font-weight:300;letter-spacing:-.5px;line-height:1.1}
+.kpi .n small{font-size:12px;color:var(--tx2);font-weight:400}
+.kpi .l{font-size:9.5px;text-transform:uppercase;letter-spacing:.9px;color:var(--tx2);margin-top:3px}
+.kpi.hot .n{color:var(--acc-d);font-weight:500}
+.bar-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font-size:12px;
+  cursor:pointer;color:var(--tx);display:inline-flex;align-items:center;gap:7px;font-family:inherit}
+.pill:hover{border-color:#c9c6c1}
+.pill.off{opacity:.38}
+.pill .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.pill .amt{font-size:10px;color:var(--tx2);font-variant-numeric:tabular-nums}
+.pill.dark{background:var(--tx);color:#fff;border-color:var(--tx)}
+.pill.dark .amt{color:#bbb}
+.pill.dark.off{background:#fff;color:var(--tx);border-color:var(--line)}
+.sec-t{font-size:10px;text-transform:uppercase;letter-spacing:1.1px;color:var(--tx2);margin:0 0 12px;font-weight:600}
+.scroll{overflow-x:auto;overflow-y:visible;border-radius:10px}
+.grid{position:relative;min-width:calc(var(--lw) + var(--mw) * 57)}
+.hdr{display:flex;position:sticky;top:0;z-index:6;background:var(--card)}
+.hdr .lab{width:var(--lw);min-width:var(--lw);border-bottom:1px solid var(--line);
+  position:sticky;left:0;z-index:8;background:#fff;box-shadow:1px 0 0 var(--line)}
+.hdr .tl{position:relative;flex:1}
+.yr{display:flex;border-bottom:1px solid var(--line)}
+.yrc{font-size:11px;font-weight:600;text-align:center;padding:5px 0;border-left:1px solid var(--line);color:var(--tx)}
+.qr{display:flex;border-bottom:1px solid var(--line)}
+.qrc{font-size:9px;color:var(--tx2);text-align:center;padding:3px 0;border-left:1px solid var(--line);letter-spacing:.4px}
+.row{display:flex;min-height:29px;position:relative}
+.row:hover .lab{background:#FAF9F8}
+.row .lab{width:var(--lw);min-width:var(--lw);padding:5px 10px 5px 10px;border-bottom:1px solid #F3F1EE;
+  font-size:11.5px;display:flex;gap:7px;align-items:flex-start;
+  position:sticky;left:0;z-index:5;background:#fff;box-shadow:1px 0 0 var(--line)}
+.row .lab .tid{color:var(--tx2);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;
+  min-width:26px;padding-top:1px}
+.row .lab .nm{flex:1}
+.row .lab .rr{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;font-weight:700;
+  color:var(--acc-d);background:#FCEDE3;border-radius:4px;padding:1px 5px;margin-top:1px;white-space:nowrap}
+.row .lab .kk{font-size:10px;font-variant-numeric:tabular-nums;color:#4A4A46;font-weight:600;
+  min-width:44px;text-align:right;padding-top:1px}
+.row .tl{flex:1;position:relative;border-bottom:1px solid #F3F1EE}
+.kmrow{display:flex;background:linear-gradient(90deg,rgba(232,99,15,.10),rgba(232,99,15,.02));
+  border-top:1px solid rgba(232,99,15,.28);border-bottom:1px solid rgba(232,99,15,.18)}
+.kmrow .lab{width:var(--lw);min-width:var(--lw);padding:8px 82px 8px 10px;font-size:12px;font-weight:600;
+  position:sticky;left:0;z-index:5;background:#FCEDE3;box-shadow:1px 0 0 rgba(232,99,15,.3)}
+.kmrow .lab .c{color:var(--acc-d);font-weight:700;margin-right:6px}
+.kmrow .lab .kf{position:absolute;right:10px;top:9px;font-size:10.5px;color:var(--acc-d);
+  font-variant-numeric:tabular-nums;font-weight:700}
+.kmrow .tl{flex:1;position:relative}
+.bar{position:absolute;top:5px;height:17px;border-radius:5px;cursor:default;opacity:.55;
+  display:flex;align-items:center;padding:0 6px;overflow:hidden;transition:opacity .12s}
+.bar:hover{opacity:1}
+.bar .bl{font-size:9px;color:#fff;white-space:nowrap;opacity:.95;font-weight:600;letter-spacing:.2px}
+.bar.crit{opacity:1;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.45)}
+.bar.clip:after{content:"";position:absolute;right:0;top:0;bottom:0;width:14px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.85))}
+.dia{position:absolute;top:2px;width:15px;height:15px;background:var(--tx);transform:rotate(45deg);
+  border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25);z-index:4}
+.dia-lab{position:absolute;top:2px;font-size:9.5px;font-weight:700;color:var(--tx);white-space:nowrap;z-index:4}
+.vline{position:absolute;top:0;bottom:0;width:1px;z-index:2;pointer-events:none}
+.vtoday{background:rgba(37,99,168,.5)}
+.vhard{background:rgba(179,48,10,.55);width:2px}
+.vgrid{position:absolute;top:0;bottom:0;border-left:1px solid #F5F3F0;z-index:0;pointer-events:none}
+.vgrid.q{border-left-color:#E9E6E2}
+.vgrid.y{border-left-color:#DAD6D1}
+.tip{position:fixed;z-index:99;max-width:450px;background:#fff;border-radius:12px;
+  box-shadow:0 8px 30px rgba(0,0,0,.16);padding:14px 16px;font-size:12px;display:none;pointer-events:none;
+  border:1px solid var(--line)}
+.tip h4{margin:0 0 6px;font-size:12.5px;font-weight:600;line-height:1.35}
+.tip .meta{color:var(--tx2);font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px}
+.tip .n{color:#4A4A46;font-size:11.5px;line-height:1.5}
+.tip .tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 7px;
+  border-radius:999px;color:#fff;margin-right:5px;text-transform:uppercase}
+.tip .big{font-size:17px;font-weight:500;color:var(--acc-d);font-variant-numeric:tabular-nums;margin:2px 0 8px}
+.tip .big span{font-size:11px;color:var(--tx2);font-weight:400}
+.tip .who{margin:8px 0 0;padding-top:8px;border-top:1px solid #F0EEEB;font-size:11px;color:#4A4A46}
+.tip .who b{color:var(--tx)}
+/* budzet */
+.bud{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.stack{flex:1 1 420px;min-width:340px}
+.sbar{display:flex;height:34px;border-radius:8px;overflow:hidden;margin-bottom:10px}
+.sbar div{display:flex;align-items:center;justify-content:center;color:#fff;font-size:10.5px;font-weight:700}
+.slegend{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px}
+.slegend span{display:inline-flex;align-items:center;gap:6px}
+.slegend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.fin{flex:0 0 300px;font-size:12.5px}
+.fin div{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F3F1EE}
+.fin div:last-child{border:0}
+.fin .v{font-variant-numeric:tabular-nums;font-weight:600}
+.fin .tot{font-size:14px;font-weight:600;color:var(--acc-d);border-top:2px solid var(--line);border-bottom:0;padding-top:9px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.9px;color:var(--tx2);
+  font-weight:600;padding:0 12px 8px 0;border-bottom:1px solid var(--line)}
+td{padding:11px 12px 11px 0;border-bottom:1px solid #F3F1EE;vertical-align:top;line-height:1.5}
+td.k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--tx2);white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.5px;padding:2.5px 8px;border-radius:999px;
+  text-transform:uppercase;white-space:nowrap}
+.b-kry{background:#FBE4DD;color:#8E2507}
+.b-wys{background:#FDEEDC;color:#96550B}
+.b-sre{background:#EDF1F6;color:#3B5A7E}
+.b-mat{background:var(--acc-d);color:#fff}
+.b-ok{background:#E4F0EC;color:#1F5A4E}
+.rk{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:700;color:var(--acc-d);
+  background:#FCEDE3;border-radius:4px;padding:2px 6px;white-space:nowrap}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;font-weight:600;color:var(--acc-d)}
+.foot{color:var(--tx2);font-size:11px;margin-top:22px;line-height:1.7}
+.note{background:#FDF6F1;border-left:3px solid var(--acc);border-radius:0 8px 8px 0;padding:12px 15px;
+  font-size:12px;margin-top:14px;color:#5A483C}
+@media (max-width:900px){:root{--lw:250px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Harmonogram realizacji inwestycji — Fabryka akumulatorów KLAB</h1>
+  <p class="sub">Technologie Elektrochemiczne Sp.&nbsp;z&nbsp;o.o. · FENG.05.01 Fundusz Wsparcia Technologii Krytycznych ·
+     <b>Ścieżka B, nabór FENG.05.01-IP.02-006/26</b> · sektor czystych i zasobooszczędnych technologii</p>
+  <p class="sub">Kamienie milowe, zadania, kwoty i role zgodne z Regulaminem wyboru projektów oraz Przewodnikiem
+     kwalifikowalności wydatków. Kwoty w <b>wariancie konserwatywnym</b> — dolna granica widełek wyceny CFO, poziom cen 2026,
+     tys.&nbsp;zł netto. Intensywność dofinansowania <b>75%</b> jak w szablonie HRF. Zakończenie zakresu rzeczowego
+     i finansowego: <b>nie później niż 31.12.2030</b>.</p>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+    <p class="sec-t">Budżet projektu</p>
+    <div class="bud">
+      <div class="stack">
+        <div class="sbar" id="sbar"></div>
+        <div class="slegend" id="slegend"></div>
+        <div class="note" style="margin-top:16px">Kwoty to <b>szacunek planistyczny, nie oferty</b>. Szablon HRF wymaga
+          trzech ofert z nazwą, NIP i datą na każdy wydatek, a wartością netto jest najniższa cena albo uzasadniony
+          wybór droższej. Bez tego żadna z tych liczb nie wejdzie do wniosku.</div>
+      </div>
+      <div class="fin" id="fin"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="sec-t">Wykres Gantta</p>
+    <div class="bar-ctl" id="ctl"></div>
+    <div class="scroll"><div class="grid" id="grid"></div></div>
+    <div class="note"><b>Jak czytać:</b> czarne romby to kamienie milowe, paski w pełnym kolorze z ciemną obwódką to
+      ścieżka krytyczna (pozostałe są przygaszone), paski w ukośne prążki to postępowania zakupowe, które nie generują
+      wydatku w harmonogramie rzeczowo-finansowym. Niebieska pionowa linia to dzisiaj, czerwona to twardy termin
+      31.12.2030. W etykiecie zadania: kod roli odpowiedzialnej i kwota w tys. zł. Najedź na pasek, żeby zobaczyć
+      podstawę formalną, dofinansowanie i pełny skład wykonawców. Okres trwałości projektu wykracza poza wykres —
+      trwa do 31.12.2035, a dla MŚP do 31.12.2033.</div>
+  </div>
+
+  <div class="card">
+    <p class="sec-t">Kamienie milowe — kryteria zaliczenia</p>
+    <table><thead><tr><th style="width:56px">Kamień</th><th style="width:240px">Nazwa</th><th style="width:82px">Termin</th>
+      <th style="width:86px">Wydatki fazy</th><th>Kryterium zaliczenia (dowód)</th><th style="width:230px">Co odblokowuje</th>
+    </tr></thead><tbody id="kmtab"></tbody></table>
+  </div>
+
+  <div class="card">
+    <p class="sec-t">Dane do szablonu harmonogramu rzeczowo-finansowego</p>
+    <table><thead><tr><th style="width:70px">Zadanie</th><th style="width:180px">Nazwa w szablonie</th>
+      <th style="width:180px">Data realizacji zadania</th><th style="width:92px">Kwota netto</th>
+      <th style="width:92px">Dofin. 75%</th><th>Ograniczenia i uwagi</th></tr></thead><tbody id="hrftab"></tbody></table>
+  </div>
+
+  <div class="card">
+    <p class="sec-t">Role w projekcie — funkcje bez nazwisk</p>
+    <table><thead><tr><th style="width:46px">Kod</th><th style="width:190px">Rola</th><th>Zakres odpowiedzialności</th>
+      <th style="width:78px">Etaty</th><th style="width:120px">Okres</th><th style="width:200px">Źródło obsady</th>
+      <th style="width:62px">Zadań / krytycznych</th></tr></thead><tbody id="roletab"></tbody></table>
+  </div>
+
+  <div class="card">
+    <p class="sec-t">Koszty poza harmonogramem rzeczowo-finansowym</p>
+    <table><thead><tr><th>Pozycja</th><th style="width:88px">Kwota</th><th style="width:130px">Charakter</th>
+      <th style="width:400px">Uwaga</th></tr></thead><tbody id="pozatab"></tbody></table>
+  </div>
+
+  <div class="card">
+    <p class="sec-t">Wrażliwość na intensywność pomocy — lokalizacja i status MŚP nie są jeszcze znane</p>
+    <table><thead><tr><th>Scenariusz</th><th style="width:90px">Intensywność</th><th style="width:110px">Dofinansowanie</th>
+      <th style="width:110px">Wkład własny</th><th style="width:130px">Różnica wkładu</th></tr></thead><tbody id="wrztab"></tbody></table>
+  </div>
+
+  <div class="card">
+    <p class="sec-t">Ryzyka terminowe i finansowe — kolejność wg wpływu na datę 31.12.2030</p>
+    <table><thead><tr><th style="width:38px">ID</th><th style="width:190px">Ryzyko</th><th style="width:140px">Ocena</th>
+      <th>Skutek dla harmonogramu i budżetu</th><th style="width:260px">Reakcja</th><th style="width:88px">Właściciel</th>
+    </tr></thead><tbody id="rtab"></tbody></table>
+  </div>
+
+  <p class="foot">Opracowanie: 21 ZMYSŁÓW LAB sp. z o.o. · wersja 2.0 · 09.08.2026<br>
+    Kwoty pochodzą z opracowań własnych (KLAB_koszty_kategorie.xlsx, KLAB_kosztorys_IT.xlsx, KLAB_lista_plac.xlsx),
+    w wariancie konserwatywnym równym dolnej granicy widełek. Poziom cen 2026 — do zamówień w 2028 wymagana indeksacja.
+    Terminy oceny i zawarcia umowy to szacunek na podstawie §§ 6–12 Regulaminu przy założeniu 30–40 wniosków w naborze.
+    Terminy postępowań administracyjnych (DŚU, pozwolenie na budowę, pozwolenie zintegrowane, przyłącze OSD) to szacunki
+    branżowe, nie są gwarantowane i pozostają poza kontrolą inwestora. Kwota Zadania 1 i daty wszystkich zadań wymagają
+    potwierdzenia po ustaleniu lokalizacji inwestycji.</p>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+const D = {"tasks": [{"id": "0.1", "km": 0, "zad": "—", "wyd": false, "kw": null, "name": "Potwierdzenie statusu NZiA produktu lub wystąpienie do MRiT (organkrajowynzia@mrit.gov.pl)", "x": 1.258, "w": 0.35, "s": "09.08.2026", "e": "11.08.2026", "R": "DOR", "Rn": "Firma doradcza", "W": [{"k": "ZARZ", "n": "Zarząd — Prezes Zarządu"}], "crit": true, "note": "Załącznik obligatoryjny, gdy produkt nie jest wprost na liście rozp. KE 2025/1463 — patrz R9", "clip": false}, {"id": "0.2", "km": 0, "zad": "—", "wyd": false, "kw": null, "name": "Domknięcie HRF: min. 3 oferty z nazwą, NIP i datą na każdy wydatek Zadań 1–4", "x": 1.258, "w": 0.35, "s": "09.08.2026", "e": "11.08.2026", "R": "ZAK", "Rn": "Specjalista ds. zakupów i logistyki", "W": [{"k": "INZ", "n": "Inżynier procesu / technolog"}, {"k": "DOR", "n": "Firma doradcza"}], "crit": true, "note": "Wymóg szablonu HRF. Wartość netto = najniższa z ofert albo uzasadniony wybór droższej w polu Metoda szacowania. Nie stosuje się średniej z trzech cen", "clip": false}, {"id": "0.3", "km": 0, "zad": "—", "wyd": false, "kw": null, "name": "Złożenie wniosku wraz z załącznikami w LSI (lsi.parp.gov.pl)", "x": 1.323, "w": 0.35, "s": "11.08.2026", "e": "11.08.2026", "R": "ZARZ", "Rn": "Zarząd — Prezes Zarządu", "W": [{"k": "DOR", "n": "Firma doradcza"}], "crit": true, "note": "Do godz. 16:00 wg czasu serwera PARP (§ 1 ust. 4 RWP). Zgłoszenia błędów LSI przyjmowane do 23:59 tego dnia", "clip": false}, {"id": "1.1", "km": 1, "zad": "—", "wyd": false, "kw": null, "name": "Ocena wniosku: I etap, Panel KOP z udziałem wnioskodawcy, II etap, listy rankingowe", "x": 1.355, "w": 5.681, "s": "12.08.2026", "e": "02.02.2027", "R": "DOR", "Rn": "Firma doradcza", "W": [{"k": "ZARZ", "n": "Zarząd — Prezes Zarządu"}, {"k": "INZ", "n": "Inżynier procesu / technolog"}, {"k": "CFO", "n": "Dyrektor finansowy / Główna księgowa"}], "crit": false, "note": "Do 30 wniosków: ocena max 120 dni (I etap 60 dni) + zatwierdzenie 5 i 7 dni + publikacja 7 dni. Powyżej 30 wniosków +20 dni na przedział 10 wniosków (§ 9). Panel KOP: do 4 przedstawicieli z pełnomocnictwami w LSI, prezentacja do 15 minut", "clip": false}, {"id": "1.2", "km": 1, "zad": "—", "wyd": false, "kw": null, "name": "Domknięcie finansowania: wkład własny 23 143 tys. zł (25% kosztów kwalifikowalnych), promesy lub kredyt", "x": 2.0, "w": 7.967, "s": "01.09.2026", "e": "30.04.2027", "R": "CFO", "Rn": "Dyrektor finansowy / Główna księgowa", "W": [{"k": "ZARZ", "n": "Zarząd — Prezes Zarządu"}], "crit": true, "note": "Warunek zawarcia umowy (§ 12 ust. 1 pkt 6 RWP). Wyłącznie środki pieniężne wolne od wsparcia publicznego. Kapitał zakładowy spółki to 5 000 zł — patrz R10", "clip": false}, {"id": "1.3", "km": 1, "zad": "—", "wyd": false, "kw": null, "name": "Zawarcie umowy o dofinansowanie w SL2021", "x": 7.071, "w": 3.896, "s": "03.02.2027", "e": "31.05.2027", "R": "ZARZ", "Rn": "Zarząd — Prezes Zarządu", "W": [{"k": "DOR", "n": "Firma doradcza"}, {"k": "CFO", "n": "Dyrektor finansowy / Główna księgowa"}], "crit": true, "note": "Wniosek o dodanie osoby zarządzającej: 5 dni od doręczenia informacji. Dokumenty do umowy: 7 dni od wezwania. Weryfikacja PARP: do 60 dni. Umowa: do 30 dni od zakończenia weryfikacji (§ 12)", "clip": false}, {"id": "2.1", "km": 2, "zad": "—", "wyd": false, "kw": null, "name": "Due diligence lokalizacji: 3 działki ≥ 3,5 ha (MPZP lub WZ pod zabudowę przemysłową, uzbrojenie, dostęp drogowy, sąsiedztwo, Natura 2000)", "x": 1.355, "w": 4.613, "s": "12.08.2026", "e": "31.12.2026", "R": "KP", "Rn": "Kierownik Projektu", "W": [{"k": "ZARZ", "n": "Zarząd — Prezes Zarządu"}, {"k": "EHS", "n": "Specjalista EHS / pełnomocnik ds. środowiska"}], "crit": true, "note": "DZIŚ BRAK JAKIEJKOLWIEK LOKALIZACJI — zatrzymuje zegar DŚU, warunków przyłączenia i wyceny robót. Zapotrzebowanie z modelu: hala 14 000 m² plus plac manewrowy z drogą pożarową, doki E/W, parking, infrastruktura zewnętrzna — patrz R1", "clip": false}, {"id": "2.2", "km": 2, "zad": "—", "wyd": false, "kw": null, "name": "Umowa przedwstępna lub opcja na działkę", "x": 6.0, "w": 1.964, "s": "01.01.2027", "e": "28.02.2027", "R": "ZARZ", "Rn": "Zarząd — Prezes Zarządu", "W": [{"k": "KP", "n": "Kierownik Projektu"}, {"k": "CFO", "n": "Dyrektor finansowy / Główna księgowa"}], "crit": true, "note": "Umowa przedwstępna nie jest rozpoczęciem prac w rozumieniu pomocy regionalnej — bezpieczna przed zawarciem umowy o dofinansowanie", "clip": false}, {"id": "2.3", "km": 2, "zad": "—", "wyd": false, "kw": null, "name": "Karta informacyjna przedsięwzięcia i raport OOŚ, wniosek o DŚU do RDOŚ", "x": 2.0, "w": 6.968, "s": "01.09.2026", "e": "31.03.2027", "R": "EHS", "Rn": "Specjalista EHS / pełnomocnik ds. środowiska", "W": [{"k": "OOS", "n": "Wykonawca dokumentacji środowiskowej"}], "crit": true, "note": "Recykling odpadów niebezpiecznych powyżej 10 t/d to I grupa, obligatoryjny raport OOŚ. Zakres: emisje Pb i H₂SO₄, emitory +18 m i +16 m, hałas, gospodarka wodno-ściekowa, strefy ATEX. Koszt ok. 250 tys. zł poza HRF", "clip": false}, {"id": "2.4", "km": 2, "zad": "—", "wyd": false, "kw": null, "name": "Postępowanie o DŚU: uzgodnienia RDOŚ, PPIS i Wód Polskich, konsultacje społeczne, decyzja ostateczna", "x": 9.0, "w": 5.967, "s": "01.04.2027", "e": "30.09.2027", "R": "EHS", "Rn": "Specjalista EHS / pełnomocnik ds. środowiska", "W": [{"k": "ORG", "n": "Organy administracji"}], "crit": true, "note": "ŚCIEŻKA KRYTYCZNA CAŁEGO HARMONOGRAMU. Realny czas 9–15 miesięcy od złożenia raportu, przy odwołaniach dłużej — patrz R2", "clip": false}, {"id": "2.5", "km": 2, "zad": "—", "wyd": false, "kw": null, "name": "Wniosek o warunki przyłączenia 0,8–1,2 MW do OSD oraz woda, kanalizacja, gaz", "x": 8.0, "w": 5.968, "s": "01.03.2027", "e": "31.08.2027", "R": "KP", "Rn": "Kierownik Projektu", "W": [{"k": "PROJ", "n": "Biuro projektowe"}, {"k": "ORG", "n": "Organy administracji"}], "crit": true, "note": "Warunki przyłączenia: 3–6 miesięcy. Realizacja przez OSD nawet do 24 miesięcy. Opłata przyłączeniowa ok. 400 tys. zł — kwalifikowalność do rozstrzygnięcia z doradcą, patrz R4", "clip": false}, {"id": "2.6", "km": 2, "zad": "1", "wyd": true, "kw": 3500, "name": "Nabycie gruntu pod zakład produkcyjny KLAB (≥ 3,5 ha)", "x": 7.0, "w": 7.967, "s": "01.02.2027", "e": "30.09.2027", "R": "ZARZ", "Rn": "Zarząd — Prezes Zarządu", "W": [{"k": "CFO", "n": "Dyrektor finansowy / Główna księgowa"}, {"k": "KP", "n": "Kierownik Projektu"}], "crit": false, "note": "JEDYNY WYDATEK ZADANIA 1. Kwota szacunkowa: 35 000 m² × 100 zł/m² — bez lokalizacji nie ma podstawy wyceny. Limit: grunty łącznie z nieruchomościami zabudowanymi ≤ 10% kosztów kwalifikowalnych (tu 3,8%). Metoda szacowania: operat szacunkowy albo oferty sprzedaży", "clip": false}, {"id": "3.1", "km": 3, "zad": "—", "wyd": false, "kw": null, "name": "Koncepcja i projekt budowlany hali 14 000 m² (konstrukcja, instalacje, ppoż., strefy ATEX, technologia)", "x": 4.0, "w": 13.968, "s": "01.11.2026", "e": "31.12.2027", "R": "KP", "Rn": "Kierownik Projektu", "W": [{"k": "PROJ", "n": "Biuro projektowe"}, {"k": "INZ", "n": "Inżynier procesu / technolog"}], "crit": true, "note": "Koszt razem z nadzorami 1 300 tys. zł — konserwatywnie POZA kosztami kwalifikowalnymi, bo katalog RPI obejmuje roboty i materiały budowlane, a nie usługi projektowe. Do rozstrzygnięcia z doradcą. UWAGA: decyzja N2 to 14 000 m², wsad HRF opisuje 11 230 m² — ujednolicić PRZED wyceną robót", "clip": false}, {"id": "3.2", "km": 3, "zad": "—", "wyd": false, "kw": null, "name": "Wniosek o pozwolenie na budowę i uzyskanie decyzji ostatecznej", "x": 18.0, "w": 2.968, "s": "01.01.2028", "e": "31.03.2028", "R": "KP", "Rn": "Kierownik Projektu", "W": [{"k": "PROJ", "n": "Biuro projektowe"}, {"k": "ORG", "n": "Organy administracji"}], "crit": true, "note": "Wymaga ostatecznej DŚU (2.4) i projektu budowlanego (3.1). § 12 ust. 7 RWP: brak PnB na dzień zawarcia umowy oznacza umowę z obowiązkiem dostarczenia, ale bez wypłat dofinansowania — patrz R3", "clip": false}, {"id": "3.3", "km": 3, "zad": "3", "wyd": false, "kw": null, "name": "RFQ i wybór dostawców long-lead: A2 breaker 2,25 t/h, A4 piec topielny, A5 hydrometalurgia, B4 piroliza, B5 galwanika, B13 formacja", "x": 15.0, "w": 3.968, "s": "01.10.2027", "e": "31.01.2028", "R": "ZAK", "Rn": "Specjalista ds. zakupów i logistyki", "W": [{"k": "INZ", "n": "Inżynier procesu / technolog"}, {"k": "KP", "n": "Kierownik Projektu"}], "crit": true, "note": "Postępowanie, nie wydatek — koszt powstaje przy zaliczkach (3.5). Terminy dostawy 12–18 miesięcy. Oferta Engitec P4136 (CX Plant 3 tph, ~5,1 mln €) ważna 1 miesiąc, do odświeżenia; wymagane porównanie z dostawcami CN/TW, bo widełki CFO założono na montażu mieszanym EU+CN/TW", "clip": false}, {"id": "3.4", "km": 3, "zad": "3", "wyd": false, "kw": null, "name": "RFI z NDA i kontraktacja maszyn CUSTOM: B3 impregnacja roll-to-roll, B6 szkielet Pb, B8 pastownica dwustronna", "x": 15.0, "w": 5.968, "s": "01.10.2027", "e": "31.03.2028", "R": "INZ", "Rn": "Inżynier procesu / technolog", "W": [{"k": "ZAK", "n": "Specjalista ds. zakupów i logistyki"}, {"k": "KP", "n": "Kierownik Projektu"}], "crit": true, "note": "Nie istnieją na rynku — wycena przez RFI z integratorami, nie otwarte RFQ. Rdzeń IP zostaje w PL/EU. Wymaga 6–9 miesięcy inżynierii przed produkcją — patrz R5", "clip": false}, {"id": "3.5", "km": 3, "zad": "3", "wyd": false, "kw": null, "name": "Zamówienia i zaliczki long-lead — pierwszy ruch pieniądza w Zadaniu 3 (ok. 4 000 tys. zł, czyli ~20% wartości pakietów A5, B4/B5, B13 i CUSTOM)", "x": 19.0, "w": 1.968, "s": "01.02.2028", "e": "31.03.2028", "R": "ZARZ", "Rn": "Zarząd — Prezes Zarządu", "W": [{"k": "CFO", "n": "Dyrektor finansowy / Główna księgowa"}, {"k": "ZAK", "n": "Specjalista ds. zakupów i logistyki"}], "crit": true, "note": "NIE osobna pozycja HRF — zaliczki są częścią kwot pakietów 5.3, 6.2, 6.3 i 6.5 i dlatego okno Zadania 3 startuje 01.02.2028, choć montaż zaczyna się w 2029. Pierwsze prawnie wiążące zobowiązanie do zamówienia urządzeń jest rozpoczęciem prac w rozumieniu pomocy regionalnej. Przed dostarczeniem PnB wypłaty PARP są wstrzymane — te 4 mln idą z własnych środków, patrz R3", "clip": false}, {"id": "3.6", "km": 3, "zad": "2", "wyd": false, "kw": null, "name": "Postępowanie na generalnego wykonawcę robót budowlanych", "x": 18.0, "w": 2.968, "s": "01.01.2028", "e": "31.03.2028", "R": "KP", "Rn": "Kierownik Projektu", "W": [{"k": "ZAK", "n": "Specjalista ds. zakupów i logistyki"}, {"k": "PROJ", "n": "Biuro projektowe"}], "crit": false, "note": "Postępowanie, nie wydatek. Min. 3 oferty; zakres wg projektu budowlanego z 3.1", "clip": false}, {"id": "4.1", "km": 4, "zad": "2", "wyd": true, "kw": 15000, "name": "Roboty ziemne, fundamenty, konstrukcja hali, dach przygotowany pod PV ~1 MWp, obudowa", "x": 21.0, "w": 11.968, "s": "01.04.2028", "e": "31.03.2029", "R": "INSP", "Rn": "Inspektor nadzoru inwestorskiego / kierownik budowy", "W": [{"k": "GW", "n": "Generalny wykonawca robót budowlanych"}], "crit": true, "note": "Hala jednokondygnacyjna, światło użytkowe +8,00 m (suwnice, AS/RS, piroliza), attyka +10,50 m. Największa pozycja Zadania 2. Źródło kwoty: CFO kat. 1 — hala z instalacjami budynkowymi, 28 000 tys. zł rozdzielone na 4.1, 4.4, 4.5, 4.7, 4.9", "clip": false}, {"id": "4.2", "km": 4, "zad": "—", "wyd": false, "kw": null, "name": "Wniosek o pozwolenie wodnoprawne (zrzut ścieków przemysłowych, pobór wody)", "x": 18.0, "w": 5.967, "s": "01.01.2028", "e": "30.06.2028", "R": "EHS", "Rn": "Specjalista EHS / pełnomocnik ds. środowiska", "W": [{"k": "PROJ", "n": "Biuro projektowe"}, {"k": "ORG", "n": "Organy administracji"}], "crit": false, "note": "Warunek uruchomienia oczyszczalni i uzyskania pozwolenia zintegrowanego", "clip": false}, {"id": "4.3", "km": 4, "zad": "—", "wyd": false, "kw": null, "name": "Realizacja przyłącza energetycznego przez OSD", "x": 21.0, "w": 14.967, "s": "01.04.2028", "e": "30.06.2029", "R": "KP", "Rn": "Kierownik Projektu", "W": [{"k": "ORG", "n": "Organy administracji"}], "crit": true, "note": "Poza HRF: opłata przyłączeniowa ok. 400 tys. zł, kwalifikowalność do rozstrzygnięcia. Termin poza kontrolą inwestora — patrz R4", "clip": false}, {"id": "4.4", "km": 4, "zad": "2", "wyd": true, "kw": 5800, "name": "Instalacje budynkowe: elektryczna z rozdzielniami, woda i demi, kanalizacja przemysłowa, CO", "x": 28.0, "w": 7.967, "s": "01.11.2028", "e": "30.06.2029", "R": "INSP", "Rn": "Inspektor nadzoru inwestorskiego / kierownik budowy", "W": [{"k": "GW", "n": "Generalny wykonawca robót budowlanych"}], "crit": true, "note": "Wymiarowane na 0,8–1,2 MW szczytowo wg bilansu M2. Prowadzone sekcjami w miarę zamykania obudowy — warunek kryterium KM 4 w strefie recyklingu. DEMARKACJA: ringi N₂, sprężonego powietrza i rurociągi H₂SO₄ to instalacje procesowe w Zadaniu 3 (4.11) — nie dublować", "clip": false}, {"id": "4.5", "km": 4, "zad": "2", "wyd": true, "kw": 3200, "name": "Posadzki i zabezpieczenia chemoodporne, retencje ≥ 110% zbiorników, wanny", "x": 30.0, "w": 5.967, "s": "01.01.2029", "e": "30.06.2029", "R": "INSP", "Rn": "Inspektor nadzoru inwestorskiego / kierownik budowy", "W": [{"k": "GW", "n": "Generalny wykonawca robót budowlanych"}, {"k": "INZ", "n": "Inżynier procesu / technolog"}], "crit": true, "note": "Strefy kwasowe: elektrolit, galwanika, formacja, zalewanie. Odbiór w strefie linii recyklingu jest warunkiem KM 4", "clip": false}, {"id": "4.6", "km": 4, "zad": "2", "wyd": true, "kw": 2200, "name": "Fundamenty i konstrukcje wsporcze infrastruktury zewnętrznej, komin dopalacza +18 m, emitor A7 +16 m, konstrukcje dachowe pod PV", "x": 27.0, "w": 8.967, "s": "01.10.2028", "e": "30.06.2029", "R": "INSP", "Rn": "Inspektor nadzoru inwestorskiego / kierownik budowy", "W": [{"k": "GW", "n": "Generalny wykonawca robót budowlanych"}], "crit": false, "note": "Trafo 2×SN/nn, zbiornik N₂ z parownicą, chłodnie, BESS, silos Na₂CO₃. Wysokości emitorów do potwierdzenia operatem rozprzestrzeniania z raportu OOŚ. Źródło: CFO kat. 1 — infrastruktura terenu 6 500 + komin i emitory 500", "clip": false}, {"id": "4.7", "km": 4, "zad": "2", "wyd": true, "kw": 1500, "name": "Wentylacja ogólna NW-1…4 z odzyskiem ciepła (część budynkowa)", "x": 32.0, "w": 6.967, "s": "01.03.2029", "e": "30.09.2029", "R": "INSP", "Rn": "Inspektor nadzoru inwestorskiego / kierownik budowy", "W": [{"k": "GW", "n": "Generalny wykonawca robót budowlanych"}, {"k": "EHS", "n": "Specjalista EHS / pełnomocnik ds. środowiska"}], "crit": false, "note": "Biegnie równolegle z montażem linii recyklingu — celowo kończy się po dacie KM 4. DEMARKACJA wg CFO: wentylacja PROCESOWA (odciągi Pb, strefa podciśnienia HEPA, wywiew H₂, wentylacja Ex etanolu) to środek trwały w Zadaniu 3 (4.11), nie robota budowlana — ma znaczenie dla amortyzacji", "clip": false}, {"id": "4.8", "km": 4, "zad": "2", "wyd": true, "kw": 1900, "name": "Oczyszczalnia ścieków przemysłowych i zbiornik ppoż. z retencją — część budowlana", "x": 30.0, "w": 8.967, "s": "01.01.2029", "e": "30.09.2029", "R": "EHS", "Rn": "Specjalista EHS / pełnomocnik ds. środowiska", "W": [{"k": "GW", "n": "Generalny wykonawca robót budowlanych"}, {"k": "INSP", "n": "Inspektor nadzoru inwestorskiego / kierownik budowy"}], "crit": false, "note": "Neutralizacja z koagulacją i flokulacją; warunek pozwolenia wodnoprawnego i zintegrowanego. Wyposażenie technologiczne oczyszczalni w Zadaniu 3 (5.4, węzeł A7)", "clip": false}, {"id": "4.9", "km": 4, "zad": "2", "wyd": true, "kw": 2500, "name": "Biura i zaplecze socjalne, 2 kondygnacje (+7,50), szatnie czysto-brudno, śluzy higieniczne", "x": 33.0, "w": 8.968, "s": "01.04.2029", "e": "31.12.2029", "R": "INSP", "Rn": "Inspektor nadzoru inwestorskiego / kierownik budowy", "W": [{"k": "GW", "n": "Generalny wykonawca robót budowlanych"}], "crit": false, "note": "Biegnie równolegle z montażem technologii. 18 osób kadry plus zaplecze strefowe dla 84 osób produkcji (decyzja N1: personel 102). Separacja higieniczna strefy Pb jest wymogiem BHP przy ołowiu", "clip": false}, {"id": "4.10", "km": 4, "zad": "2", "wyd": true, "kw": 2900, "name": "Zagospodarowanie terenu: place manewrowe, droga pożarowa, doki przyjęcia (E) i wysyłki (W), fundament wagi mostowej 60 t, wiata bufora złomu, portiernia", "x": 36.0, "w": 8.968, "s": "01.07.2029", "e": "31.03.2030", "R": "INSP", "Rn": "Inspektor nadzoru inwestorskiego / kierownik budowy", "W": [{"k": "GW", "n": "Generalny wykonawca robót budowlanych"}], "crit": false, "note": "Ostatni wydatek Zadania 2, celowo po dacie KM 4. Przepływ jednokierunkowy przyjęcie → wysyłka bez krzyżowań", "clip": false}, {"id": "4.11", "km": 4, "zad": "3", "wyd": true, "kw": 3200, "name": "Instalacje technologiczne procesowe: odciągi Pb do A7, skruber, ciągi gazów B4, ring wody chłodzącej, demi, N₂, rurociągi H₂SO₄ dwupłaszczowe, sprężarkownia", "x": 32.0, "w": 9.968, "s": "01.03.2029", "e": "31.12.2029", "R": "INZ", "Rn": "Inżynier procesu / technolog", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}, {"k": "INSP", "n": "Inspektor nadzoru inwestorskiego / kierownik budowy"}], "crit": true, "note": "Środek trwały (instalacje przemysłowe), NIE robota budowlana — klasyfikacja z CFO, istotna dla amortyzacji i kwalifikowalności. Obsługuje obie linie", "clip": false}, {"id": "4.12", "km": 4, "zad": "3", "wyd": true, "kw": 870, "name": "Sprzęt IT/OT: serwerownia redundantna, sieć przemysłowa hali (światłowody, switche, Wi-Fi), UPS, identyfikacja (18 skanerów IP67, 6 drukarek, 2 znakowarki DataMatrix, RFID, 12 terminali)", "x": 32.0, "w": 9.968, "s": "01.03.2029", "e": "31.12.2029", "R": "ITOT", "Rn": "Kierownik projektu IT/OT + inżynier integracji", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}], "crit": false, "note": "Warunek wdrożenia MES (6.7) — infrastruktura musi stać wcześniej. DEMARKACJA: 8 bramek wizyjnych QA jest w pakiecie maszynowym, okablowanie strukturalne budynku w 4.4 — nie dublować", "clip": false}, {"id": "4.13", "km": 4, "zad": "4", "wyd": true, "kw": 0, "name": "Licencja technologiczna InnBAT — ewentualna opłata wstępna (license fee)", "x": 24.0, "w": 5.968, "s": "01.07.2028", "e": "31.12.2028", "R": "ZARZ", "Rn": "Zarząd — Prezes Zarządu", "W": [{"k": "CFO", "n": "Dyrektor finansowy / Główna księgowa"}, {"k": "DOR", "n": "Firma doradcza"}], "crit": false, "note": "Kwota 0 w wariancie konserwatywnym; widełki 0–2 000 tys. zł. [decyzja klienta i doradcy] W modelu finansowym technologia ujęta jako royalty 8 zł/kWh, czyli OPEX — samo royalty NIE jest WNiP. Jeśli wystąpi opłata wejściowa, wchodzi tu i podnosi Zadanie 4", "clip": false}, {"id": "5.1", "km": 5, "zad": "3", "wyd": true, "kw": 4700, "name": "Dostawa i montaż A1 węzeł przyjęcia i identyfikacji, A2 breakowanie i separacja", "x": 36.0, "w": 3.968, "s": "01.07.2029", "e": "31.10.2029", "R": "INZ", "Rn": "Inżynier procesu / technolog", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}, {"k": "UR", "n": "Kierownik utrzymania ruchu"}], "crit": false, "note": "A1: waga mostowa 60 t, stacja rozładowania elektrycznego 8–12 kanałów z rekuperacją. A2: breaker 2,25 t/h (decyzja N5), sink-float, wirówka pasty. Dostawcy z trackera RFQ: Engitec (IT), ANDRITZ (AT), Jingjin (CN)", "clip": false}, {"id": "5.2", "km": 5, "zad": "3", "wyd": true, "kw": 4300, "name": "Dostawa i montaż A3 gospodarka elektrolitem, A4 piec topielny nisko-T 0,5 t/h z linią hot-to-product", "x": 36.0, "w": 4.967, "s": "01.07.2029", "e": "30.11.2029", "R": "INZ", "Rn": "Inżynier procesu / technolog", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}, {"k": "UR", "n": "Kierownik utrzymania ruchu"}], "crit": false, "note": "A4 LONG-LEAD: rafinacja battery-grade i formowanie komponentów bezpośrednio z ciekłego Pb ~350 °C, bez pośrednich gąsek. Dostawcy z trackera: Inductotherm, Sovema, Wirtz", "clip": false}, {"id": "5.3", "km": 5, "zad": "3", "wyd": true, "kw": 5800, "name": "Dostawa i montaż A5 węzeł hydrometalurgii (ługowanie 3+1, kalcynacja PbO 350 °C z kontrolą faz α/β, krystalizator Na₂SO₄)", "x": 37.0, "w": 4.968, "s": "01.08.2029", "e": "31.12.2029", "R": "INZ", "Rn": "Inżynier procesu / technolog", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}, {"k": "CQ", "n": "Kierownik jakości / laboratorium A8"}], "crit": true, "note": "LONG-LEAD, RDZEŃ JAKOŚCI: PbO α/β battery-grade ~6,5 t/d. Najdroższy pojedynczy węzeł linii A. Engitec kwestionuje ścieżkę pasta → PbO battery-grade — patrz R6. Dostawcy: Carbolite Gero, ONEJOON (oddział PL), GEA (krystalizacja)", "clip": false}, {"id": "5.4", "km": 5, "zad": "3", "wyd": true, "kw": 4200, "name": "Dostawa i montaż A6 regranulacja PP, A7 centralny węzeł EHS, A8 laboratorium CQ", "x": 38.0, "w": 3.968, "s": "01.09.2029", "e": "31.12.2029", "R": "EHS", "Rn": "Specjalista EHS / pełnomocnik ds. środowiska", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}, {"k": "CQ", "n": "Kierownik jakości / laboratorium A8"}], "crit": true, "note": "A7 jest warunkiem pozwolenia zintegrowanego (2 ciągi cyklon i filtr workowy ≤ 10 mg/Nm³, płuczka H₂SO₄, monitoring on-line). A8 to brama zwolnienia partii i pojedynczy punkt krytyczny — kluczową aparaturę dublować. Dostawcy: NGR, Herbold, ACERETECH; CFT, Nederman (PL); Bruker, Malvern Panalytical", "clip": false}, {"id": "5.5", "km": 5, "zad": "3", "wyd": true, "kw": 4800, "name": "Infrastruktura energetyczna: trafo 2×SN/nn, PV ~1 MWp, BESS, sprężarkownia, stacja demi, zbiornik N₂, pompa ciepła chłodzenie → curing z buforem PCM", "x": 36.0, "w": 5.968, "s": "01.07.2029", "e": "31.12.2029", "R": "UR", "Rn": "Kierownik utrzymania ruchu", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}], "crit": false, "note": "Odzysk ciepła 250–450 kW średnio (1,6–2,6 GWh/rok ≈ 0,5–0,9 mln zł/rok). Przewodnik: koszty wytwarzania energii kwalifikowalne tylko gdy nie jest to podstawowy cel projektu, moc dostosowana do potrzeb własnych i max 20% energii sprzedawane — udokumentować analizą ex ante. CFO wskazuje tę pozycję jako kandydata do kredytu ekologicznego BGK, ale nie dublować finansowania", "clip": false}, {"id": "5.6", "km": 5, "zad": "—", "wyd": false, "kw": null, "name": "Wniosek o pozwolenie zintegrowane (IPPC)", "x": 33.0, "w": 8.968, "s": "01.04.2029", "e": "31.12.2029", "R": "EHS", "Rn": "Specjalista EHS / pełnomocnik ds. środowiska", "W": [{"k": "ORG", "n": "Organy administracji"}], "crit": true, "note": "Obowiązkowe dla recyklingu odpadów niebezpiecznych powyżej 10 t/d. Wymaga zakończonej instalacji EHS (5.4) i oczyszczalni (4.8); postępowanie 6–9 miesięcy", "clip": false}, {"id": "5.7", "km": 5, "zad": "—", "wyd": false, "kw": null, "name": "Rozruch na zimno i na gorąco linii recyklingu, walidacja parametrów battery-grade", "x": 40.0, "w": 1.968, "s": "01.11.2029", "e": "31.12.2029", "R": "PROD", "Rn": "Kierownicy produkcji linii A i B", "W": [{"k": "INZ", "n": "Inżynier procesu / technolog"}, {"k": "CQ", "n": "Kierownik jakości / laboratorium A8"}, {"k": "DOST", "n": "Dostawcy i integratorzy"}], "crit": true, "note": "Kryterium KM 5: certyfikaty z laboratorium A8 dla Pb, PbO α/β, H₂SO₄ i regranulatu PP. Wymaga obsady linii A: 36 etatów wg listy płac", "clip": false}, {"id": "6.1", "km": 6, "zad": "3", "wyd": true, "kw": 2000, "name": "Dostawa i montaż B1 magazyn AS/RS z regałami miniload, B2 węzeł żywic ATEX z kolumną rektyfikacyjną EtOH", "x": 39.0, "w": 3.968, "s": "01.10.2029", "e": "31.01.2030", "R": "INZ", "Rn": "Inżynier procesu / technolog", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}], "crit": false, "note": "Obieg zamknięty rozpuszczalnika — odzysk EtOH z suszarni B3", "clip": false}, {"id": "6.2", "km": 6, "zad": "3", "wyd": true, "kw": 7000, "name": "Dostawa, montaż oraz FAT/SAT maszyn CUSTOM B3 impregnacja roll-to-roll, B6 szkielet i kontakty Pb, B8 pastownica dwustronna", "x": 39.0, "w": 5.968, "s": "01.10.2029", "e": "31.03.2030", "R": "INZ", "Rn": "Inżynier procesu / technolog", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}], "crit": true, "note": "Kwota zawiera rezerwę 2 000 tys. zł na ryzyko first-of-a-kind (CFO: 30–50% wartości pakietu) — wbudowaną w pozycję, nie osobno, bo szablon HRF nie przewiduje wiersza rezerwy. NAJWIĘKSZE RYZYKO TECHNICZNE: B6 ma nierozstrzygnięte dwie ścieżki (druk Pb albo mini-odlewnia), decyzja po B+R — patrz R5", "clip": false}, {"id": "6.3", "km": 6, "zad": "3", "wyd": true, "kw": 4700, "name": "Dostawa i montaż B4 piroliza ciągła (piec LT 250–900 °C i mufla HT 1200–1400 °C w N₂ z dopalaczem), B5 galwaniczna metalizacja Pb, gantry B4", "x": 40.0, "w": 4.968, "s": "01.11.2029", "e": "31.03.2030", "R": "INZ", "Rn": "Inżynier procesu / technolog", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}, {"k": "UR", "n": "Kierownik utrzymania ruchu"}], "crit": true, "note": "LONG-LEAD. B4 to największy odbiornik energii zakładu (250–400 kW średnio), dyktuje takt linii B w trybie 24/7 i jest pojedynczym punktem awarii; mufla +20% szerokości jako zapas na format 25×50. Dostawcy: Harper International, Nabertherm (backup komorowy), ONEJOON; prostowniki Munk", "clip": false}, {"id": "6.4", "km": 6, "zad": "3", "wyd": true, "kw": 1700, "name": "Dostawa i montaż B7 węzeł past, B8b komory curing/drying 4–6 szt., B9 maszyna COS, B10 kopertownica separatorów", "x": 42.0, "w": 3.967, "s": "01.01.2030", "e": "30.04.2030", "R": "INZ", "Rn": "Inżynier procesu / technolog", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}], "crit": false, "note": "B8b to magazyn czasu nr 1; liczba komór determinuje zdolność, wymiarowane z zapasem na profil klasyczny 36 h. Dostawcy: BM Rosendahl, Zesar (TR), Sovema", "clip": false}, {"id": "6.5", "km": 6, "zad": "3", "wyd": true, "kw": 3900, "name": "Dostawa i montaż B11 jar assembly, B12 zalewanie próżniowe, B13 formacja z recyrkulacją, B14 testy EoL, gantry B13, paletyzacja", "x": 43.0, "w": 3.968, "s": "01.02.2030", "e": "31.05.2030", "R": "INZ", "Rn": "Inżynier procesu / technolog", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}, {"k": "CQ", "n": "Kierownik jakości / laboratorium A8"}], "crit": true, "note": "B13 LONG-LEAD to magazyn czasu nr 2: wanny AISI 316L ≥ 1,0× produkcji dobowej, prostowniki IGBT z rejestracją SoC/SoH, energia ~2,0–2,6 MWh/d. Zysk −42% czasu i −25–30% energii wymaga walidacji B+R. Dostawcy: BM Rosendahl, Digatron, Chroma ATE, Arbin", "clip": false}, {"id": "6.6", "km": 6, "zad": "3", "wyd": true, "kw": 1600, "name": "Intralogistyka: flota AGV/AMR ze skanerami bezpieczeństwa, bufory WIP, stacje ładowania", "x": 44.0, "w": 2.968, "s": "01.03.2030", "e": "31.05.2030", "R": "UR", "Rn": "Kierownik utrzymania ruchu", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}], "crit": false, "note": "Kręgosłup przepływu wg planu hali (korytarz AGV). Integracja własna obniża koszt o 25–35% względem integratora zewnętrznego (ocena CFO)", "clip": false}, {"id": "6.7", "km": 6, "zad": "4", "wyd": true, "kw": 1600, "name": "Wdrożenie MES/MOM z modułem LIMS i genealogią partii (oprogramowanie dedykowane, konfiguracja pod 22 węzły, bramki G1–G10, OEE)", "x": 36.0, "w": 11.967, "s": "01.07.2029", "e": "30.06.2030", "R": "ITOT", "Rn": "Kierownik projektu IT/OT + inżynier integracji", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}, {"k": "CQ", "n": "Kierownik jakości / laboratorium A8"}, {"k": "PROD", "n": "Kierownicy produkcji linii A i B"}], "crit": true, "note": "Największa pozycja Zadania 4 (MES 1 300 + LIMS 300). Genealogia od złomu do ogniwa, zwolnienia partii w A8, rejestracja SoC/SoH z formacji. Warunek paszportu baterii, bilansu Pb do IPPC i ewentualnego recall — CFO wskazuje to jako jedno z dwóch miejsc, gdzie nie warto oszczędzać. Wdrożenie równolegle z montażem, nie na końcu", "clip": false}, {"id": "6.8", "km": 6, "zad": "4", "wyd": true, "kw": 450, "name": "SCADA i Historian — licencje systemowe węzłów procesowych oraz BMS/EMS zakładu (PV, BESS, odzysk ciepła)", "x": 42.0, "w": 5.967, "s": "01.01.2030", "e": "30.06.2030", "R": "ITOT", "Rn": "Kierownik projektu IT/OT + inżynier integracji", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}, {"k": "UR", "n": "Kierownik utrzymania ruchu"}], "crit": false, "note": "Zapis krzywych formacji per ogniwo to rekord dowodowy — drugie miejsce, gdzie CFO odradza oszczędzanie (retencja danych). DEMARKACJA: część licencji dostarczana z maszynami w Zadaniu 3 — nie dublować", "clip": false}, {"id": "6.9", "km": 6, "zad": "4", "wyd": true, "kw": 370, "name": "WMS/WES magazynów AS/RS (lokacje, FEFO, SSCC) oraz integracja FMS floty AGV", "x": 42.0, "w": 5.967, "s": "01.01.2030", "e": "30.06.2030", "R": "ITOT", "Rn": "Kierownik projektu IT/OT + inżynier integracji", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}], "crit": false, "note": "Do weryfikacji: sam FMS zwykle jest w dostawie floty (6.6) — tu tylko integracja i misje. Rekomendacja CFO: jedna odpowiedzialność razem z dostawcą intralogistyki", "clip": false}, {"id": "6.10", "km": 6, "zad": "4", "wyd": true, "kw": 780, "name": "ERP (25–35 użytkowników) z KSeF i JPK, CMMS utrzymania ruchu, oprogramowanie inżynierskie i jakościowe (CAD/CAM, obsługa aparatury CQ)", "x": 24.0, "w": 17.968, "s": "01.07.2028", "e": "31.12.2029", "R": "ITOT", "Rn": "Kierownik projektu IT/OT + inżynier integracji", "W": [{"k": "CFO", "n": "Dyrektor finansowy / Główna księgowa"}, {"k": "CQ", "n": "Kierownik jakości / laboratorium A8"}], "crit": false, "note": "Pierwszy wydatek Zadania 4 — faza F1 kosztorysu IT. WNiP dla dużych przedsiębiorstw kwalifikowalne do 50% całkowitych kosztów kwalifikowalnych inwestycji początkowej; dla MŚP 100%. Tu Zadanie 4 to 4,4% całości, więc limit nie jest ograniczeniem", "clip": false}, {"id": "6.11", "km": 6, "zad": "3", "wyd": true, "kw": 1200, "name": "Wyposażenie uzupełniające: doposażenie laboratorium A8/CQ, wózki, regały, stojaki żaroodporne z identyfikacją, narzędzia UR, meble przemysłowe i biurowe", "x": 42.0, "w": 5.967, "s": "01.01.2030", "e": "30.06.2030", "R": "UR", "Rn": "Kierownik utrzymania ruchu", "W": [{"k": "CQ", "n": "Kierownik jakości / laboratorium A8"}, {"k": "ZAK", "n": "Specjalista ds. zakupów i logistyki"}], "crit": false, "note": "Ostatni wydatek Zadania 3. Stojaki żaroodporne z ID są nośnikiem traceability przez piroliznię — element genealogii, nie drobne wyposażenie", "clip": false}, {"id": "6.12", "km": 6, "zad": "4", "wyd": true, "kw": 700, "name": "Integracje kapitalizowane: szyna OPC-UA L2↔L3 (23 węzły PLC), waga mostowa ↔ ERP ↔ BDO (KPO/KEO) + SENT + KSeF, cyberbezpieczeństwo OT (segmentacja IEC 62443)", "x": 42.0, "w": 5.967, "s": "01.01.2030", "e": "30.06.2030", "R": "ITOT", "Rn": "Kierownik projektu IT/OT + inżynier integracji", "W": [{"k": "DOST", "n": "Dostawcy i integratorzy"}], "crit": false, "note": "Automatyzacja KPO przy wadze jest krytyczna dla recyklera — bez tego ręczna obsługa ok. 20 razy na dobę. Warunek w RFQ maszyn: darmowe, udokumentowane interfejsy OPC-UA, inaczej dostawcy policzą 20–50 tys. zł za maszynę. Cybersec OT to wymóg ubezpieczyciela", "clip": false}, {"id": "6.13", "km": 6, "zad": "4", "wyd": true, "kw": 200, "name": "Patenty i zgłoszenia własne (PL/EP), know-how dokumentacyjne, wzory przemysłowe", "x": 42.0, "w": 5.967, "s": "01.01.2030", "e": "30.06.2030", "R": "ZARZ", "Rn": "Zarząd — Prezes Zarządu", "W": [{"k": "INZ", "n": "Inżynier procesu / technolog"}], "crit": false, "note": "Kapitalizacja wg polityki rachunkowości — odrębna decyzja księgowa. Wyniki fazy B+R, do skoordynowania z prawami do technologii InnBAT (4.13)", "clip": false}, {"id": "7.1", "km": 7, "zad": "—", "wyd": false, "kw": null, "name": "Odbiory końcowe robót i pozwolenie na użytkowanie", "x": 45.0, "w": 3.968, "s": "01.04.2030", "e": "31.07.2030", "R": "INSP", "Rn": "Inspektor nadzoru inwestorskiego / kierownik budowy", "W": [{"k": "GW", "n": "Generalny wykonawca robót budowlanych"}, {"k": "ORG", "n": "Organy administracji"}], "crit": true, "note": "Warunek legalnego ruchu próbnego z pełną obsadą", "clip": false}, {"id": "7.2", "km": 7, "zad": "—", "wyd": false, "kw": null, "name": "Rekrutacja i szkolenia zespołu 102 osób (84 produkcja + 18 kadry)", "x": 42.0, "w": 8.967, "s": "01.01.2030", "e": "30.09.2030", "R": "HR", "Rn": "Specjalista HR", "W": [{"k": "PROD", "n": "Kierownicy produkcji linii A i B"}, {"k": "UR", "n": "Kierownik utrzymania ruchu"}], "crit": false, "note": "Poza HRF w obecnym szablonie (4 zadania RPI). Szkolenia i certyfikacje ok. 800 tys. zł — pomoc szkoleniowa art. 31 (50% plus 10 lub 20 p.p.) wymaga osobnego zadania we wniosku. Szkolenia BHP i obowiązkowe ustawowo są niekwalifikowalne. Płace w okresie rozruchu ok. 4 500 tys. zł poza CAPEX", "clip": false}, {"id": "7.3", "km": 7, "zad": "—", "wyd": false, "kw": null, "name": "Ruch próbny zintegrowany obu linii, walidacja domknięcia obiegu 6R (odrzuty B13/B14 → A1)", "x": 48.0, "w": 2.967, "s": "01.07.2030", "e": "30.09.2030", "R": "PROD", "Rn": "Kierownicy produkcji linii A i B", "W": [{"k": "INZ", "n": "Inżynier procesu / technolog"}, {"k": "CQ", "n": "Kierownik jakości / laboratorium A8"}, {"k": "UR", "n": "Kierownik utrzymania ruchu"}], "crit": true, "note": "Lead time docelowy 49 h (z 75 h). Weryfikacja wskaźników wniosku: 6 240 t/rok recyklingu, 8,1 kg Pb/kWh", "clip": false}, {"id": "7.4", "km": 7, "zad": "—", "wyd": false, "kw": null, "name": "Ostateczne pozwolenie zintegrowane, rejestracja BDO, paszport baterii (GS1)", "x": 48.0, "w": 2.967, "s": "01.07.2030", "e": "30.09.2030", "R": "EHS", "Rn": "Specjalista EHS / pełnomocnik ds. środowiska", "W": [{"k": "ORG", "n": "Organy administracji"}, {"k": "ITOT", "n": "Kierownik projektu IT/OT + inżynier integracji"}], "crit": false, "note": "Warunek legalnej eksploatacji instalacji przetwarzania odpadów niebezpiecznych", "clip": false}, {"id": "7.5", "km": 7, "zad": "—", "wyd": false, "kw": null, "name": "Osiągnięcie zdolności produkcyjnej 481 MWh/rok i przerobu 6 240 t/rok", "x": 51.0, "w": 1.967, "s": "01.10.2030", "e": "30.11.2030", "R": "PROD", "Rn": "Kierownicy produkcji linii A i B", "W": [{"k": "INZ", "n": "Inżynier procesu / technolog"}, {"k": "CQ", "n": "Kierownik jakości / laboratorium A8"}], "crit": true, "note": "Decyzja N3: liczba wiodąca 481 MWh (330 dni), 454 MWh (312 dni) jako rezerwa. UWAGA: w tabeli wskaźników Listy 1 wpisano 454 MWh — ujednolicić przed złożeniem, bo wskaźnik z wniosku będzie rozliczany. Kapitał obrotowy na ramp-up ok. 10 000 tys. zł poza CAPEX", "clip": false}, {"id": "7.6", "km": 7, "zad": "—", "wyd": false, "kw": null, "name": "Odbiory końcowe, rozliczenie Zadań 1–4, wniosek o płatność końcową w SL2021", "x": 51.0, "w": 2.968, "s": "01.10.2030", "e": "31.12.2030", "R": "CFO", "Rn": "Dyrektor finansowy / Główna księgowa", "W": [{"k": "DOR", "n": "Firma doradcza"}, {"k": "KP", "n": "Kierownik Projektu"}], "crit": true, "note": "TWARDY TERMIN 31.12.2030 — pełny zakres rzeczowy ORAZ finansowy plus złożony wniosek o płatność końcową. Bufor całego harmonogramu to wyłącznie IV kwartał 2030 — patrz R8", "clip": false}, {"id": "7.7", "km": 7, "zad": "—", "wyd": false, "kw": null, "name": "Okres trwałości projektu (zobowiązanie po zakończeniu)", "x": 54.0, "w": 2.968, "s": "01.01.2031", "e": "31.12.2035", "R": "ZARZ", "Rn": "Zarząd — Prezes Zarządu", "W": [{"k": "CFO", "n": "Dyrektor finansowy / Główna księgowa"}, {"k": "KP", "n": "Kierownik Projektu"}], "crit": false, "note": "5 lat od zakończenia realizacji, 3 lata dla MŚP — zakaz zbycia i przeniesienia aktywów, utrzymanie WNiP w zakładzie otrzymującym pomoc. Wykracza poza okres realizacji projektu", "clip": true}], "kms": [{"code": "KM 0", "name": "Złożenie wniosku o dofinansowanie w LSI", "x": 1.323, "date": "11.08.2026", "kryt": "Potwierdzenie złożenia wniosku wygenerowane przez LSI (numer i data wg serwera PARP)", "odbl": "Otwiera okno kwalifikowalności kosztów — żaden wydatek poniesiony wcześniej nie jest kwalifikowalny", "i": 0, "kw": 0}, {"code": "KM 1", "name": "Umowa o dofinansowanie zawarta", "x": 10.968, "date": "31.05.2027", "kryt": "Umowa podpisana kwalifikowanym podpisem elektronicznym i udostępniona w SL2021 + potwierdzone pozyskanie środków na wkład własny 23,1 mln zł", "odbl": "Uwalnia finansowanie projektu, ale wypłaty pozostają wstrzymane do złożenia pozwolenia na budowę (§ 12 ust. 7–8) — patrz R3", "i": 1, "kw": 0}, {"code": "KM 2", "name": "Tytuł prawny do nieruchomości i ostateczna decyzja środowiskowa", "x": 14.967, "date": "30.09.2027", "kryt": "Akt notarialny i wypis z księgi wieczystej + ostateczna DŚU wydana przez RDOŚ", "odbl": "Warunek wniosku o pozwolenie na budowę oraz wystąpienia o warunki przyłączenia. Zamyka Zadanie 1 HRF (3 500 tys. zł)", "i": 2, "kw": 3500}, {"code": "KM 3", "name": "Pozwolenie na budowę i zakontraktowane urządzenia long-lead", "x": 20.968, "date": "31.03.2028", "kryt": "Ostateczna decyzja o pozwoleniu na budowę + podpisane umowy na A5, B4, B13 oraz B3/B6/B8 (CUSTOM)", "odbl": "Start robót budowlanych (Zadanie 2) i produkcji urządzeń o najdłuższym terminie dostawy. Odblokowuje wypłaty dofinansowania", "i": 3, "kw": 0}, {"code": "KM 4", "name": "Hala w stanie zamkniętym, front montażowy linii recyklingu gotowy", "x": 35.967, "date": "30.06.2029", "kryt": "Protokół stanu zamkniętego hali + przyłącze energetyczne pod napięciem z rozdzielnią główną + odebrane posadzki chemoodporne i ringi mediów w strefie linii recyklingu", "odbl": "Start montażu A1–A8. UWAGA: wentylacja ogólna, oczyszczalnia, biura, zagospodarowanie terenu oraz instalacje procesowe i sprzęt IT/OT celowo biegną dalej, równolegle z montażem technologii — dlatego sześć zadań tej fazy kończy się po dacie kamienia", "i": 4, "kw": 39070}, {"code": "KM 5", "name": "Linia recyklingu A1–A8 uruchomiona", "x": 41.968, "date": "31.12.2029", "kryt": "Protokoły FAT/SAT węzłów A1–A8 + certyfikaty battery-grade (Pb, PbO α/β, H₂SO₄, regranulat PP) z laboratorium A8", "odbl": "Własny surowiec dla linii ogniw — warunek rozruchu linii B. Krytyczny dla wskaźnika 6 240 t/rok", "i": 5, "kw": 23800}, {"code": "KM 6", "name": "Linia ogniw B1–B14 uruchomiona, systemy IT wdrożone", "x": 47.967, "date": "30.06.2030", "kryt": "Protokoły SAT B1–B14 + MES/MOM z LIMS w ruchu produkcyjnym", "odbl": "Gotowość do odbiorów i ruchu próbnego zintegrowanego obu linii. Zamyka Zadania 3 i 4", "i": 6, "kw": 26200}, {"code": "KM 7", "name": "Zakończenie zakresu rzeczowego i finansowego projektu", "x": 53.968, "date": "31.12.2030", "kryt": "Osiągnięta zdolność 481 MWh/rok i przerób 6 240 t/rok + wniosek o płatność końcową złożony w SL2021", "odbl": "TWARDY TERMIN z szablonu HRF i RWP — brak ścieżki przedłużenia. Otwiera okres trwałości projektu", "i": 7, "kw": 0}], "hrf": [{"zad": "Zadanie 1", "n": "Zakup gruntu", "s": "01-01-2027", "e": "31-12-2027", "kw": 3500, "uw": "Okno szersze niż planowany wydatek (01.02–30.09.2027), żeby zmiana terminu nabycia nie wymagała aneksu. Limit 10% kosztów kwalifikowalnych — wykorzystane 3,8%, jest zapas. Kwota szacunkowa bez lokalizacji: 35 000 m² × 100 zł/m²", "pct": 0.037809225451010044}, {"zad": "Zadanie 2", "n": "Zakup robót i materiałów budowlanych", "s": "01-04-2028", "e": "30-06-2030", "kw": 35000, "uw": "Start uwarunkowany ostatecznym pozwoleniem na budowę (KM 3). Dokumentacja projektowa i nadzory 1 300 tys. zł konserwatywnie POZA kosztami kwalifikowalnymi. Wycena wymaga rozstrzygnięcia powierzchni: kwota 35 000 tys. zł liczona na ~11 200 m², a decyzja N2 przyjmuje 14 000 m² — wtedy roboty rosną do rzędu 42 000–44 000 tys. zł (place i oczyszczalnia skalują się słabiej niż hala), a wkład własny o ok. 2 000 tys. zł", "pct": 0.3780922545101005}, {"zad": "Zadanie 3", "n": "Zakup środków trwałych", "s": "01-02-2028", "e": "30-09-2030", "kw": 49970, "uw": "Największe zadanie: 54% kosztów kwalifikowalnych. Okno startuje 01.02.2028, bo wtedy wychodzą zaliczki long-lead (zadanie 3.5) wliczone w kwoty pakietów; pierwsze faktury montażowe to 2029. Środki trwałe muszą być nowe (wyjątek: MŚP) i nabyte po dniu złożenia wniosku. Widełki CFO 49 970–62 530 tys. zł założono na montażu dostawców mieszanym EU+CN/TW; wariant EU-only to ×1,5–2,5 na pakiecie maszynowym", "pct": 0.539807713081992}, {"zad": "Zadanie 4", "n": "Zakup wartości niematerialnych i prawnych", "s": "01-07-2028", "e": "30-09-2030", "kw": 4100, "uw": "WNiP: wyłącznie w zakładzie otrzymującym pomoc, amortyzowane, nabyte na warunkach rynkowych od podmiotów niepowiązanych, utrzymane 5 lat (3 lata MŚP). Limit 50% dla dużych przedsiębiorstw — wykorzystane 4,4%. Maintenance licencji (0,64–1,09 mln zł/rok) to OPEX, poza projektem", "pct": 0.04429080695689748}], "ryz": [{"id": "R1", "n": "Brak lokalizacji inwestycji", "w": "Krytyczny", "p": "Zmaterializowane", "s": "Zegar DŚU, warunków przyłączenia, MPZP i wyceny robót nie startuje. Bez działki cały harmonogram jest hipotetyczny, a Zadanie 1 HRF nie ma danych wymaganych szablonem (nr działki, obręb, MPZP, uzbrojenie) ani podstawy wyceny — 3 500 tys. zł to dziś czysty szacunek.", "r": "Domknąć due diligence do 31.12.2026 i umowę przedwstępną do 28.02.2027. To zadanie numer jeden po złożeniu wniosku.", "o": "KP + ZARZ"}, {"id": "R2", "n": "Postępowanie o DŚU dłuższe niż 12 miesięcy", "w": "Krytyczny", "p": "Wysokie", "s": "Recykling odpadów niebezpiecznych powyżej 10 t/d oznacza obligatoryjny raport OOŚ i konsultacje społeczne. Każdy miesiąc poślizgu przesuwa pozwolenie na budowę, roboty i całą resztę w stosunku 1:1.", "r": "Raport OOŚ zlecić w sierpniu–wrześniu 2026 (koszt 250 tys. zł), nie czekając na wynik oceny wniosku. Równolegle prowadzić projekt budowlany. Rozważyć wczesne spotkanie informacyjne z RDOŚ.", "o": "EHS + OOS"}, {"id": "R3", "n": "Pozwolenie na budowę nie na dzień zawarcia umowy", "w": "Wysoki", "p": "Wysokie", "s": "§ 12 ust. 7–8 RWP: umowa zostanie zawarta z obowiązkiem dostarczenia PnB, ale PARP nie realizuje postanowień o wypłacie dofinansowania do jego złożenia. Realny PnB to I kw. 2028 przy umowie 31.05.2027 — około 10 miesięcy bez wypłat, a na ten sam okres przypadają zaliczki long-lead 4 000 tys. zł.", "r": "Zaplanować finansowanie pomostowe na 4–6 mln zł. W harmonogramie płatności nie zakładać zaliczki PARP przed I kw. 2028.", "o": "CFO"}, {"id": "R4", "n": "Przyłącze energetyczne 0,8–1,2 MW realizowane przez OSD", "w": "Wysoki", "p": "Średnie", "s": "Termin realizacji nawet do 24 miesięcy i poza kontrolą inwestora. Brak zasilania blokuje rozruch obu linii nawet przy gotowej hali. Opłata przyłączeniowa ok. 400 tys. zł o niepewnej kwalifikowalności.", "r": "Wystąpić o warunki przyłączenia natychmiast po nabyciu tytułu prawnego (2.5). Przewidzieć zasilanie tymczasowe na rozruch.", "o": "KP"}, {"id": "R5", "n": "Trzy maszyny CUSTOM (B3, B6, B8) nie istnieją na rynku", "w": "Wysoki", "p": "Wysokie", "s": "Wymagają 6–9 miesięcy inżynierii przed produkcją plus iteracji po FAT. B6 ma nierozstrzygnięte dwie ścieżki (druk Pb vs mini-odlewnia). W kwocie 7 000 tys. zł siedzi już rezerwa 2 000 tys. zł, ale CFO ocenia ryzyko FOAK na 30–50% wartości pakietu.", "r": "Kontraktacja jako pierwsza pozycja Zadania 3 (3.4). Prowadzić obie ścieżki B6 równolegle do decyzji z B+R. Rezerwę wbudować w pozycję, bo szablon HRF nie ma wiersza rezerwy.", "o": "INZ + ZAK"}, {"id": "R6", "n": "Ścieżka pasta → PbO battery-grade zakwestionowana przez dostawcę", "w": "Krytyczny", "p": "Średnie", "s": "Engitec: żaden ze 100+ klientów nie osiągnął tego z powodzeniem. Jeśli węzeł A5 (5 800 tys. zł) nie da PbO battery-grade, linia ogniw nie ma surowca i KM 5 się nie zamyka — a to warunek KM 6 i KM 7.", "r": "Wymagać od klienta dowodów z prac B+R InnBAT przed kontraktacją A5. Przewidzieć wariant awaryjny: zakup PbO z rynku na okres walidacji.", "o": "INZ + CQ"}, {"id": "R7", "n": "Oferty do HRF starzeją się na czteroletnim harmonogramie", "w": "Średni", "p": "Wysokie", "s": "Oferta Engitec ważna 1 miesiąc; wyceny z 2026 nie utrzymają się do zamówień w 2028. Kwoty w tym harmonogramie to poziom cen 2026. Rozjazd nie zwiększa dofinansowania — § 6 ust. 4 RWP zakazuje zwiększania wnioskowanej kwoty na etapie oceny.", "r": "W polu Metoda szacowania opisać bazę cenową i mechanizm indeksacji. Rezerwę 9 300 tys. zł ulokować poza kosztami kwalifikowalnymi. Rozważyć wariant konserwatywny wyższy niż dolna granica widełek.", "o": "ZAK + DOR"}, {"id": "R8", "n": "Twardy termin 31.12.2030 bez możliwości przedłużenia", "w": "Krytyczny", "p": "Średnie", "s": "Bufor całego harmonogramu to IV kwartał 2030 — około 3 miesiące na projekt first-of-a-kind o nakładach 92,6 mln zł. Każde opóźnienie w R1–R6 zjada go bezpośrednio.", "r": "Traktować 30.09.2030 (KM 6 plus ruch próbny) jako wewnętrzny termin zakończenia. Rozważyć etapowanie: linia recyklingu jako etap 1 z wcześniejszym zamknięciem.", "o": "KP + ZARZ"}, {"id": "R9", "n": "Potwierdzenie NZiA z MRiT", "w": "Krytyczny", "p": "Zmaterializowane", "s": "Jeśli ogniwa kwasowo-ołowiowe nie są wprost na liście rozp. KE 2025/1463, potwierdzenie MRiT jest załącznikiem obligatoryjnym. Czas odpowiedzi organu jest niezależny od nas, a nabór kończy się 11.08.2026 o 16:00.", "r": "Wystąpić natychmiast. Potwierdzić z doradcą, czy obszar nr 3 (technologie baterii i magazynowania energii) w ogóle wymaga tego załącznika — obowiązek dotyczy obszarów 1–19 aktu NZiA.", "o": "DOR"}, {"id": "R10", "n": "Wkład własny 23,1 mln zł niedomknięty przed umową", "w": "Krytyczny", "p": "Średnie", "s": "§ 12 ust. 1 pkt 6 RWP: bez dokumentów potwierdzających pozyskanie środków PARP nie zawiera umowy. Kapitał zakładowy spółki to 5 000 zł. Do wkładu własnego dochodzi ok. 35,6 mln zł kosztów poza HRF, w tym 10 mln kapitału obrotowego.", "r": "Domknąć promesę kredytową lub zobowiązanie inwestorskie do 30.04.2027 (1.2). Wkład własny wyłącznie pieniężnie, wolny od wsparcia publicznego.", "o": "CFO + ZARZ"}], "poza": [{"n": "Dokumentacja projektowa (budowlana i wykonawcza), nadzory inwestorskie, kierownik budowy, geodezja, badania gruntu", "kw": 1300, "c": "do rozstrzygnięcia", "u": "CFO ujmuje w kategorii robót, ale katalog RPI obejmuje „koszty nabycia robót i materiałów budowlanych” — usługi projektowe i nadzór wymagają potwierdzenia z doradcą. Konserwatywnie poza kosztami kwalifikowalnymi"}, {"n": "Karta informacyjna przedsięwzięcia, raport OOŚ, operat rozprzestrzeniania", "kw": 250, "c": "niekwalifikowalne", "u": "Usługa zewnętrzna bez kategorii w katalogu RPI. Pomoc na doradztwo (art. 18) dotyczy tylko MŚP i innego zakresu"}, {"n": "Opłata przyłączeniowa OSD za moc 0,8–1,2 MW", "kw": 400, "c": "do rozstrzygnięcia", "u": "Zależna od warunków przyłączenia, których jeszcze nie ma. Kwalifikowalność do potwierdzenia — w części naborów uznawana za element robót"}, {"n": "Zespół wewnętrzny projektu IT/OT: kierownik projektu (24 mies.), inżynier integracji (18 mies.), key userzy", "kw": 650, "c": "niekwalifikowalne", "u": "Wynagrodzenia własne — brak kategorii kosztów osobowych w tym naborze. Częściowo pokrywa to etat Administratora IT/OT z listy płac"}, {"n": "Szkolenia załogi, certyfikacje IEC 60896 i CE, ISO, badania typu", "kw": 800, "c": "osobna pomoc", "u": "Pomoc szkoleniowa art. 31: intensywność 50% plus 10 p.p. dla średnich i 20 p.p. dla mikro i małych. Wymaga osobnego zadania we wniosku. Szkolenia BHP i obowiązkowe ustawowo są wyłączone"}, {"n": "Doradztwo: wniosek i rozliczenia grantowe, REACH, DGSA", "kw": 300, "c": "osobna pomoc", "u": "Pomoc na usługi doradcze art. 18 tylko dla MŚP, intensywność 50%, limit 2,2 mln € na przedsiębiorstwo i projekt. Usługi nie mogą mieć charakteru ciągłego ani okresowego"}, {"n": "Kapitał obrotowy na ramp-up: zapas Pb, materiały, WIP, należności", "kw": 10000, "c": "poza CAPEX", "u": "Linia obrotowa albo faktoring. Niekwalifikowalne w kategoriach inwestycyjnych — ale bez tego zakład nie ruszy"}, {"n": "Płace w okresie rozruchu przed pełną produkcją (ok. 6 miesięcy częściowej obsady)", "kw": 4500, "c": "poza CAPEX", "u": "Z listy płac: 15,0 mln zł/rok przy pełnych 102 etatach. Model nie obejmuje zastępstw urlopowych (+4–6%), nadgodzin i ZFŚS"}, {"n": "Rezerwa na wzrost cen 2026 → 2028 (ok. 10% nakładów)", "kw": 9300, "c": "poza kosztami kwalifikowalnymi", "u": "§ 6 ust. 4 RWP zakazuje zwiększania wnioskowanej kwoty dofinansowania na etapie oceny, więc rezerwa MUSI być poza HRF. Oferta Engitec ważna 1 miesiąc, a zamówienia wychodzą w 2028 — patrz R7"}, {"n": "Faza B+R technologii InnBAT (M1–M18)", "kw": 8110, "c": "odrębny wniosek", "u": "Z dokumentacji v13. Nie jest „zakupem WNiP” w tym projekcie — to odrębny moduł albo osobny wniosek B+R; po sukcesie część kapitalizuje się księgowo"}], "role": [{"k": "KP", "n": "Kierownik Projektu", "z": "Całość harmonogramu i budżetu, koordynacja wykonawców, raportowanie do PARP i doradcy, rejestr ryzyk", "e": "1,0 etatu", "o": "VIII 2026 – XII 2030", "s": "nowy etat albo oddelegowanie członka zarządu", "c": "poza kosztami kwalifikowalnymi (wynagrodzenia)", "nR": 6, "nC": 5}, {"k": "ZARZ", "n": "Zarząd — Prezes Zarządu", "z": "Decyzje inwestycyjne, podpisy pod wnioskiem i umową, reprezentacja na Panelu KOP, umowy z dostawcami", "e": "0,2–0,3 etatu", "o": "cały projekt", "s": "lista płac: Dyrektor zakładu", "c": "poza kosztami kwalifikowalnymi", "nR": 8, "nC": 4}, {"k": "CFO", "n": "Dyrektor finansowy / Główna księgowa", "z": "Wkład własny i finansowanie pomostowe, wnioski o płatność w SL2021, ewidencja księgowa projektu, kwalifikowalność VAT", "e": "0,3–0,5 etatu", "o": "IX 2026 – XII 2030", "s": "lista płac: Główna księgowa", "c": "poza kosztami kwalifikowalnymi", "nR": 2, "nC": 2}, {"k": "DOR", "n": "Firma doradcza", "z": "Wniosek o dofinansowanie, korespondencja z PARP, przygotowanie Panelu KOP, rozliczenia i aneksy", "e": "zewnętrzna", "o": "VI 2026 – XII 2030", "s": "zewnętrzna", "c": "ok. 300 tys. zł — pomoc na usługi doradcze art. 18 tylko dla MŚP, osobne zadanie", "nR": 2, "nC": 1}, {"k": "INZ", "n": "Inżynier procesu / technolog", "z": "Specyfikacje techniczne do RFQ i RFI, ocena ofert, nadzór nad montażem, protokoły FAT/SAT, bilanse i rozruch", "e": "1,0 etatu", "o": "X 2027 – XII 2030", "s": "nowy etat albo wsparcie 21 zmysłów", "c": "poza kosztami kwalifikowalnymi", "nR": 10, "nC": 6}, {"k": "EHS", "n": "Specjalista EHS / pełnomocnik ds. środowiska", "z": "DŚU i raport OOŚ, pozwolenie zintegrowane, wodnoprawne, BDO, strefy ATEX, monitoring emisji, strefa ołowiowa", "e": "0,5 → 1,0 etatu", "o": "IX 2026 – XII 2030", "s": "lista płac: Specjalista EHS", "c": "poza kosztami kwalifikowalnymi", "nR": 7, "nC": 4}, {"k": "PROJ", "n": "Biuro projektowe", "z": "Projekt budowlany i wykonawczy hali 14 000 m², branże, ppoż., strefy ATEX, projekt technologiczny", "e": "zewnętrzne", "o": "XI 2026 – XII 2027", "s": "zewnętrzne", "c": "w pozycji 1 300 tys. zł (dokumentacja i nadzory) — kwalifikowalność do rozstrzygnięcia", "nR": 0, "nC": 0}, {"k": "OOS", "n": "Wykonawca dokumentacji środowiskowej", "z": "Karta informacyjna przedsięwzięcia, raport OOŚ, operat rozprzestrzeniania, udział w konsultacjach społecznych", "e": "zewnętrzne", "o": "IX 2026 – IX 2027", "s": "zewnętrzne", "c": "ok. 250 tys. zł — poza kosztami kwalifikowalnymi", "nR": 0, "nC": 0}, {"k": "INSP", "n": "Inspektor nadzoru inwestorskiego / kierownik budowy", "z": "Nadzór nad robotami Zadania 2, odbiory częściowe i końcowe, dziennik budowy, rozliczenie GW", "e": "zewnętrzne", "o": "IV 2028 – VII 2030", "s": "zewnętrzne", "c": "w pozycji 1 300 tys. zł (dokumentacja i nadzory)", "nR": 8, "nC": 4}, {"k": "GW", "n": "Generalny wykonawca robót budowlanych", "z": "Realizacja całego Zadania 2: hala, instalacje budynkowe, posadzki chemoodporne, zaplecze, zagospodarowanie terenu", "e": "zewnętrzny", "o": "IV 2028 – III 2030", "s": "zewnętrzny", "c": "35 000 tys. zł — Zadanie 2 HRF", "nR": 0, "nC": 0}, {"k": "ZAK", "n": "Specjalista ds. zakupów i logistyki", "z": "Prowadzenie RFQ i RFI, zbieranie trzech ofert na wydatek, umowy z dostawcami, harmonogram dostaw i long-lead", "e": "1,0 etatu", "o": "X 2027 – VI 2030", "s": "lista płac: Specjalista ds. zakupów i logistyki", "c": "poza kosztami kwalifikowalnymi", "nR": 2, "nC": 2}, {"k": "ITOT", "n": "Kierownik projektu IT/OT + inżynier integracji", "z": "URS, wdrożenie MES/MOM, SCADA, WMS, LIMS, CMMS, szyna OPC-UA na 23 węzłach, cyberbezpieczeństwo OT", "e": "2,0 etatu", "o": "I 2029 – XII 2030", "s": "kosztorys IT: zespół wewnętrzny + lista płac: Administrator IT/OT", "c": "650 tys. zł — poza kosztami kwalifikowalnymi (wynagrodzenia)", "nR": 6, "nC": 1}, {"k": "UR", "n": "Kierownik utrzymania ruchu", "z": "Odbiory techniczne urządzeń, dokumentacja UR i części zamienne, infrastruktura energetyczna, intralogistyka", "e": "1,0 etatu", "o": "I 2029 – XII 2030", "s": "lista płac: Kierownik utrzymania ruchu", "c": "poza kosztami kwalifikowalnymi", "nR": 3, "nC": 0}, {"k": "CQ", "n": "Kierownik jakości / laboratorium A8", "z": "Walidacja parametrów battery-grade, zwolnienia partii, certyfikaty, LIMS, genealogia partii", "e": "1,0 etatu", "o": "VII 2029 – XII 2030", "s": "lista płac: Kierownik jakości (CQ / A8)", "c": "poza kosztami kwalifikowalnymi", "nR": 0, "nC": 0}, {"k": "HR", "n": "Specjalista HR", "z": "Rekrutacja 102 osób, szkolenia stanowiskowe i BHP, uprawnienia, dokumentacja kadrowa", "e": "1,0 etatu", "o": "I 2030 – XII 2030", "s": "lista płac: Specjalista HR — kadry i płace", "c": "poza kosztami kwalifikowalnymi; szkolenia jako pomoc art. 31 w osobnym zadaniu", "nR": 1, "nC": 0}, {"k": "PROD", "n": "Kierownicy produkcji linii A i B", "z": "Rozruch na zimno i gorąco, ruch próbny, osiągnięcie zdolności produkcyjnej, obsada zmianowa", "e": "2,0 etatu", "o": "VII 2029 – XII 2030", "s": "lista płac: Kierownik produkcji linia A i linia B", "c": "poza kosztami kwalifikowalnymi", "nR": 3, "nC": 3}, {"k": "DOST", "n": "Dostawcy i integratorzy", "z": "Dostawa, montaż i uruchomienie urządzeń Zadania 3 oraz wdrożenia systemów Zadania 4", "e": "zewnętrzni", "o": "II 2028 – VI 2030", "s": "zewnętrzni", "c": "49 970 tys. zł (Zadanie 3) + 4 100 tys. zł (Zadanie 4)", "nR": 0, "nC": 0}, {"k": "ORG", "n": "Organy administracji", "z": "RDOŚ (DŚU, pozwolenie zintegrowane), PINB (pozwolenie na budowę i użytkowanie), Wody Polskie, OSD, PARP", "e": "—", "o": "cały projekt", "s": "—", "c": "opłaty administracyjne poza kosztami kwalifikowalnymi", "nR": 0, "nC": 0}], "wrz": [{"o": "Mikro/małe, obszar „a” — założenie przyjęte", "i": 0.75, "d": 69427.5, "w": 23142.5, "delta": 0.0}, {"o": "Średnie, obszar „a”", "i": 0.7, "d": 64798.99999999999, "w": 27771.000000000007, "delta": 4628.500000000007}, {"o": "Mikro/małe, obszar „a” o niższej premii", "i": 0.7, "d": 64798.99999999999, "w": 27771.000000000007, "delta": 4628.500000000007}, {"o": "Duże, obszar „a”", "i": 0.6, "d": 55542.0, "w": 37028.0, "delta": 13885.5}, {"o": "Mikro/małe, obszar „c”", "i": 0.5, "d": 46285.0, "w": 46285.0, "delta": 23142.5}], "months": [{"y": 2026, "m": 7}, {"y": 2026, "m": 8}, {"y": 2026, "m": 9}, {"y": 2026, "m": 10}, {"y": 2026, "m": 11}, {"y": 2026, "m": 12}, {"y": 2027, "m": 1}, {"y": 2027, "m": 2}, {"y": 2027, "m": 3}, {"y": 2027, "m": 4}, {"y": 2027, "m": 5}, {"y": 2027, "m": 6}, {"y": 2027, "m": 7}, {"y": 2027, "m": 8}, {"y": 2027, "m": 9}, {"y": 2027, "m": 10}, {"y": 2027, "m": 11}, {"y": 2027, "m": 12}, {"y": 2028, "m": 1}, {"y": 2028, "m": 2}, {"y": 2028, "m": 3}, {"y": 2028, "m": 4}, {"y": 2028, "m": 5}, {"y": 2028, "m": 6}, {"y": 2028, "m": 7}, {"y": 2028, "m": 8}, {"y": 2028, "m": 9}, {"y": 2028, "m": 10}, {"y": 2028, "m": 11}, {"y": 2028, "m": 12}, {"y": 2029, "m": 1}, {"y": 2029, "m": 2}, {"y": 2029, "m": 3}, {"y": 2029, "m": 4}, {"y": 2029, "m": 5}, {"y": 2029, "m": 6}, {"y": 2029, "m": 7}, {"y": 2029, "m": 8}, {"y": 2029, "m": 9}, {"y": 2029, "m": 10}, {"y": 2029, "m": 11}, {"y": 2029, "m": 12}, {"y": 2030, "m": 1}, {"y": 2030, "m": 2}, {"y": 2030, "m": 3}, {"y": 2030, "m": 4}, {"y": 2030, "m": 5}, {"y": 2030, "m": 6}, {"y": 2030, "m": 7}, {"y": 2030, "m": 8}, {"y": 2030, "m": 9}, {"y": 2030, "m": 10}, {"y": 2030, "m": 11}, {"y": 2030, "m": 12}, {"y": 2031, "m": 1}, {"y": 2031, "m": 2}, {"y": 2031, "m": 3}], "total": 57, "today": 1.258, "hard": 53.968, "TOT": 92570, "DOF": 69427.5, "WKL": 23142.5, "POZA": 35610, "INT": 0.75};
+const MW = 30;
+const COL = {"1":"#2F7D6E","2":"#2563A8","3":"#E8630F","4":"#7B5CB8","—":"#9C9C96"};
+const NAMES = {"1":"Zadanie 1 · Grunt","2":"Zadanie 2 · Roboty budowlane","3":"Zadanie 3 · Środki trwałe",
+               "4":"Zadanie 4 · WNiP","—":"Poza HRF (formalne, pozwolenia, rozruch)"};
+const MN = ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"];
+const f0 = n => Math.round(n).toLocaleString('pl-PL');
+const fm = n => (n/1000).toLocaleString('pl-PL',{minimumFractionDigits:1,maximumFractionDigits:1});
+let active = new Set(["1","2","3","4","—"]);
+let onlyCrit = false;
+
+function bg(t){
+  const c = COL[t.zad];
+  if(t.zad!=='—' && !t.wyd)
+    return 'repeating-linear-gradient(45deg,'+c+','+c+' 4px,rgba(255,255,255,.55) 4px,rgba(255,255,255,.55) 8px)';
+  return c;
+}
+
+// ---- KPI
+document.getElementById('kpis').innerHTML = [
+  ['8','kamienie milowe',''],[D.tasks.length,'zadania',''],
+  [D.tasks.filter(t=>t.crit).length,'na ścieżce krytycznej',''],
+  [fm(D.TOT)+' <small>mln</small>','koszty kwalifikowalne','hot'],
+  [fm(D.DOF)+' <small>mln</small>','dofinansowanie 75%','hot'],
+  [fm(D.WKL)+' <small>mln</small>','wkład własny','hot'],
+  [fm(D.POZA)+' <small>mln</small>','koszty poza HRF',''],
+  ['31.12.30','twardy termin','hot'],
+].map(([n,l,c])=>'<div class="kpi '+c+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>').join('');
+
+// ---- budzet: stacked bar
+document.getElementById('sbar').innerHTML = D.hrf.map(h=>{
+  const k=h.zad.split(' ')[1];
+  return '<div style="width:'+(h.pct*100)+'%;background:'+COL[k]+'" title="'+h.n+': '+f0(h.kw)+' tys. zł">'+
+    (h.pct>0.08?('Z'+k+' · '+(h.pct*100).toFixed(0)+'%'):'')+'</div>';
+}).join('');
+document.getElementById('slegend').innerHTML = D.hrf.map(h=>{
+  const k=h.zad.split(' ')[1];
+  return '<span><i style="background:'+COL[k]+'"></i>'+h.n+' <b>'+f0(h.kw)+'</b> tys. zł</span>';
+}).join('');
+document.getElementById('fin').innerHTML =
+  '<div><span>Koszty kwalifikowalne</span><span class="v">'+f0(D.TOT)+'</span></div>'+
+  '<div><span>Dofinansowanie PARP (75%)</span><span class="v" style="color:#2F7D6E">−'+f0(D.DOF)+'</span></div>'+
+  '<div><span>Wkład własny (25%)</span><span class="v">'+f0(D.WKL)+'</span></div>'+
+  '<div><span>Koszty poza HRF</span><span class="v">'+f0(D.POZA)+'</span></div>'+
+  '<div class="tot"><span>Środki własne do zapewnienia</span><span class="v">'+f0(D.WKL+D.POZA)+'</span></div>'+
+  '<div style="color:#8A8A85;font-size:11px;border:0;padding-top:6px">tys. zł netto · poziom cen 2026</div>';
+
+// ---- kontrolki
+const ctl = document.getElementById('ctl');
+Object.keys(NAMES).forEach(k=>{
+  const h = D.hrf.find(x=>x.zad.split(' ')[1]===k);
+  const b=document.createElement('button');
+  b.className='pill'; b.dataset.k=k;
+  b.innerHTML='<span class="dot" style="background:'+COL[k]+'"></span>'+NAMES[k]+
+    (h?'<span class="amt">'+f0(h.kw)+'</span>':'');
+  b.onclick=()=>{ active.has(k)?active.delete(k):active.add(k);
+    b.classList.toggle('off',!active.has(k)); render(); };
+  ctl.appendChild(b);
+});
+const cb=document.createElement('button');
+cb.className='pill dark off'; cb.textContent='Tylko ścieżka krytyczna';
+cb.onclick=()=>{ onlyCrit=!onlyCrit; cb.classList.toggle('off',!onlyCrit); render(); };
+ctl.appendChild(cb);
+
+// ---- tooltip
+const tip=document.getElementById('tip');
+function showTip(e,t){
+  const zl = t.zad==='—' ? 'poza HRF' : 'Zadanie '+t.zad;
+  let h='<div class="meta">'+t.id+' · '+t.s+' → '+t.e+'</div><h4>'+t.name+'</h4>';
+  if(t.kw!==null && t.kw!==undefined)
+    h+='<div class="big">'+f0(t.kw)+' <span>tys. zł netto · dofinansowanie '+f0(t.kw*D.INT)+' tys. zł</span></div>';
+  h+='<div style="margin-bottom:8px"><span class="tag" style="background:'+COL[t.zad]+'">'+zl+'</span>'+
+     (t.zad!=='—'&&!t.wyd?'<span class="tag" style="background:#9C9C96">postępowanie, nie wydatek</span>':'')+
+     (t.crit?'<span class="tag" style="background:#1A1A1A">ścieżka krytyczna</span>':'')+'</div>'+
+     '<div class="n">'+t.note+'</div>'+
+     '<div class="who"><b>Odpowiedzialny:</b> '+t.R+' — '+t.Rn+'<br><b>Wykonawcy:</b> '+
+     t.W.map(w=>w.k+' ('+w.n+')').join(', ')+'</div>';
+  tip.innerHTML=h; tip.style.display='block'; moveTip(e);
+}
+function moveTip(e){
+  const r=tip.getBoundingClientRect();
+  let x=e.clientX+16, y=e.clientY+16;
+  if(x+r.width>innerWidth-12) x=e.clientX-r.width-16;
+  if(y+r.height>innerHeight-12) y=Math.max(12,e.clientY-r.height-16);
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+const hideTip=()=>tip.style.display='none';
+
+// ---- wykres
+function gridlines(){
+  let h='';
+  D.months.forEach((m,i)=>{
+    let c='vgrid'; if(m.m===1) c+=' y'; else if((m.m-1)%3===0) c+=' q';
+    h+='<div class="'+c+'" style="left:'+(i*MW)+'px"></div>';
+  });
+  h+='<div class="vline vtoday" style="left:'+(D.today*MW)+'px"></div>';
+  h+='<div class="vline vhard" style="left:'+(D.hard*MW)+'px"></div>';
+  return h;
+}
+function render(){
+  const g=document.getElementById('grid');
+  let yrs=[]; D.months.forEach(m=>{ const l=yrs[yrs.length-1];
+    if(l && l.y===m.y) l.n++; else yrs.push({y:m.y,n:1}); });
+  let h='<div class="hdr"><div class="lab"></div><div class="tl">';
+  h+='<div class="yr">'+yrs.map(y=>'<div class="yrc" style="width:'+(y.n*MW)+'px">'+y.y+'</div>').join('')+'</div>';
+  h+='<div class="qr">'+D.months.map(m=>'<div class="qrc" style="width:'+MW+'px">'+MN[m.m-1]+'</div>').join('')+'</div>';
+  h+='</div></div>';
+  D.kms.forEach(km=>{
+    const ts=D.tasks.filter(t=>t.km===km.i && active.has(t.zad) && (!onlyCrit||t.crit));
+    if(!ts.length) return;
+    const kwf=ts.reduce((a,t)=>a+(t.kw||0),0);
+    h+='<div class="kmrow"><div class="lab"><span class="c">'+km.code+'</span>'+km.name+
+       (kwf?'<span class="kf">'+f0(kwf)+' tys.</span>':'')+'</div><div class="tl">'+
+       gridlines()+
+       '<div class="dia" style="left:'+(km.x*MW-7)+'px" title="'+km.code+' — '+km.date+'"></div>'+
+       '<div class="dia-lab" style="left:'+(km.x*MW+13)+'px">'+km.date+'</div></div></div>';
+    ts.forEach(t=>{
+      h+='<div class="row"><div class="lab"><span class="tid">'+t.id+'</span>'+
+         '<span class="nm">'+t.name+'</span>'+
+         '<span class="rr" title="'+t.Rn+'">'+t.R+'</span>'+
+         '<span class="kk">'+(t.kw!==null&&t.kw!==undefined?f0(t.kw):'')+'</span></div>'+
+         '<div class="tl">'+gridlines()+
+         '<div class="bar'+(t.crit?' crit':'')+(t.clip?' clip':'')+'" data-i="'+D.tasks.indexOf(t)+'" '+
+         'style="left:'+(t.x*MW)+'px;width:'+(t.w*MW)+'px;background:'+bg(t)+'">'+
+         (t.w*MW>58?'<span class="bl">'+(t.zad==='—'?'':'Z'+t.zad)+'</span>':'')+'</div></div></div>';
+    });
+  });
+  g.innerHTML=h;
+  g.querySelectorAll('.bar').forEach(b=>{
+    const t=D.tasks[+b.dataset.i];
+    b.onmouseenter=e=>showTip(e,t); b.onmousemove=moveTip; b.onmouseleave=hideTip;
+  });
+}
+render();
+
+// ---- tabele
+document.getElementById('kmtab').innerHTML = D.kms.map(k=>
+  '<tr><td class="k"><b style="color:var(--acc-d)">'+k.code+'</b></td><td><b>'+k.name+'</b></td>'+
+  '<td class="mono">'+k.date+'</td><td class="num">'+(k.kw?f0(k.kw):'—')+'</td>'+
+  '<td>'+k.kryt+'</td><td style="color:#6A6A64">'+k.odbl+'</td></tr>').join('');
+
+document.getElementById('hrftab').innerHTML = D.hrf.map(h=>
+  '<tr><td><b>'+h.zad+'</b></td><td>'+h.n+'</td>'+
+  '<td class="mono">od '+h.s+' do '+h.e+'</td>'+
+  '<td class="num">'+f0(h.kw)+'</td><td class="num" style="color:#2F7D6E">'+f0(h.kw*D.INT)+'</td>'+
+  '<td style="color:#6A6A64">'+h.uw+'</td></tr>').join('') +
+  '<tr><td colspan="3" style="text-align:right;font-weight:600">RAZEM</td>'+
+  '<td class="num" style="color:var(--acc-d);font-size:13px">'+f0(D.TOT)+'</td>'+
+  '<td class="num" style="color:var(--acc-d);font-size:13px">'+f0(D.DOF)+'</td><td></td></tr>';
+
+document.getElementById('roletab').innerHTML = D.role.map(r=>
+  '<tr><td><span class="rk">'+r.k+'</span></td><td><b>'+r.n+'</b></td><td>'+r.z+'</td>'+
+  '<td style="color:#6A6A64">'+r.e+'</td><td class="k">'+r.o+'</td>'+
+  '<td style="color:#6A6A64;font-size:11px">'+r.s+'</td>'+
+  '<td class="num">'+(r.nR||'—')+(r.nC?' <span style="color:var(--acc-d)">/ '+r.nC+'</span>':'')+'</td></tr>').join('');
+
+document.getElementById('pozatab').innerHTML = D.poza.map(p=>{
+  const cls = p.c.indexOf('niekwalifikowalne')>=0||p.c.indexOf('poza kosztami')>=0 ? 'b-kry'
+            : (p.c.indexOf('do rozstrzyg')>=0 ? 'b-wys' : 'b-sre');
+  return '<tr><td><b>'+p.n+'</b></td><td class="num">'+f0(p.kw)+'</td>'+
+    '<td><span class="badge '+cls+'">'+p.c+'</span></td><td style="color:#6A6A64">'+p.u+'</td></tr>';
+}).join('') +
+ '<tr><td style="text-align:right;font-weight:600">RAZEM POZA HRF</td>'+
+ '<td class="num" style="color:var(--acc-d);font-size:13px">'+f0(D.POZA)+'</td><td colspan="2"></td></tr>';
+
+document.getElementById('wrztab').innerHTML = D.wrz.map((w,i)=>
+  '<tr'+(i===0?' style="background:#FDF6F1"':'')+'><td><b>'+w.o+'</b></td>'+
+  '<td class="num">'+(w.i*100).toFixed(0)+'%</td><td class="num">'+f0(w.d)+'</td>'+
+  '<td class="num">'+f0(w.w)+'</td>'+
+  '<td class="num" style="color:'+(w.delta>0?'var(--acc-d)':'#2F7D6E')+'">'+
+  (w.delta>0?'+'+f0(w.delta):'—')+'</td></tr>').join('');
+
+const BC={"Krytyczny":"b-kry","Wysoki":"b-wys","Średni":"b-sre"};
+document.getElementById('rtab').innerHTML = D.ryz.map(r=>
+  '<tr><td class="k"><b>'+r.id+'</b></td><td><b>'+r.n+'</b></td>'+
+  '<td><span class="badge '+(BC[r.w]||'b-sre')+'">'+r.w+'</span> '+
+  (r.p==='Zmaterializowane'?'<span class="badge b-mat">już wystąpiło</span>':
+   '<span style="color:var(--tx2);font-size:10.5px">'+r.p+'</span>')+'</td>'+
+  '<td>'+r.s+'</td><td style="color:#6A6A64">'+r.r+'</td>'+
+  '<td><span class="rk">'+r.o+'</span></td></tr>').join('');
+<\/script>
+</body>
+</html>
+`;
+/* M7 — osadzenie w izolowanej ramce (iframe srcdoc): dokument klienta ma własne ID/klasy
+   (m.in. #tip, #kpis) identyczne z nazwami już użytymi w tej aplikacji — bez izolacji
+   nadpisałyby się wzajemnie. Treść merytoryczna dokumentu nienaruszona. */
+function renderM7(){
+  pane.innerHTML=`<div class="vcard m7wrap"><h2>Harmonogram inwestycji i budżet grantu (M7)</h2>
+    <p class="note" style="margin:2px 0 0">Dokument źródłowy klienta (FENG.05.01 · Fundusz Wsparcia Technologii Krytycznych) — kamienie milowe, wykres Gantta, budżet, role w projekcie i ryzyka terminowe. Wyświetlony bez zmian treści.</p>
+    <iframe id="m7Frame" title="Harmonogram inwestycji KLAB"></iframe></div>`;
+  document.getElementById("m7Frame").srcdoc=M7_HTML;
+}
 </script>
 </body>
 </html>
