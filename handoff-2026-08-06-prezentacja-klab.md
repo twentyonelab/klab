@@ -55,6 +55,15 @@ Osobno w repo: `klab_plan_referencyjny.json` (plan referencyjny jako projekt), `
 5. Żadnego dark mode, żadnych ozdobnych animacji, żadnego WebGL (3D tylko statyczna izometria SVG).
 6. **Nie zmieniaj plików symulatora** — prezentacja to odnoga; jeśli reużywasz kod z localStorage, zmień klucz (symulator używa `klab_sym_v02`).
 
+## STATUS 2026-08-06 (sesja wykonawcza, Windows): ZROBIONE ✓
+
+`prezentacja/index.html` zbudowana wg planu 5 slajdów i wdrożona — live: https://twentyonelab.github.io/klab/prezentacja/ (commit `cb901b0`). Audyt Playwright 26× PASS (nawigacja, hash, Esc-przegląd, frakcje S1, karty węzłów S2, pan/zoom/warstwy/tooltipy S3, suwak OPEX S4, akordeon S5, 0 błędów JS, brak nazwisk). Slajd 3 = plan referencyjny 156×72 (0 kolizji policzone w runtime). S4 liczy modelem M6: przy 0,75 zł/kWh → OPEX 41,93 mln zł/rok, cash cost 92,36 zł/kWh. Kopia offline: `rezultat/KLAB prezentacja — 5 slajdów.html` na Drive. Dziennik decyzji uzupełniony.
+
+Nowe ślepe uliczki z tej sesji:
+- **Cudzysłów prosty `"` wewnątrz polskich stringów JS** (obok typograficznych „ ") ucina string → SyntaxError całego bloku `<script>`, a strona częściowo działa (kolejne bloki się wykonują) — mylące. Sprawdzaj parę „ ” przy wklejaniu tekstów.
+- **Playwright na Windows:** brak `/opt/pw-browsers/chromium` — używać `chromium.launch({channel:'msedge'})` (systemowy Edge, zero pobierania). `locator.fill()` NIE działa na `input[type=range]` — ustawiać `value` + `dispatchEvent(new Event('input'))`.
+- Git na dysku Google (G:) ryzykowny — klonować repo do katalogu lokalnego/tymczasowego, deliverable i tak jedzie przez push.
+
 ## Ślepe uliczki (nie trać czasu drugi raz)
 
 - **Upload plików SVG pada** po stronie przeglądarki w tym kliencie czatu — SVG wklejać jako tekst źródłowy (tak weszło logo).
